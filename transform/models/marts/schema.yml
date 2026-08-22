@@ -1,0 +1,15 @@
+version: 2
+
+models:
+  - name: mart_changelog
+    columns:
+      - name: release_id
+        tests: [unique, not_null]
+      - name: tool_slug
+        tests: [not_null]
+      - name: tool_name
+        tests: [not_null]
+      - name: version
+        tests: [not_null]
+      - name: has_breaking
+        tests: [not_null]
