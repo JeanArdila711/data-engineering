@@ -1,0 +1,77 @@
+tools:
+  - slug: airflow
+    name: Apache Airflow
+    category: orchestration
+    vendor: Apache Software Foundation
+    repo: apache/airflow
+    homepage: https://airflow.apache.org
+    aliases: [apache airflow]
+
+  - slug: dbt-core
+    name: dbt Core
+    category: transformation
+    vendor: dbt Labs
+    repo: dbt-labs/dbt-core
+    homepage: https://www.getdbt.com
+    aliases: [dbt, data build tool]
+
+  - slug: duckdb
+    name: DuckDB
+    category: query-engine
+    repo: duckdb/duckdb
+    homepage: https://duckdb.org
+    aliases: [duck db]
+
+  - slug: spark
+    name: Apache Spark
+    category: processing
+    vendor: Apache Software Foundation
+    repo: apache/spark
+    homepage: https://spark.apache.org
+    aliases: [apache spark, pyspark]
+
+  - slug: iceberg
+    name: Apache Iceberg
+    category: table-format
+    vendor: Apache Software Foundation
+    repo: apache/iceberg
+    homepage: https://iceberg.apache.org
+    aliases: [apache iceberg]
+
+  - slug: polars
+    name: Polars
+    category: dataframe
+    repo: pola-rs/polars
+    homepage: https://pola.rs
+    aliases: []
+
+  - slug: dagster
+    name: Dagster
+    category: orchestration
+    vendor: Dagster Labs
+    repo: dagster-io/dagster
+    homepage: https://dagster.io
+    aliases: []
+
+  - slug: kafka
+    name: Apache Kafka
+    category: streaming
+    vendor: Apache Software Foundation
+    repo: apache/kafka
+    homepage: https://kafka.apache.org
+    aliases: [apache kafka]
+
+  - slug: flink
+    name: Apache Flink
+    category: streaming
+    vendor: Apache Software Foundation
+    repo: apache/flink
+    homepage: https://flink.apache.org
+    aliases: [apache flink]
+
+  - slug: trino
+    name: Trino
+    category: query-engine
+    repo: trinodb/trino
+    homepage: https://trino.io
+    aliases: [presto sql]
