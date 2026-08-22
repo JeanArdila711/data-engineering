@@ -1,11 +1,14 @@
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from pathlib import Path
 
+from pipeline.changes import ExtractedChange
 from pipeline.config import Catalog, Tool
-from pipeline.db import apply_migrations, sync_catalog, sync_sources
+from pipeline.db import apply_migrations, quarantine, save_raw_fetch, sync_catalog, sync_sources, upsert_releases
+from pipeline.sources.github import ReleaseRecord
 
 T0 = datetime(2026, 1, 1, tzinfo=timezone.utc)
 T1 = datetime(2026, 2, 1, tzinfo=timezone.utc)
+DS = date(2026, 8, 4)
 
 
 def _tables(conn) -> set[str]:
@@ -108,3 +111,91 @@ def test_sync_sources_returns_ids_and_is_idempotent(db_conn):
 
     assert first == second
     assert "duckdb" in first
+
+
+def _record(version: str = "1.0.0", has_breaking: bool = False) -> ReleaseRecord:
+    return ReleaseRecord(
+        tool_slug="duckdb",
+        version=version,
+        published_at=T0,
+        source_url="https://example.com/r",
+        body="cuerpo",
+        has_breaking=has_breaking,
+        changes=[ExtractedChange(kind="breaking", text="rompió algo")] if has_breaking else [],
+    )
+
+
+def test_save_raw_fetch_stores_new_payload(db_conn):
+    source_id = sync_sources(db_conn, _catalog())["duckdb"]
+    save_raw_fetch(db_conn, source_id, DS, "contenido")
+
+    with db_conn.cursor() as cur:
+        cur.execute("SELECT payload, first_seen_ds, last_seen_ds FROM raw_fetches WHERE source_id = %s", (source_id,))
+        payload, first_seen, last_seen = cur.fetchone()
+
+    assert payload == "contenido"
+    assert first_seen == DS
+    assert last_seen == DS
+
+
+def test_save_raw_fetch_does_not_duplicate_identical_payload(db_conn):
+    source_id = sync_sources(db_conn, _catalog())["duckdb"]
+    later = date(2026, 8, 5)
+
+    save_raw_fetch(db_conn, source_id, DS, "sin cambios")
+    save_raw_fetch(db_conn, source_id, later, "sin cambios")
+
+    with db_conn.cursor() as cur:
+        cur.execute("SELECT count(*) FROM raw_fetches WHERE source_id = %s", (source_id,))
+        assert cur.fetchone()[0] == 1
+
+        cur.execute("SELECT first_seen_ds, last_seen_ds FROM raw_fetches WHERE source_id = %s", (source_id,))
+        first_seen, last_seen = cur.fetchone()
+
+    assert first_seen == DS
+    assert last_seen == later
+
+
+def test_save_raw_fetch_stores_content_hash(db_conn):
+    source_id = sync_sources(db_conn, _catalog())["duckdb"]
+    save_raw_fetch(db_conn, source_id, DS, "contenido")
+
+    with db_conn.cursor() as cur:
+        cur.execute("SELECT content_hash FROM raw_fetches WHERE source_id = %s", (source_id,))
+        assert len(cur.fetchone()[0]) == 64
+
+
+def test_upsert_releases_inserts_new(db_conn):
+    assert upsert_releases(db_conn, [_record()]) == 1
+
+    with db_conn.cursor() as cur:
+        cur.execute("SELECT count(*) FROM fct_release")
+        assert cur.fetchone()[0] == 1
+
+
+def test_upsert_releases_is_idempotent(db_conn):
+    upsert_releases(db_conn, [_record()])
+    assert upsert_releases(db_conn, [_record()]) == 0
+
+    with db_conn.cursor() as cur:
+        cur.execute("SELECT count(*) FROM fct_release")
+        assert cur.fetchone()[0] == 1
+
+
+def test_upsert_releases_stores_changes_without_duplicating(db_conn):
+    upsert_releases(db_conn, [_record(has_breaking=True)])
+    upsert_releases(db_conn, [_record(has_breaking=True)])
+
+    with db_conn.cursor() as cur:
+        cur.execute("SELECT count(*) FROM release_changes")
+        assert cur.fetchone()[0] == 1
+
+
+def test_quarantine_records_error_with_payload(db_conn):
+    quarantine(db_conn, "duckdb:github_releases", "parse", "esquema inesperado", "{}")
+
+    with db_conn.cursor() as cur:
+        cur.execute("SELECT source_ref, stage, error, payload FROM quarantine")
+        row = cur.fetchone()
+
+    assert row == ("duckdb:github_releases", "parse", "esquema inesperado", "{}")

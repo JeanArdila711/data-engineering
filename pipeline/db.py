@@ -1,11 +1,13 @@
 """Acceso a Postgres: conexión, migraciones y escrituras idempotentes."""
 
-from datetime import datetime
+import hashlib
+from datetime import date, datetime
 from pathlib import Path
 
 import psycopg
 
 from pipeline.config import Catalog
+from pipeline.sources.github import ReleaseRecord
 
 _MIGRATIONS_TABLE = """
 CREATE TABLE IF NOT EXISTS schema_migrations (
@@ -86,3 +88,72 @@ def sync_sources(conn: psycopg.Connection, catalog: Catalog) -> dict[str, int]:
             )
             ids[tool.slug] = cur.fetchone()[0]
     return ids
+
+
+def save_raw_fetch(conn: psycopg.Connection, source_id: int, ds: date, payload: str) -> None:
+    """Guarda el payload crudo, particionado por contenido en vez de por fecha.
+
+    El free tier de Neon da 0.5 GB de storage; una fila diaria por fuente lo
+    llenaría en meses cuando la mayoría de los días el payload no cambia. Si
+    ya existe una fila con el mismo hash, solo se actualiza last_seen_ds.
+    """
+    content_hash = hashlib.sha256(payload.encode("utf-8")).hexdigest()
+    with conn.cursor() as cur:
+        cur.execute(
+            "INSERT INTO raw_fetches (source_id, content_hash, first_seen_ds, last_seen_ds, payload) "
+            "VALUES (%s, %s, %s, %s, %s) "
+            "ON CONFLICT (source_id, content_hash) DO UPDATE "
+            "SET last_seen_ds = GREATEST(raw_fetches.last_seen_ds, EXCLUDED.last_seen_ds)",
+            (source_id, content_hash, ds, ds, payload),
+        )
+
+
+def upsert_releases(conn: psycopg.Connection, records: list[ReleaseRecord]) -> int:
+    """Inserta releases nuevos por clave natural. Devuelve cuántos eran nuevos."""
+    inserted = 0
+    with conn.cursor() as cur:
+        for record in records:
+            cur.execute(
+                "INSERT INTO fct_release "
+                "(tool_slug, version, published_at, source_url, has_breaking, body) "
+                "VALUES (%s, %s, %s, %s, %s, %s) "
+                "ON CONFLICT (tool_slug, version) DO NOTHING "
+                "RETURNING id",
+                (
+                    record.tool_slug,
+                    record.version,
+                    record.published_at,
+                    record.source_url,
+                    record.has_breaking,
+                    record.body,
+                ),
+            )
+            row = cur.fetchone()
+            if row is None:
+                continue
+
+            inserted += 1
+            release_id = row[0]
+            for change in record.changes:
+                cur.execute(
+                    "INSERT INTO release_changes (release_id, kind, text) VALUES (%s, %s, %s) "
+                    "ON CONFLICT (release_id, kind, text) DO NOTHING",
+                    (release_id, change.kind, change.text),
+                )
+
+    return inserted
+
+
+def quarantine(
+    conn: psycopg.Connection,
+    source_ref: str,
+    stage: str,
+    error: str,
+    payload: str | None = None,
+) -> None:
+    """Aísla lo que falló validación, con contexto suficiente para depurarlo."""
+    with conn.cursor() as cur:
+        cur.execute(
+            "INSERT INTO quarantine (source_ref, stage, error, payload) VALUES (%s, %s, %s, %s)",
+            (source_ref, stage, error, payload),
+        )
