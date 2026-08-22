@@ -1,6 +1,11 @@
+from datetime import datetime, timezone
 from pathlib import Path
 
-from pipeline.db import apply_migrations
+from pipeline.config import Catalog, Tool
+from pipeline.db import apply_migrations, sync_catalog, sync_sources
+
+T0 = datetime(2026, 1, 1, tzinfo=timezone.utc)
+T1 = datetime(2026, 2, 1, tzinfo=timezone.utc)
 
 
 def _tables(conn) -> set[str]:
@@ -50,3 +55,56 @@ def test_dim_tool_has_scd2_columns(db_conn):
         columns = {row[0] for row in cur.fetchall()}
 
     assert {"tool_key", "slug", "effective_from", "effective_to", "is_current"} <= columns
+
+
+def _catalog(category: str = "query-engine") -> Catalog:
+    return Catalog(tools=[Tool(slug="duckdb", name="DuckDB", category=category, repo="duckdb/duckdb")])
+
+
+def _rows(conn):
+    with conn.cursor() as cur:
+        cur.execute(
+            "SELECT slug, category, effective_from, effective_to, is_current "
+            "FROM dim_tool ORDER BY effective_from"
+        )
+        return cur.fetchall()
+
+
+def test_sync_catalog_inserts_new_tool(db_conn):
+    sync_catalog(db_conn, _catalog(), T0)
+
+    rows = _rows(db_conn)
+    assert len(rows) == 1
+    assert rows[0][0] == "duckdb"
+    assert rows[0][3] is None
+    assert rows[0][4] is True
+
+
+def test_sync_catalog_is_idempotent_when_nothing_changes(db_conn):
+    sync_catalog(db_conn, _catalog(), T0)
+    sync_catalog(db_conn, _catalog(), T1)
+
+    assert len(_rows(db_conn)) == 1
+
+
+def test_sync_catalog_closes_old_row_when_attribute_changes(db_conn):
+    sync_catalog(db_conn, _catalog("query-engine"), T0)
+    sync_catalog(db_conn, _catalog("olap-database"), T1)
+
+    rows = _rows(db_conn)
+    assert len(rows) == 2
+
+    old, new = rows
+    assert old[1] == "query-engine"
+    assert old[3] == T1
+    assert old[4] is False
+    assert new[1] == "olap-database"
+    assert new[4] is True
+
+
+def test_sync_sources_returns_ids_and_is_idempotent(db_conn):
+    first = sync_sources(db_conn, _catalog())
+    second = sync_sources(db_conn, _catalog())
+
+    assert first == second
+    assert "duckdb" in first
