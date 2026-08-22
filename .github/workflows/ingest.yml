@@ -37,6 +37,11 @@ jobs:
           uv run dbt run
           uv run dbt test
 
+      - name: Revalidar el sitio
+        run: |
+          curl -sf -X POST "${{ secrets.VERCEL_APP_URL }}/api/revalidate" \
+            -H "x-revalidate-secret: ${{ secrets.REVALIDATE_SECRET }}"
+
       - name: Abrir issue si la corrida falló
         if: failure()
         uses: actions/github-script@v7
