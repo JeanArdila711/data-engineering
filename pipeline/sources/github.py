@@ -1,0 +1,81 @@
+"""Adaptador de la API de GitHub Releases al modelo interno.
+
+Traduce un formato externo a ReleaseRecord y no hace nada más: no persiste,
+no decide qué herramientas existen, no orquesta.
+"""
+
+import json
+from dataclasses import dataclass, field
+from datetime import datetime, timezone
+
+from pipeline.changes import ExtractedChange, extract_changes, has_breaking_changes
+from pipeline.config import Tool
+from pipeline.fetch import fetch
+from pipeline.versions import normalize_version
+
+API_TEMPLATE = "https://api.github.com/repos/{repo}/releases?per_page=30"
+
+
+@dataclass(frozen=True)
+class ReleaseRecord:
+    tool_slug: str
+    version: str
+    published_at: datetime
+    source_url: str
+    body: str
+    has_breaking: bool
+    changes: list[ExtractedChange] = field(default_factory=list)
+
+
+def _parse_timestamp(value: str | None) -> datetime | None:
+    if not value:
+        return None
+    return datetime.fromisoformat(value.replace("Z", "+00:00")).astimezone(timezone.utc)
+
+
+def parse_releases(tool: Tool, payload: str) -> list[ReleaseRecord]:
+    """Convierte el JSON de la API en registros válidos, descartando lo que no lo es."""
+    entries = json.loads(payload)
+    records: list[ReleaseRecord] = []
+
+    for entry in entries:
+        if entry.get("draft"):
+            continue
+
+        version = normalize_version(entry.get("tag_name") or "")
+        published_at = _parse_timestamp(entry.get("published_at"))
+        if version is None or published_at is None:
+            continue
+
+        body = entry.get("body") or ""
+        records.append(
+            ReleaseRecord(
+                tool_slug=tool.slug,
+                version=version,
+                published_at=published_at,
+                source_url=entry.get("html_url") or "",
+                body=body,
+                has_breaking=has_breaking_changes(body),
+                changes=extract_changes(body),
+            )
+        )
+
+    return records
+
+
+def fetch_releases(tool: Tool, token: str, **kwargs) -> tuple[str, list[ReleaseRecord]]:
+    """Trae los releases de una herramienta y devuelve el payload crudo junto a los registros."""
+    if not tool.repo:
+        raise ValueError(f"{tool.slug} no tiene repo configurado")
+
+    result = fetch(
+        API_TEMPLATE.format(repo=tool.repo),
+        headers={
+            "Accept": "application/vnd.github+json",
+            "Authorization": f"Bearer {token}",
+            "X-GitHub-Api-Version": "2022-11-28",
+        },
+        **kwargs,
+    )
+
+    return result.body, parse_releases(tool, result.body)
