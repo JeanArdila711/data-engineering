@@ -15,6 +15,28 @@ from pipeline.versions import normalize_version
 
 API_TEMPLATE = "https://api.github.com/repos/{repo}/releases?per_page=30"
 
+# Campos estables de un release: sin assets ni reactions, que cambian con cada
+# descarga o reacción real y romperían el particionamiento de raw_fetches por
+# content_hash (misma lista de releases, hash distinto cada corrida).
+_STABLE_FIELDS = (
+    "id",
+    "tag_name",
+    "name",
+    "body",
+    "draft",
+    "prerelease",
+    "published_at",
+    "created_at",
+    "html_url",
+)
+
+
+def _normalize_payload(raw_body: str) -> str:
+    """Quita campos volátiles del JSON de GitHub antes de guardarlo como raw."""
+    entries = json.loads(raw_body)
+    stripped = [{field: entry.get(field) for field in _STABLE_FIELDS} for entry in entries]
+    return json.dumps(stripped, sort_keys=True)
+
 
 @dataclass(frozen=True)
 class ReleaseRecord:
@@ -78,4 +100,4 @@ def fetch_releases(tool: Tool, token: str, **kwargs) -> tuple[str, list[ReleaseR
         **kwargs,
     )
 
-    return result.body, parse_releases(tool, result.body)
+    return _normalize_payload(result.body), parse_releases(tool, result.body)

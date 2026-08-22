@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from pipeline.config import Tool
-from pipeline.sources.github import ReleaseRecord, parse_releases
+from pipeline.sources.github import ReleaseRecord, _normalize_payload, parse_releases
 
 FIXTURE = Path("tests/fixtures/github_releases_duckdb.json")
 TOOL = Tool(slug="duckdb", name="DuckDB", category="query-engine", repo="duckdb/duckdb")
@@ -27,6 +27,35 @@ def test_parse_releases_normalizes_versions():
 def test_parse_releases_parses_published_at_as_utc():
     records = parse_releases(TOOL, FIXTURE.read_text())
     assert all(r.published_at.tzinfo == timezone.utc for r in records)
+
+
+def test_normalize_payload_ignores_volatile_asset_fields():
+    """GitHub cambia download_count por cada descarga real, sin releases nuevos.
+
+    Si el hash de content_hash se calculara sobre el JSON crudo, cada corrida
+    generaría una fila nueva en raw_fetches sin que haya novedad real.
+    """
+    entry = {
+        "tag_name": "v1.0.0",
+        "name": "1.0.0",
+        "body": "changelog",
+        "draft": False,
+        "prerelease": False,
+        "published_at": "2026-01-01T00:00:00Z",
+        "html_url": "https://github.com/x/y/releases/tag/v1.0.0",
+        "id": 1,
+    }
+    payload_a = json.dumps([{**entry, "assets": [{"download_count": 10}], "reactions": {"+1": 3}}])
+    payload_b = json.dumps([{**entry, "assets": [{"download_count": 42}], "reactions": {"+1": 9}}])
+
+    assert _normalize_payload(payload_a) == _normalize_payload(payload_b)
+
+
+def test_normalize_payload_changes_when_release_content_changes():
+    payload_a = json.dumps([{"tag_name": "v1.0.0", "body": "a", "draft": False}])
+    payload_b = json.dumps([{"tag_name": "v1.0.1", "body": "b", "draft": False}])
+
+    assert _normalize_payload(payload_a) != _normalize_payload(payload_b)
 
 
 def test_parse_releases_skips_drafts():
