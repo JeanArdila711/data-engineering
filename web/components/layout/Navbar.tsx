@@ -19,6 +19,7 @@ const LINKS = [
   { label: 'Radar', id: 'radar', href: '#radar' },
   { label: 'Manifiesto', id: 'manifiesto', href: '#manifiesto' },
   { label: 'Ecosistema', id: 'ecosystem', href: '#ecosystem' },
+  { label: 'Artículos', id: 'articulos', href: '#articulos' },
 ];
 
 // Dark engineering theme RGB tokens for dynamic scroll alpha interpolation

@@ -1,16 +1,24 @@
-import { getChangelog, ChangelogEntry } from '@/lib/db'
+import { getChangelog, getArticles, ChangelogEntry, ArticleEntry } from '@/lib/db'
 import Hero from '@/components/Hero'
 import Manifesto from '@/components/Manifesto'
 import EcosystemSection from '@/components/EcosystemSection'
+import ArticlesSection from '@/components/ArticlesSection'
 import ParticlesBackground from '@/components/ParticlesBackground'
 import Navbar from '@/components/layout/Navbar'
 
 export default async function Home() {
   let entries: ChangelogEntry[] = []
+  let articles: ArticleEntry[] = []
+
   try {
-    entries = await getChangelog()
+    const [fetchedEntries, fetchedArticles] = await Promise.all([
+      getChangelog().catch(() => []),
+      getArticles().catch(() => []),
+    ])
+    entries = fetchedEntries
+    articles = fetchedArticles
   } catch (error) {
-    console.error('Error fetching changelog entries from DB:', error)
+    console.error('Error fetching data from DB:', error)
   }
 
   return (
@@ -29,6 +37,9 @@ export default async function Home() {
       
       {/* 3. Interactive Ecosystem Radar & Tool Directory */}
       <EcosystemSection entries={entries} />
+
+      {/* 4. Curated Technical Articles & Anchored Summaries (Fase 2) */}
+      <ArticlesSection articles={articles} />
     </main>
   )
 }
