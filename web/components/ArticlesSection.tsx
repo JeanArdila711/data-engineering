@@ -6,19 +6,19 @@ import { ArticleEntry } from '@/lib/db';
 import { 
   ExternalLink, 
   Sparkles, 
-  Layers, 
   Calendar, 
   User, 
   Search, 
   Globe, 
   BookOpen, 
   Filter,
-  CheckCircle2
+  CheckCircle2,
+  Tag
 } from 'lucide-react';
 
 const customEase = [0.4, 0, 0.2, 1] as const;
 
-// Fallback high-quality curated sample articles for local development & offline resiliency
+// 10 Core Tools curated technical articles for rich offline & development feed
 const SAMPLE_ARTICLES: ArticleEntry[] = [
   {
     article_id: 1,
@@ -26,7 +26,7 @@ const SAMPLE_ARTICLES: ArticleEntry[] = [
     title: 'DuckDB 0.10.3: Optimizaciones de Parquet y Soporte Ampliado para Geoarrow',
     author: 'DuckDB Labs Team',
     published_at: new Date('2024-06-03T12:00:00Z'),
-    relevance_score: 0.96,
+    relevance_score: 0.98,
     tool_names: ['DuckDB'],
     tool_slugs: ['duckdb'],
     summary_en: 'DuckDB 0.10.3 introduces critical memory improvements for out-of-core parquet scanning, sub-second aggregations on compressed column chunks, and fixes for multi-threaded dictionary vector caching.',
@@ -38,7 +38,7 @@ const SAMPLE_ARTICLES: ArticleEntry[] = [
     title: 'Testing Unitario Nativo en dbt Core: Patrones de Aislamiento para Modelos SQL',
     author: 'dbt Labs Engineering',
     published_at: new Date('2024-05-28T14:30:00Z'),
-    relevance_score: 0.94,
+    relevance_score: 0.95,
     tool_names: ['dbt Core'],
     tool_slugs: ['dbt-core'],
     summary_en: 'Native unit testing in dbt allows data engineers to test edge cases in complex SQL transformations using static mock data without querying production warehouses or creating heavy fixtures.',
@@ -50,7 +50,7 @@ const SAMPLE_ARTICLES: ArticleEntry[] = [
     title: 'Polars 1.0: El Motor de Dataframes Escrito en Rust para Pipelines Modernos',
     author: 'Ritchie Vink',
     published_at: new Date('2024-07-01T09:00:00Z'),
-    relevance_score: 0.98,
+    relevance_score: 0.99,
     tool_names: ['Polars'],
     tool_slugs: ['polars'],
     summary_en: 'Polars 1.0 stabilizes its streaming query engine, optimizes SIMD vectorization across modern AVX-512 CPU registers, and enforces zero-copy interoperability with Apache Arrow and PyCapsule.',
@@ -62,11 +62,83 @@ const SAMPLE_ARTICLES: ArticleEntry[] = [
     title: 'Evolución del Apache Iceberg REST Catalog: Concurrencia Optimista a Escala',
     author: 'Apache Iceberg PMC',
     published_at: new Date('2024-06-18T16:00:00Z'),
-    relevance_score: 0.92,
+    relevance_score: 0.94,
     tool_names: ['Apache Iceberg'],
     tool_slugs: ['iceberg'],
     summary_en: 'The Iceberg REST Catalog specification decouples table metadata operations from underlying object storage, enabling multi-engine atomic commit coordination with exponential backoff.',
     summary_es: 'La especificación del Catálogo REST de Iceberg desacopla las operaciones de metadatos del almacenamiento de objetos, permitiendo la coordinación de commits atómicos multi-motor con reintentos exponenciales.'
+  },
+  {
+    article_id: 5,
+    url: 'https://airflow.apache.org/blog/airflow-2.9.0',
+    title: 'Apache Airflow 2.9.0: Dynamic Task Mapping Avanzado y Datasets Condicionales',
+    author: 'Airflow PMC Team',
+    published_at: new Date('2024-04-15T11:00:00Z'),
+    relevance_score: 0.93,
+    tool_names: ['Apache Airflow'],
+    tool_slugs: ['airflow'],
+    summary_en: 'Airflow 2.9 extends task mapping over multiple input parameters and introduces dataset scheduling expressions, enabling reactive downstream DAG execution based on logical data boundaries.',
+    summary_es: 'Airflow 2.9 amplía el mapeo dinámico de tareas sobre múltiples parámetros de entrada e introduce expresiones lógicas de programación por datasets para activar DAGs dependientes de forma reactiva.'
+  },
+  {
+    article_id: 6,
+    url: 'https://dagster.io/blog/declarative-asset-orchestration-scale',
+    title: 'Orquestación Declarativa Basada en Assets: El Paradigma Moderno de Dagster',
+    author: 'Sandy Ryza',
+    published_at: new Date('2024-06-25T10:00:00Z'),
+    relevance_score: 0.92,
+    tool_names: ['Dagster'],
+    tool_slugs: ['dagster'],
+    summary_en: 'Software-defined assets treat data pipelines as a live graph of state rather than a sequence of opaque tasks, reducing pipeline debugging time and formalizing lineage contracts.',
+    summary_es: 'Los activos definidos por software estructuran los pipelines de datos como un grafo continuo de estado en lugar de tareas opacas, reduciendo los tiempos de depuración y formalizando el linaje.'
+  },
+  {
+    article_id: 7,
+    url: 'https://kafka.apache.org/blog/apache-kafka-3.8.0-kraft',
+    title: 'Apache Kafka 3.8.0: Consenso KRaft en Producción y Tiered Storage Estable',
+    author: 'Colin McCabe',
+    published_at: new Date('2024-07-22T15:00:00Z'),
+    relevance_score: 0.95,
+    tool_names: ['Apache Kafka'],
+    tool_slugs: ['kafka'],
+    summary_en: 'Kafka 3.8 completes the transition to ZooKeeper-less KRaft metadata mode with sub-minute failovers and optimizes tiered remote storage segments to reduce cluster operational cost.',
+    summary_es: 'Kafka 3.8 completa la transición al modo de metadatos KRaft sin ZooKeeper con recuperaciones de fallo en segundos y optimiza el almacenamiento remoto por capas en object storage.'
+  },
+  {
+    article_id: 8,
+    url: 'https://spark.apache.org/news/spark-3.5.0-released.html',
+    title: 'Apache Spark 3.5: Spark Connect GA y Optimizaciones en Adaptive Query Execution',
+    author: 'Apache Spark PMC',
+    published_at: new Date('2024-05-12T13:00:00Z'),
+    relevance_score: 0.91,
+    tool_names: ['Apache Spark'],
+    tool_slugs: ['spark'],
+    summary_en: 'Spark Connect enables thin-client integration from lightweight Python processes, while Adaptive Query Execution dynamically coalesces shuffle partitions to avoid skew in large joins.',
+    summary_es: 'Spark Connect permite la conexión de clientes ligeros desde procesos Python sin JVM local, mientras que Adaptive Query Execution ajusta dinámicamente las particiones de shuffle en joins masivos.'
+  },
+  {
+    article_id: 9,
+    url: 'https://flink.apache.org/2024/05/18/flink-1.19.0-release.html',
+    title: 'Apache Flink 1.19: Procesamiento Streaming con Garantía Exactly-Once y Autoscaling',
+    author: 'Flink Community',
+    published_at: new Date('2024-05-18T08:30:00Z'),
+    relevance_score: 0.90,
+    tool_names: ['Apache Flink'],
+    tool_slugs: ['flink'],
+    summary_en: 'Flink 1.19 stabilizes reactive parallelism autoscaling and introduces checkpointing compression optimizations for high-throughput sub-second stateful streaming topologies.',
+    summary_es: 'Flink 1.19 estabiliza el autoescalado de paralelismo reactivo e introduce compresión en checkpoints para topologías de procesamiento en streaming con estado y latencia milimétrica.'
+  },
+  {
+    article_id: 10,
+    url: 'https://trino.io/blog/2024/06/10/trino-fault-tolerant-execution.html',
+    title: 'Trino Fault-Tolerant Execution: Procesamiento Batch Resiliente en Data Lakes',
+    author: 'Martin Traverso',
+    published_at: new Date('2024-06-10T17:00:00Z'),
+    relevance_score: 0.93,
+    tool_names: ['Trino'],
+    tool_slugs: ['trino'],
+    summary_en: 'Trino introduces stage-level retry and spooling mechanics, allowing long-running multi-terabyte ETL batch jobs to recover from individual worker failures without restarting the entire query.',
+    summary_es: 'Trino implementa reintentos por etapas e intercambio de estado en spooling, permitiendo que consultas batch de varios terabytes se recuperen de caídas de nodos worker sin reiniciar la consulta.'
   }
 ];
 
@@ -98,9 +170,9 @@ function ArticleCard({
   }
 
   // 120fps GPU Spotlight border
-  const spotlightBackground = useMotionTemplate`radial-gradient(280px circle at ${mouseX}px ${mouseY}px, rgba(52, 211, 153, 0.18), transparent 80%)`;
+  const spotlightBackground = useMotionTemplate`radial-gradient(260px circle at ${mouseX}px ${mouseY}px, rgba(52, 211, 153, 0.22), transparent 80%)`;
 
-  // Language fallback logic (if selected is null, use the other)
+  // Language fallback logic
   const summaryText = lang === 'es' 
     ? (article.summary_es || article.summary_en || 'Resumen no disponible.')
     : (article.summary_en || article.summary_es || 'Summary not available.');
@@ -109,13 +181,14 @@ function ArticleCard({
 
   return (
     <motion.div
+      layout
       ref={cardRef}
       onMouseMove={handleMouseMove}
-      initial={{ opacity: 0, y: 20 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, margin: '-40px' }}
-      transition={{ duration: 0.5, ease: customEase }}
-      className="group relative rounded-2xl p-[1px] bg-neutral-900/60 transition-all duration-300 hover:bg-neutral-800/80 flex flex-col justify-between"
+      initial={{ opacity: 0, scale: 0.96 }}
+      animate={{ opacity: 1, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.96 }}
+      transition={{ duration: 0.28, ease: customEase }}
+      className="group relative rounded-2xl p-[1px] bg-neutral-900/70 transition-all duration-300 hover:bg-neutral-800/90 flex flex-col justify-between"
     >
       {/* 1. GPU Spotlight Glow */}
       <motion.div
@@ -134,9 +207,9 @@ function ArticleCard({
                 article.tool_names.map((tool, idx) => (
                   <span
                     key={idx}
-                    className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-mono font-medium bg-neutral-900 border border-neutral-700/70 text-neutral-300"
+                    className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-mono font-medium bg-neutral-900 border border-neutral-700/70 text-neutral-200"
                   >
-                    <span className="w-1 h-1 rounded-full bg-emerald-400" />
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
                     {tool}
                   </span>
                 ))
@@ -173,32 +246,41 @@ function ArticleCard({
           {/* Author & Meta */}
           <div className="flex items-center gap-4 text-xs text-neutral-500 font-mono">
             {article.author && (
-              <span className="flex items-center gap-1.5 truncate max-w-[200px]">
-                <User size={12} className="text-neutral-600" />
+              <span className="flex items-center gap-1.5 truncate max-w-[220px]">
+                <User size={12} className="text-neutral-600 shrink-0" />
                 <span className="text-neutral-400 truncate">{article.author}</span>
               </span>
             )}
-            <span className="flex items-center gap-1.5">
+            <span className="flex items-center gap-1.5 shrink-0">
               <Calendar size={12} className="text-neutral-600" />
               <span>{formatDate(article.published_at)}</span>
             </span>
           </div>
 
-          {/* Anchored AI Summary (Decisión 16: Never full article, always verified summary) */}
-          <div className="mt-2 rounded-xl p-4 bg-neutral-900/40 border border-neutral-800/60 relative overflow-hidden">
+          {/* Anchored AI Summary with Smooth Language Crossfade (Decisión 16) */}
+          <div className="mt-2 rounded-xl p-4 bg-neutral-900/50 border border-neutral-800/70 relative overflow-hidden min-h-[100px] flex flex-col justify-between">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-[10px] font-mono uppercase tracking-wider text-neutral-500 flex items-center gap-1.5">
+              <span className="text-[10px] font-mono uppercase tracking-wider text-neutral-400 flex items-center gap-1.5">
                 <Sparkles size={11} className="text-emerald-400" />
-                <span>Resumen Técnico</span>
+                <span>Resumen Técnico Verificado</span>
               </span>
-              <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-neutral-800 text-neutral-400">
+              <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-neutral-800 border border-neutral-700/50 text-neutral-300">
                 {lang === 'es' ? (isTranslated ? 'EN' : 'ES') : 'EN'}
               </span>
             </div>
 
-            <p className="text-neutral-300 text-xs md:text-sm leading-relaxed font-light line-clamp-4">
-              {summaryText}
-            </p>
+            <AnimatePresence mode="wait">
+              <motion.p
+                key={`${article.article_id}-${lang}`}
+                initial={{ opacity: 0, y: 3 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -3 }}
+                transition={{ duration: 0.18, ease: 'easeOut' }}
+                className="text-neutral-300 text-xs md:text-sm leading-relaxed font-light line-clamp-4"
+              >
+                {summaryText}
+              </motion.p>
+            </AnimatePresence>
           </div>
         </div>
 
@@ -228,7 +310,7 @@ export default function ArticlesSection({
 }: { 
   articles?: ArticleEntry[] 
 }) {
-  // Use DB articles if available, otherwise graceful fallback to sample articles
+  // Use DB articles if available, otherwise rich 10-tool sample catalog
   const items = articles.length > 0 ? articles : SAMPLE_ARTICLES;
 
   const [lang, setLang] = useState<'es' | 'en'>('es');
@@ -301,16 +383,16 @@ export default function ArticlesSection({
           <div className="relative flex items-center">
             <button
               onClick={() => setLang('es')}
-              className={`relative z-10 px-3 py-1 text-xs font-mono font-medium rounded-full transition-colors duration-200 cursor-pointer ${
-                lang === 'es' ? 'text-black' : 'text-neutral-400 hover:text-white'
+              className={`relative z-10 px-3.5 py-1 text-xs font-mono font-medium rounded-full transition-colors duration-200 cursor-pointer ${
+                lang === 'es' ? 'text-black font-semibold' : 'text-neutral-400 hover:text-white'
               }`}
             >
               Español
             </button>
             <button
               onClick={() => setLang('en')}
-              className={`relative z-10 px-3 py-1 text-xs font-mono font-medium rounded-full transition-colors duration-200 cursor-pointer ${
-                lang === 'en' ? 'text-black' : 'text-neutral-400 hover:text-white'
+              className={`relative z-10 px-3.5 py-1 text-xs font-mono font-medium rounded-full transition-colors duration-200 cursor-pointer ${
+                lang === 'en' ? 'text-black font-semibold' : 'text-neutral-400 hover:text-white'
               }`}
             >
               English
@@ -328,20 +410,27 @@ export default function ArticlesSection({
         </div>
       </div>
 
-      {/* 2. Filter Bar: Tool Chips & Search Input */}
+      {/* 2. Filter Bar: Magnetic Sliding Tool Chips & Search Input */}
       <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4 mb-8">
         
-        {/* Tool Filter Chips */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-2 lg:pb-0 scrollbar-none">
+        {/* Tool Filter Chips with Magnetic Sliding Spring Indicator (layoutId) */}
+        <div className="flex items-center gap-2 overflow-x-auto pb-2 lg:pb-0 scrollbar-none p-1">
           <button
             onClick={() => setSelectedTool('all')}
-            className={`px-3.5 py-1.5 rounded-full text-xs font-mono transition-all duration-200 cursor-pointer shrink-0 ${
-              selectedTool === 'all'
-                ? 'bg-emerald-950/60 border border-emerald-500/60 text-emerald-300 font-semibold shadow-[0_0_12px_rgba(52,211,153,0.15)]'
-                : 'bg-neutral-900/80 border border-neutral-800 text-neutral-400 hover:text-white hover:border-neutral-700'
-            }`}
+            className="relative px-3.5 py-1.5 rounded-full text-xs font-mono transition-colors duration-200 cursor-pointer shrink-0"
           >
-            Todas ({items.length})
+            {selectedTool === 'all' && (
+              <motion.div
+                layoutId="active-article-filter-pill"
+                transition={{ type: 'spring', stiffness: 450, damping: 32 }}
+                className="absolute inset-0 rounded-full bg-emerald-950/70 border border-emerald-500/60 shadow-[0_0_12px_rgba(52,211,153,0.18)] z-0"
+              />
+            )}
+            <span className={`relative z-10 ${
+              selectedTool === 'all' ? 'text-emerald-300 font-semibold' : 'text-neutral-400 hover:text-white'
+            }`}>
+              Todas ({items.length})
+            </span>
           </button>
 
           {toolFilters.map((tool) => {
@@ -352,14 +441,23 @@ export default function ArticlesSection({
               <button
                 key={tool}
                 onClick={() => setSelectedTool(isSelected ? 'all' : tool)}
-                className={`px-3.5 py-1.5 rounded-full text-xs font-mono transition-all duration-200 cursor-pointer shrink-0 flex items-center gap-1.5 ${
-                  isSelected
-                    ? 'bg-emerald-950/60 border border-emerald-500/60 text-emerald-300 font-semibold shadow-[0_0_12px_rgba(52,211,153,0.15)]'
-                    : 'bg-neutral-900/80 border border-neutral-800 text-neutral-400 hover:text-white hover:border-neutral-700'
-                }`}
+                className="relative px-3.5 py-1.5 rounded-full text-xs font-mono transition-colors duration-200 cursor-pointer shrink-0 flex items-center gap-1.5"
               >
-                <span>{tool}</span>
-                <span className="text-[10px] text-neutral-500">({count})</span>
+                {isSelected && (
+                  <motion.div
+                    layoutId="active-article-filter-pill"
+                    transition={{ type: 'spring', stiffness: 450, damping: 32 }}
+                    className="absolute inset-0 rounded-full bg-emerald-950/70 border border-emerald-500/60 shadow-[0_0_12px_rgba(52,211,153,0.18)] z-0"
+                  />
+                )}
+                <span className={`relative z-10 flex items-center gap-1.5 ${
+                  isSelected ? 'text-emerald-300 font-semibold' : 'text-neutral-400 hover:text-white'
+                }`}>
+                  <span>{tool}</span>
+                  <span className={`text-[10px] ${isSelected ? 'text-emerald-400/80' : 'text-neutral-500'}`}>
+                    ({count})
+                  </span>
+                </span>
               </button>
             );
           })}
@@ -378,31 +476,44 @@ export default function ArticlesSection({
         </div>
       </div>
 
-      {/* 3. Articles Grid */}
-      {filteredArticles.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5 lg:gap-6">
-          {filteredArticles.map((article) => (
-            <ArticleCard 
-              key={article.article_id} 
-              article={article} 
-              lang={lang} 
-            />
-          ))}
-        </div>
-      ) : (
-        <div className="w-full py-16 text-center rounded-2xl border border-neutral-800/80 bg-neutral-950/50 p-8">
-          <Filter size={24} className="mx-auto text-neutral-600 mb-3" />
-          <p className="text-neutral-400 text-sm font-mono">
-            No se encontraron artículos con los filtros seleccionados.
-          </p>
-          <button
-            onClick={() => { setSelectedTool('all'); setSearchQuery(''); }}
-            className="mt-4 px-4 py-1.5 rounded-full text-xs font-mono text-emerald-400 bg-emerald-950/40 border border-emerald-800/50 hover:bg-emerald-900/40 transition-colors"
-          >
-            Limpiar filtros
-          </button>
-        </div>
-      )}
+      {/* 3. Articles Grid with Smooth Layout Reflow & PopLayout Transitions */}
+      <motion.div layout className="min-h-[300px]">
+        <AnimatePresence mode="popLayout">
+          {filteredArticles.length > 0 ? (
+            <motion.div 
+              layout 
+              className="grid grid-cols-1 md:grid-cols-2 gap-5 lg:gap-6"
+            >
+              {filteredArticles.map((article) => (
+                <ArticleCard 
+                  key={article.article_id} 
+                  article={article} 
+                  lang={lang} 
+                />
+              ))}
+            </motion.div>
+          ) : (
+            <motion.div
+              layout
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="w-full py-16 text-center rounded-2xl border border-neutral-800/80 bg-neutral-950/50 p-8"
+            >
+              <Filter size={24} className="mx-auto text-neutral-600 mb-3" />
+              <p className="text-neutral-400 text-sm font-mono">
+                No se encontraron artículos con los filtros seleccionados.
+              </p>
+              <button
+                onClick={() => { setSelectedTool('all'); setSearchQuery(''); }}
+                className="mt-4 px-4 py-1.5 rounded-full text-xs font-mono text-emerald-400 bg-emerald-950/40 border border-emerald-800/50 hover:bg-emerald-900/40 transition-colors cursor-pointer"
+              >
+                Limpiar filtros
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </motion.div>
     </section>
   );
 }
