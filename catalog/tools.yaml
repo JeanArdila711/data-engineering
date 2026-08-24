@@ -48,7 +48,7 @@ tools:
     aliases: [apache iceberg]
     feeds:
       - kind: rss
-        url: https://iceberg.apache.org/feed_rss_created.xml
+        url: https://iceberg.apache.org/feed_rss_updated.xml
 
   - slug: polars
     name: Polars
