@@ -7,12 +7,13 @@ import {
   motion,
   AnimatePresence,
   useMotionTemplate,
+  useMotionValue,
   useScroll,
   useSpring,
   useTransform,
 } from 'framer-motion';
 import { RevealButton } from '@/components/ui/reveal-button';
-import { ExternalLink, Radio } from 'lucide-react';
+import { ExternalLink, Radio, ArrowRight } from 'lucide-react';
 
 const LINKS = [
   { label: 'Radar', id: 'radar', href: '#radar' },
@@ -83,6 +84,18 @@ export default function Navbar() {
   const leaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const targetRef = useRef<string | null>(null);
   const lastScrollY = useRef(0);
+
+  // Desktop Spotlight Mouse Tracking via useMotionValue (Zero React re-renders)
+  const desktopMouseX = useMotionValue(0);
+  const desktopMouseY = useMotionValue(0);
+
+  function handleDesktopMouseMove({ currentTarget, clientX, clientY }: React.MouseEvent<HTMLElement>) {
+    const { left, top } = currentTarget.getBoundingClientRect();
+    desktopMouseX.set(clientX - left);
+    desktopMouseY.set(clientY - top);
+  }
+
+  const desktopSpotlight = useMotionTemplate`radial-gradient(180px circle at ${desktopMouseX}px ${desktopMouseY}px, rgba(52, 211, 153, 0.25), rgba(255, 255, 255, 0.1), transparent 80%)`;
 
   // Target item for magnetic pill
   const target = hovered ?? active;
@@ -206,8 +219,9 @@ export default function Navbar() {
           variants={CONTAINER_VARIANTS}
           initial="hidden"
           animate="visible"
+          onMouseMove={handleDesktopMouseMove}
           style={{ maxWidth }}
-          className="pointer-events-auto relative mx-auto flex items-center justify-between gap-6 rounded-full py-2 pl-5 pr-2"
+          className="group pointer-events-auto relative mx-auto flex items-center justify-between gap-6 rounded-full py-2 pl-5 pr-2"
         >
           {/* Interpolated dynamic backdrop and border */}
           <motion.div
@@ -222,6 +236,15 @@ export default function Navbar() {
             className="absolute inset-0 rounded-full border shadow-[inset_0_1px_0_0_rgba(255,255,255,0.06)]"
           />
 
+          {/* Dynamic GPU Metallic Spotlight on Desktop Pill Border */}
+          <motion.div
+            aria-hidden="true"
+            className="absolute inset-0 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none z-10"
+            style={{
+              background: desktopSpotlight,
+            }}
+          />
+
           {/* Reading progress hairline along the bottom of the pill */}
           <motion.div
             aria-hidden="true"
@@ -233,7 +256,7 @@ export default function Navbar() {
           <motion.div variants={ITEM_VARIANTS} className="relative z-10 flex items-center gap-2.5">
             <Link
               href="#radar"
-              className="flex items-center gap-2 font-mono text-xs font-bold uppercase tracking-[0.25em] text-white hover:text-neutral-200 transition-colors"
+              className="flex items-center gap-2 font-mono text-xs font-bold uppercase tracking-[0.25em] text-white hover:text-neutral-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2 focus-visible:ring-offset-black rounded-sm transition-colors"
             >
               <span className="relative flex size-2">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
@@ -278,7 +301,7 @@ export default function Navbar() {
                     onMouseEnter={() => handleEnter(link.id)}
                     onFocus={() => handleEnter(link.id)}
                     onBlur={handleLeave}
-                    className={`relative z-10 block rounded-full px-3.5 py-1.5 text-xs font-mono tracking-wider uppercase transition-colors duration-150 ${
+                    className={`relative z-10 block rounded-full px-3.5 py-1.5 text-xs font-mono tracking-wider uppercase focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2 focus-visible:ring-offset-black transition-colors duration-150 ${
                       isTarget ? 'text-white font-medium' : 'text-neutral-400 hover:text-neutral-200'
                     }`}
                   >
@@ -326,11 +349,11 @@ export default function Navbar() {
             : { duration: 0.45, ease: [0, 0, 0.2, 1] }
         }
       >
-        <nav className="flex items-center justify-between px-5 py-3.5">
+        <nav className="flex items-center justify-between px-5 pt-[max(0.875rem,env(safe-area-inset-top))] pb-3.5">
           {/* Mobile Logo */}
           <Link
             href="#radar"
-            className="flex items-center gap-2 font-mono text-xs font-bold uppercase tracking-[0.25em] text-white"
+            className="flex items-center gap-2 font-mono text-xs font-bold uppercase tracking-[0.25em] text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 rounded-sm"
           >
             <span className="relative flex size-2">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
@@ -345,18 +368,18 @@ export default function Navbar() {
               href="https://github.com/JeanArdila711/data-engineering"
               target="_blank"
               rel="noopener noreferrer"
-              className="size-8 rounded-full border border-neutral-800 bg-neutral-950 flex items-center justify-center text-neutral-400 hover:text-white transition-colors"
+              className="size-9 rounded-full border border-neutral-800 bg-neutral-950 flex items-center justify-center text-neutral-400 hover:text-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400"
               aria-label="GitHub Repository"
             >
-                        <svg className="size-3.5 fill-current" viewBox="0 0 24 24">
-                          <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z" />
-                        </svg>
+              <svg className="size-3.5 fill-current" viewBox="0 0 24 24">
+                <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z" />
+              </svg>
             </a>
 
             {/* 3-line to X morphing Hamburger Button */}
             <button
               onClick={() => (mobileOpen ? closeMenu() : openMenu())}
-              className="flex flex-col justify-center items-center gap-[4.5px] size-9 rounded-full border border-neutral-800 bg-neutral-900/90 text-neutral-200 active:scale-95 transition-all"
+              className="flex flex-col justify-center items-center gap-[4.5px] size-9 rounded-full border border-neutral-800 bg-neutral-900/90 text-neutral-200 active:scale-95 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 cursor-pointer"
               aria-label={mobileOpen ? 'Cerrar menú' : 'Abrir menú'}
             >
               <motion.span
@@ -380,7 +403,7 @@ export default function Navbar() {
       </motion.header>
 
       {/* ========================================================================= */}
-      {/* 3. FULLSCREEN MOBILE PORTAL OVERLAY (Smooth clip-path wipe animation)     */}
+      {/* 3. FULLSCREEN MOBILE PORTAL OVERLAY (CRT Matrix Grid + Tactile Feedback)  */}
       {/* ========================================================================= */}
       {mounted &&
         createPortal(
@@ -391,10 +414,20 @@ export default function Navbar() {
                 animate={{ clipPath: 'inset(0 0 0% 0)' }}
                 exit={{ clipPath: 'inset(0 0 100% 0)' }}
                 transition={{ duration: 0.55, ease: [0.76, 0, 0.24, 1] }}
-                className="fixed inset-0 z-[9999] flex flex-col bg-black/98 backdrop-blur-2xl text-white select-none touch-none"
+                className="fixed inset-0 z-[9999] flex flex-col bg-black/98 backdrop-blur-2xl text-white select-none touch-none overflow-hidden"
               >
+                {/* Subtle Technical Matrix / CRT Grid Pattern */}
+                <div 
+                  aria-hidden="true" 
+                  className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_right,#ffffff08_1px,transparent_1px),linear-gradient(to_bottom,#ffffff08_1px,transparent_1px)] bg-[size:28px_28px] opacity-70" 
+                />
+                <div 
+                  aria-hidden="true" 
+                  className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(52,211,153,0.06)_0%,transparent_75%)]" 
+                />
+
                 <motion.div
-                  className="flex flex-col h-full justify-between px-6 pt-6 pb-10"
+                  className="relative z-10 flex flex-col h-full justify-between px-6 pt-[max(1.5rem,env(safe-area-inset-top))] pb-[max(2rem,env(safe-area-inset-bottom))]"
                   initial="closed"
                   animate="open"
                   exit="closed"
@@ -412,12 +445,12 @@ export default function Navbar() {
                 >
                   {/* Overlay Top Bar */}
                   <motion.div
-                    className="flex items-center justify-between border-b border-neutral-900 pb-5"
+                    className="flex items-center justify-between border-b border-neutral-900/80 pb-5"
                     variants={MOBILE_MENU_VARIANTS}
                   >
                     <span className="font-mono text-xs font-semibold tracking-widest text-emerald-400 uppercase flex items-center gap-2">
                       <Radio size={13} className="animate-pulse" />
-                      <span>MENU // DE RADAR</span>
+                      <span>CONSOLE // RADAR</span>
                     </span>
 
                     <button
@@ -436,34 +469,41 @@ export default function Navbar() {
                     </button>
                   </motion.div>
 
-                  {/* Centered Large Numbered Navigation Links */}
-                  <nav className="flex flex-col items-start justify-center gap-2 my-auto">
+                  {/* Centered Large Numbered Navigation Links with Tactile Feedback */}
+                  <nav className="flex flex-col items-start justify-center gap-3 my-auto">
                     {LINKS.map((link, i) => (
                       <motion.a
                         key={link.id}
                         href={link.href}
                         onClick={closeMenu}
                         variants={MOBILE_MENU_VARIANTS}
-                        className="group flex items-baseline gap-4 py-3 w-full border-b border-neutral-900/70"
+                        className="group flex items-center justify-between py-4 w-full border-b border-neutral-900/70 active:bg-neutral-900/30 px-2 rounded-xl transition-all"
                       >
-                        <span className="font-mono text-xs tracking-widest text-emerald-500/80">
-                          {String(i + 1).padStart(2, '0')}
-                        </span>
-                        <span className="font-heading text-3xl font-bold tracking-tight text-neutral-300 group-hover:text-white group-hover:translate-x-1.5 transition-all duration-200 uppercase">
-                          {link.label}
+                        <div className="flex items-baseline gap-4">
+                          <span className="font-mono text-xs tracking-widest text-neutral-500 group-hover:text-emerald-400 transition-colors">
+                            {String(i + 1).padStart(2, '0')}
+                          </span>
+                          <span className="font-heading text-3xl font-bold tracking-tight text-neutral-200 group-hover:text-white group-hover:translate-x-1.5 transition-all duration-200 uppercase">
+                            {link.label}
+                          </span>
+                        </div>
+
+                        <span className="font-mono text-[10px] uppercase tracking-wider text-neutral-600 group-hover:text-emerald-400 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                          <span>Ir</span>
+                          <ArrowRight size={12} />
                         </span>
                       </motion.a>
                     ))}
                   </nav>
 
-                  {/* Overlay Bottom Footer */}
+                  {/* Overlay Bottom Footer with Engineering Telemetry */}
                   <motion.div
-                    className="flex flex-col gap-4 border-t border-neutral-900 pt-6"
+                    className="flex flex-col gap-4 border-t border-neutral-900/80 pt-6"
                     variants={MOBILE_MENU_VARIANTS}
                   >
                     <div className="flex items-center justify-between text-xs font-mono text-neutral-500">
                       <span className="flex items-center gap-1.5 text-emerald-400">
-                        <span className="size-1.5 rounded-full bg-emerald-400" />
+                        <span className="size-1.5 rounded-full bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.8)]" />
                         <span>PIPELINE ONLINE</span>
                       </span>
                       <span>v1.0.0 STABLE</span>
@@ -477,7 +517,7 @@ export default function Navbar() {
                         onClick={closeMenu}
                         className="inline-flex items-center gap-2 text-xs font-mono text-neutral-400 hover:text-white transition-colors"
                       >
-                                  <svg className="size-3.5 fill-current" viewBox="0 0 24 24">
+                        <svg className="size-3.5 fill-current" viewBox="0 0 24 24">
                           <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z" />
                         </svg>
                         <span>JeanArdila711/data-engineering</span>
@@ -496,3 +536,4 @@ export default function Navbar() {
 }
 
 export { Navbar };
+
