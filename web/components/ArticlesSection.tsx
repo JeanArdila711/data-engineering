@@ -145,6 +145,18 @@ const SAMPLE_ARTICLES: ArticleEntry[] = [
   }
 ];
 
+function cleanSummary(text: string | null): string {
+  if (!text) return '';
+  return text
+    // Remove conversational preambles like "Aquí tienes la traducción exacta:" or "Aquí tienes la traducción:"
+    .replace(/^(aquí tienes (la traducción|el resumen|un resumen)[^:\n]*:?\s*|here is the (translation|summary)[^:\n]*:?\s*)/i, '')
+    // Remove conversational notes block at the end like "*(Nota: ...)*"
+    .replace(/\*?\s*\(?Nota:[\s\S]*?\)?\*?$/i, '')
+    // Remove leading/trailing quotes or markdown blockquotes
+    .replace(/^["'>\s]+|["'\s]+$/g, '')
+    .trim();
+}
+
 function formatDate(dateInput: Date | string) {
   const d = new Date(dateInput);
   return d.toLocaleDateString('es-ES', {
@@ -175,10 +187,16 @@ function ArticleCard({
   // 120fps GPU Spotlight border
   const spotlightBackground = useMotionTemplate`radial-gradient(260px circle at ${mouseX}px ${mouseY}px, rgba(52, 211, 153, 0.22), transparent 80%)`;
 
-  // Language fallback logic
-  const summaryText = lang === 'es' 
-    ? (article.summary_es || article.summary_en || 'Resumen no disponible.')
-    : (article.summary_en || article.summary_es || 'Summary not available.');
+  // Language fallback logic with clean summary sanitization
+  const rawSummary = lang === 'es' 
+    ? (article.summary_es || article.summary_en)
+    : (article.summary_en || article.summary_es);
+
+  const fallbackText = lang === 'es'
+    ? 'Análisis técnico y deep-dive disponible en la documentación y blog oficial de la herramienta.'
+    : 'Technical deep-dive and analysis available in the official documentation and release notes.';
+
+  const summaryText = rawSummary ? cleanSummary(rawSummary) : fallbackText;
 
   const isTranslated = lang === 'es' && !article.summary_es && article.summary_en;
 

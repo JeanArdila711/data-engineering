@@ -103,7 +103,7 @@ export async function getChangelog(limit = 100): Promise<ChangelogEntry[]> {
   }
 }
 
-export async function getArticles(limit = 30): Promise<ArticleEntry[]> {
+export async function getArticles(limit = 50): Promise<ArticleEntry[]> {
   try {
     const client = getSqlClient()
     if (!client) {
@@ -114,8 +114,7 @@ export async function getArticles(limit = 30): Promise<ArticleEntry[]> {
              relevance_score, tool_names, tool_slugs,
              summary_en, summary_es
       from mart_articles
-      where summary_en is not null
-      order by published_at desc, relevance_score desc
+      order by (case when summary_es is not null or summary_en is not null then 1 else 0 end) desc, published_at desc
       limit ${limit}
     `
   } catch (error) {

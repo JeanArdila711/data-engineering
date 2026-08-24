@@ -148,6 +148,18 @@ const SAMPLE_DIGEST: DigestEntry[] = [
   },
 ];
 
+function cleanSummary(text: string | null): string {
+  if (!text) return '';
+  return text
+    // Remove conversational preambles like "Aquí tienes la traducción exacta:" or "Aquí tienes la traducción:"
+    .replace(/^(aquí tienes (la traducción|el resumen|un resumen)[^:\n]*:?\s*|here is the (translation|summary)[^:\n]*:?\s*)/i, '')
+    // Remove conversational notes block at the end like "*(Nota: ...)*"
+    .replace(/\*?\s*\(?Nota:[\s\S]*?\)?\*?$/i, '')
+    // Remove leading/trailing quotes or markdown blockquotes
+    .replace(/^["'>\s]+|["'\s]+$/g, '')
+    .trim();
+}
+
 function formatRelativeTime(dateString: string): string {
   try {
     const date = new Date(dateString);
@@ -344,9 +356,10 @@ function DigestCard({ entry, lang }: { entry: DigestEntry; lang: 'es' | 'en' }) 
               {entry.top_articles_7d && entry.top_articles_7d.length > 0 ? (
                 <div className="flex flex-col gap-2 mt-0.5">
                   {entry.top_articles_7d.slice(0, 2).map((art) => {
-                    const summary = lang === 'es' 
+                    const rawSummary = lang === 'es' 
                       ? (art.summary_es || art.summary_en)
                       : (art.summary_en || art.summary_es);
+                    const summary = rawSummary ? cleanSummary(rawSummary) : null;
 
                     return (
                       <div key={art.article_id} className="p-2.5 rounded-lg bg-neutral-950/70 border border-neutral-800/60 flex flex-col gap-1.5">
