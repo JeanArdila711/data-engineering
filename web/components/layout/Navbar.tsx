@@ -146,8 +146,19 @@ export default function Navbar() {
             return;
           }
 
-          // 2. Scan section positions relative to viewport
-          const threshold = 220; // pixels from viewport top
+          // 2. Check if reached bottom of the page (locks to last section: 'digest')
+          if (window.innerHeight + y >= document.documentElement.scrollHeight - 80) {
+            const lastLink = LINKS[LINKS.length - 1].id;
+            if (targetRef.current !== lastLink) {
+              updateLean(lastLink);
+              setActive(lastLink);
+            }
+            ticking = false;
+            return;
+          }
+
+          // 3. Scan section positions relative to viewport
+          const threshold = 260; // pixels from viewport top
           let currentSection: string = 'radar';
 
           for (const link of LINKS) {
@@ -182,6 +193,9 @@ export default function Navbar() {
     const id = href.replace('#', '');
     const el = document.getElementById(id);
     if (el) {
+      updateLean(id);
+      setActive(id);
+
       const navbarHeight = 80;
       const elementPosition = el.getBoundingClientRect().top + window.scrollY;
       const offsetPosition = Math.max(0, elementPosition - navbarHeight);
