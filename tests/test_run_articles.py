@@ -44,6 +44,22 @@ class _FakeLLMRejects:
         return True
 
 
+class _FakeLLMCrashes:
+    """Reproduce el bug real de producción: Gemini devuelve algo que no es
+    JSON parseable y GeminiClient.draft_summary explota con JSONDecodeError."""
+
+    def draft_summary(self, document, tool_names):
+        import json
+
+        json.loads("")  # dispara json.decoder.JSONDecodeError, igual que en prod
+
+    def translate(self, text):
+        return f"[ES] {text}"
+
+    def judge_entailment(self, quote, summary_text):
+        return True
+
+
 def _record(url="https://duckdb.org/a", text="DuckDB 1.5 salió hoy con mejoras") -> ArticleRecord:
     return ArticleRecord(url=url, title="T", author=None, published_at=NOW, summary_text=text)
 
@@ -91,3 +107,14 @@ def test_run_quarantines_rejected_summary_without_crashing(db_conn):
     with db_conn.cursor() as cur:
         cur.execute("SELECT source_ref, stage FROM quarantine")
         assert cur.fetchone() == ("article:1", "anchor")
+
+
+def test_run_survives_llm_exception_during_summarize(db_conn):
+    summary = run(db_conn, _catalog(), _FakeLLMCrashes(), DS, NOW, fetcher=_fake_fetcher([_record()]))
+
+    assert summary.articles_inserted == 1
+    assert summary.summaries_accepted == 0
+    assert summary.failures == 1
+    with db_conn.cursor() as cur:
+        cur.execute("SELECT source_ref, stage FROM quarantine")
+        assert cur.fetchone() == ("article:1", "summarize")

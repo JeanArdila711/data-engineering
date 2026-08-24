@@ -9,6 +9,7 @@ import json
 from dataclasses import dataclass, field
 
 from google import genai
+from google.genai import types
 
 
 @dataclass(frozen=True)
@@ -35,7 +36,11 @@ class GeminiClient:
         response = self._client.models.generate_content(
             model=self._summary_model,
             contents=_SUMMARY_PROMPT.format(tools=", ".join(tool_names), document=document),
+            config=types.GenerateContentConfig(response_mime_type="application/json"),
         )
+        # response_mime_type fuerza JSON sin markdown/prosa alrededor — el modelo
+        # todavía puede devolver texto vacío (bloqueo de seguridad, corte por
+        # longitud); json.loads("") ya levanta JSONDecodeError con contexto claro.
         payload = json.loads(response.text)
         return SummaryDraft(text=payload["text"], quotes=payload.get("quotes", []))
 

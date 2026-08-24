@@ -127,36 +127,50 @@ def run(
 
     new_claim_ids: list[int] = []
     for _, article_id in top_articles:
-        with conn.cursor() as cur:
-            cur.execute("SELECT id, summary_text FROM articles WHERE id = %s", (article_id,))
-            row = cur.fetchone()
-            cur.execute(
-                "SELECT tool_slug FROM fct_article_mention WHERE article_id = %s", (article_id,)
+        try:
+            with conn.cursor() as cur:
+                cur.execute("SELECT id, summary_text FROM articles WHERE id = %s", (article_id,))
+                row = cur.fetchone()
+                cur.execute(
+                    "SELECT tool_slug FROM fct_article_mention WHERE article_id = %s", (article_id,)
+                )
+                slugs = [r[0] for r in cur.fetchall()]
+
+            class _Article:
+                id = row[0]
+                summary_text = row[1]
+
+            tool_names = [tool_names_by_slug[s] for s in slugs]
+            summary_id = summarize_article(_Article(), tool_names, llm_client, quarantine_fn, conn=conn)
+
+            if summary_id is None:
+                summary.summaries_rejected += 1
+                continue
+
+            with conn.cursor() as cur:
+                cur.execute("SELECT text FROM summaries WHERE id = %s", (summary_id,))
+                english_text = cur.fetchone()[0]
+                spanish_text = translate_summary(english_text, llm_client)
+                cur.execute(
+                    "INSERT INTO summaries (article_id, idioma, text) VALUES (%s, 'es', %s)",
+                    (article_id, spanish_text),
+                )
+                cur.execute("SELECT id FROM claims WHERE summary_id = %s", (summary_id,))
+                new_claim_ids.extend(r[0] for r in cur.fetchall())
+        except Exception as error:
+            # Un artículo con una respuesta rara del LLM (JSON mal formado, corte
+            # de red, bloqueo de seguridad) no debe tumbar el resto de la corrida
+            # — mismo criterio que el fetch por feed más arriba.
+            logger.error("resumen de artículo falló | article_id=%s", article_id, exc_info=True)
+            quarantine_fn(
+                source_ref=f"article:{article_id}",
+                stage="summarize",
+                error=f"{type(error).__name__}: {error}\n{traceback.format_exc()}",
             )
-            slugs = [r[0] for r in cur.fetchall()]
-
-        class _Article:
-            id = row[0]
-            summary_text = row[1]
-
-        tool_names = [tool_names_by_slug[s] for s in slugs]
-        summary_id = summarize_article(_Article(), tool_names, llm_client, quarantine_fn, conn=conn)
-
-        if summary_id is None:
-            summary.summaries_rejected += 1
+            summary.failures += 1
             continue
 
         summary.summaries_accepted += 1
-        with conn.cursor() as cur:
-            cur.execute("SELECT text FROM summaries WHERE id = %s", (summary_id,))
-            english_text = cur.fetchone()[0]
-            spanish_text = translate_summary(english_text, llm_client)
-            cur.execute(
-                "INSERT INTO summaries (article_id, idioma, text) VALUES (%s, 'es', %s)",
-                (article_id, spanish_text),
-            )
-            cur.execute("SELECT id FROM claims WHERE summary_id = %s", (summary_id,))
-            new_claim_ids.extend(r[0] for r in cur.fetchall())
 
     if new_claim_ids:
         rate = sampling_rate_for(_recent_entailment_error_rate(conn, now))
