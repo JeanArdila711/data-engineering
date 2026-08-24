@@ -26,10 +26,11 @@ import {
   ChevronLeft,
   ChevronRight,
   MessageSquare,
-  Terminal as TerminalIcon
+  Terminal as TerminalIcon,
+  History
 } from 'lucide-react';
 import { useToast } from '@/components/ui/toast';
-import { ChangelogEntry } from '@/lib/db';
+import { ChangelogEntry, EcosystemStat, ReleaseHistoryItem } from '@/lib/db';
 
 // Technical hardware & runtime specifications per tool
 const TOOL_METADATA: Record<string, { repo: string; license: string; runtime: string; layer: string }> = {
@@ -261,6 +262,10 @@ interface ToolDisplay {
   breakingChanges: string[];
   summary: string;
   sourceUrl: string;
+  releaseCount?: number;
+  breakingReleaseCount?: number;
+  articleCount?: number;
+  releaseHistory?: ReleaseHistoryItem[];
 }
 
 // Letter-by-letter Scroll Reveal Character
@@ -325,8 +330,34 @@ const springTransition = {
   mass: 0.6,
 };
 
+function ReleaseHistoryList({ history }: { history: ReleaseHistoryItem[] }) {
+  if (!history || history.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="p-4 rounded-2xl border border-neutral-800 bg-neutral-950/40 flex flex-col gap-2.5">
+      <div className="flex items-center gap-2 text-neutral-300 font-semibold text-xs sm:text-sm">
+        <History size={15} />
+        <span>Historial de Releases ({history.length})</span>
+      </div>
+      <ul className="space-y-1.5 text-xs text-neutral-400 leading-relaxed max-h-40 overflow-y-auto pr-1">
+        {history.map((release, i) => (
+          <li key={i} className="flex items-center justify-between gap-2 font-mono">
+            <span className="flex items-center gap-1.5">
+              {release.has_breaking && <span className="size-1.5 rounded-full bg-red-400 shrink-0" />}
+              <span className="text-neutral-200">{release.version}</span>
+            </span>
+            <span className="text-neutral-600 text-[11px]">{formatRelativeDate(release.published_at)}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 // Fullscreen & Mobile-Optimized Morphing Modal with Directional Silky Navigation
-function ExpandedToolModal({ 
+function ExpandedToolModal({
   tool, 
   toolsList = [],
   onSelectTool,
@@ -708,6 +739,22 @@ function ExpandedToolModal({
                     </div>
                   )}
 
+                  {/* Accumulated State */}
+                  {tool.releaseCount !== undefined && (
+                    <div className="flex items-center gap-4 text-[11px] font-mono text-neutral-500 px-1">
+                      <span>{tool.releaseCount} release{tool.releaseCount !== 1 ? 's' : ''} totales</span>
+                      {tool.breakingReleaseCount !== undefined && tool.breakingReleaseCount > 0 && (
+                        <span className="text-red-400/80">{tool.breakingReleaseCount} con breaking</span>
+                      )}
+                      {tool.articleCount !== undefined && tool.articleCount > 0 && (
+                        <span>{tool.articleCount} artículo{tool.articleCount !== 1 ? 's' : ''}</span>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Release History */}
+                  {tool.releaseHistory && <ReleaseHistoryList history={tool.releaseHistory} />}
+
                   {/* Installation Command with Package Manager Switcher */}
                   <div className="flex flex-col gap-1.5">
                     <div className="flex items-center justify-between text-xs font-mono text-neutral-400">
@@ -1050,7 +1097,7 @@ function ToolCard({
   );
 }
 
-export default function EcosystemSection({ entries = [] }: { entries?: ChangelogEntry[] }) {
+export default function EcosystemSection({ entries = [], ecosystemStats = [] }: { entries?: ChangelogEntry[]; ecosystemStats?: EcosystemStat[] }) {
   const [activeTab, setActiveTab] = useState(CATEGORY_FILTERS[0].label);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTool, setSelectedTool] = useState<ToolDisplay | null>(null);
@@ -1093,6 +1140,17 @@ export default function EcosystemSection({ entries = [] }: { entries?: Changelog
           });
         }
       }
+
+      const statsBySlug = new Map(ecosystemStats.map((s) => [s.tool_slug, s]));
+      for (const tool of toolMap.values()) {
+        const stat = statsBySlug.get(tool.slug);
+        if (stat) {
+          tool.releaseCount = stat.release_count;
+          tool.breakingReleaseCount = stat.breaking_release_count;
+          tool.articleCount = stat.article_count;
+          tool.releaseHistory = stat.release_history;
+        }
+      }
       return Array.from(toolMap.values());
     }
 
@@ -1107,7 +1165,7 @@ export default function EcosystemSection({ entries = [] }: { entries?: Changelog
       { id: '7', name: 'DuckDB', slug: 'duckdb', rawCategory: 'query-engine', category: 'Motor de Consulta', version: 'v1.0.0', date: 'hace 1 día', hasBreaking: false, breakingChanges: [], summary: TOOL_SUMMARIES['duckdb'], sourceUrl: 'https://github.com/duckdb/duckdb/releases' },
       { id: '8', name: 'Trino', slug: 'trino', rawCategory: 'query-engine', category: 'Motor de Consulta', version: 'v440', date: 'hace 1 mes', hasBreaking: false, breakingChanges: [], summary: TOOL_SUMMARIES['trino'], sourceUrl: 'https://github.com/trinodb/trino/releases' },
     ];
-  }, [entries]);
+  }, [entries, ecosystemStats]);
 
   // Filtering logic
   const filteredTools = useMemo(() => {
