@@ -13,7 +13,15 @@ import {
   useTransform,
 } from 'framer-motion';
 import { RevealButton } from '@/components/ui/reveal-button';
-import { ExternalLink, Radio, ArrowRight } from 'lucide-react';
+import {
+  ExternalLink,
+  Radio,
+  ArrowRight,
+  Search,
+  ArrowUp,
+  Command,
+  Sparkles,
+} from 'lucide-react';
 
 const LINKS = [
   { label: 'Radar', id: 'radar', href: '#radar' },
@@ -81,6 +89,7 @@ export default function Navbar() {
   const [mounted, setMounted] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [mobileHidden, setMobileHidden] = useState(false);
+  const [showTelemetry, setShowTelemetry] = useState(false);
 
   const leaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const targetRef = useRef<string | null>(null);
@@ -183,6 +192,46 @@ export default function Navbar() {
     }
   };
 
+  // Quick Search Focus Trigger
+  const handleOpenSearch = (e?: React.MouseEvent) => {
+    if (e) e.preventDefault();
+    const el = document.getElementById('ecosystem');
+    if (el) {
+      const navbarHeight = 80;
+      const elementPosition = el.getBoundingClientRect().top + window.scrollY;
+      const offsetPosition = Math.max(0, elementPosition - navbarHeight);
+
+      window.scrollTo({
+        top: offsetPosition,
+        behavior: 'smooth',
+      });
+
+      // Focus the input inside ecosystem section with pulse feedback
+      setTimeout(() => {
+        const searchInput = document.querySelector('input[placeholder*="Buscar herramienta"]') as HTMLInputElement;
+        if (searchInput) {
+          searchInput.focus();
+          searchInput.classList.add('ring-2', 'ring-emerald-400', 'border-emerald-500');
+          setTimeout(() => {
+            searchInput.classList.remove('ring-2', 'ring-emerald-400', 'border-emerald-500');
+          }, 1500);
+        }
+      }, 450);
+    }
+  };
+
+  // Global ⌘K / Ctrl+K keyboard shortcut
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        handleOpenSearch();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
   // Mobile scroll behavior: auto-hide on scroll down, reveal on scroll up
   useEffect(() => {
     const onScroll = () => {
@@ -231,7 +280,7 @@ export default function Navbar() {
   }
 
   // Desktop Condensation via Framer Motion Scroll
-  const { scrollY, scrollYProgress } = useScroll();
+  const { scrollY } = useScroll();
   const compactRaw = useTransform(scrollY, [40, 160], [0, 1]);
   const compact = useSpring(compactRaw, {
     stiffness: 200,
@@ -239,18 +288,20 @@ export default function Navbar() {
     mass: 0.4,
   });
 
-  const maxWidthRem = useTransform(compact, [0, 1], [72, 46]);
+  const maxWidthRem = useTransform(compact, [0, 1], [72, 49]);
   const maxWidth = useMotionTemplate`${maxWidthRem}rem`;
 
-  const bgAlpha = useTransform(compact, [0, 1], [0.35, 0.92]);
+  const bgAlpha = useTransform(compact, [0, 1], [0.4, 0.94]);
   const borderAlpha = useTransform(compact, [0, 1], [0.4, 0.85]);
   const shadowAlpha = useTransform(compact, [0, 1], [0, 0.4]);
-  const blur = useTransform(compact, [0, 1], [4, 16]);
+  const blur = useTransform(compact, [0, 1], [6, 16]);
 
   const backgroundColor = useMotionTemplate`rgba(${CARD_RGB}, ${bgAlpha})`;
   const borderColor = useMotionTemplate`rgba(${BORDER_RGB}, ${borderAlpha})`;
   const boxShadow = useMotionTemplate`0 12px 40px rgba(${INK_RGB}, ${shadowAlpha})`;
   const backdropFilter = useMotionTemplate`blur(${blur}px)`;
+
+  const isLowerPage = active === 'ecosystem' || active === 'articulos';
 
   return (
     <>
@@ -265,7 +316,7 @@ export default function Navbar() {
           animate="visible"
           onMouseMove={handleDesktopMouseMove}
           style={{ maxWidth }}
-          className="group pointer-events-auto relative mx-auto flex items-center justify-between gap-6 rounded-full py-2 pl-5 pr-2"
+          className="group pointer-events-auto relative mx-auto flex items-center justify-between gap-4 lg:gap-6 rounded-full py-2 pl-5 pr-2"
         >
           {/* Interpolated dynamic backdrop and border */}
           <motion.div
@@ -289,19 +340,17 @@ export default function Navbar() {
             }}
           />
 
-          {/* Reading progress hairline along the bottom of the pill */}
-          <motion.div
-            aria-hidden="true"
-            style={{ scaleX: scrollYProgress }}
-            className="absolute inset-x-7 bottom-0 h-[1.5px] origin-left bg-gradient-to-r from-emerald-500 to-emerald-400 z-20"
-          />
-
-          {/* Brand / Logo with live signal */}
-          <motion.div variants={ITEM_VARIANTS} className="relative z-10 flex items-center gap-2.5">
+          {/* Brand / Logo with Live Telemetry Beacon Popover */}
+          <motion.div 
+            variants={ITEM_VARIANTS} 
+            className="relative z-20 flex items-center"
+            onMouseEnter={() => setShowTelemetry(true)}
+            onMouseLeave={() => setShowTelemetry(false)}
+          >
             <a
               href="#radar"
               onClick={(e) => handleNavClick(e, '#radar')}
-              className="flex items-center gap-2 font-mono text-xs font-bold uppercase tracking-[0.25em] text-white hover:text-neutral-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2 focus-visible:ring-offset-black rounded-sm transition-colors cursor-pointer"
+              className="flex items-center gap-2 font-mono text-xs font-bold uppercase tracking-[0.25em] text-white hover:text-neutral-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2 focus-visible:ring-offset-black rounded-sm transition-colors cursor-pointer select-none py-1"
             >
               <span className="relative flex size-2">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
@@ -309,6 +358,49 @@ export default function Navbar() {
               </span>
               <span>DE RADAR</span>
             </a>
+
+            {/* Live Telemetry Floating Holographic Popover */}
+            <AnimatePresence>
+              {showTelemetry && (
+                <motion.div
+                  initial={{ opacity: 0, y: 8, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: 6, scale: 0.95 }}
+                  transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
+                  className="absolute left-0 top-full mt-3 w-64 p-3.5 rounded-2xl bg-neutral-950/95 border border-neutral-800/90 shadow-[0_16px_36px_rgba(0,0,0,0.8),inset_0_1px_0_0_rgba(255,255,255,0.08)] backdrop-blur-xl z-50 flex flex-col gap-2.5 pointer-events-none"
+                >
+                  <div className="flex items-center justify-between border-b border-neutral-800/80 pb-2">
+                    <span className="text-[10px] font-mono font-bold tracking-widest text-emerald-400 uppercase flex items-center gap-1.5">
+                      <Radio size={11} className="animate-pulse" />
+                      <span>TELEMETRÍA // LIVE</span>
+                    </span>
+                    <span className="text-[9px] font-mono text-neutral-500">v1.0 STABLE</span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 text-xs font-mono">
+                    <div className="flex flex-col gap-0.5 p-1.5 rounded-lg bg-neutral-900/60 border border-neutral-800/50">
+                      <span className="text-[9px] text-neutral-500">Pipeline</span>
+                      <span className="text-emerald-400 font-semibold text-[11px] flex items-center gap-1">
+                        <span className="size-1.5 rounded-full bg-emerald-400" />
+                        100% Online
+                      </span>
+                    </div>
+                    <div className="flex flex-col gap-0.5 p-1.5 rounded-lg bg-neutral-900/60 border border-neutral-800/50">
+                      <span className="text-[9px] text-neutral-500">Almacenamiento</span>
+                      <span className="text-neutral-200 text-[11px]">PostgreSQL</span>
+                    </div>
+                    <div className="flex flex-col gap-0.5 p-1.5 rounded-lg bg-neutral-900/60 border border-neutral-800/50">
+                      <span className="text-[9px] text-neutral-500">Motores Core</span>
+                      <span className="text-neutral-200 text-[11px]">10 Oficiales</span>
+                    </div>
+                    <div className="flex flex-col gap-0.5 p-1.5 rounded-lg bg-neutral-900/60 border border-neutral-800/50">
+                      <span className="text-[9px] text-neutral-500">Validación</span>
+                      <span className="text-neutral-200 text-[11px]">Anclaje NLI</span>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </motion.div>
 
           {/* Center: Magnetic Pill Section Navigation */}
@@ -338,7 +430,7 @@ export default function Navbar() {
                     onMouseEnter={() => handleEnter(link.id)}
                     onFocus={() => handleEnter(link.id)}
                     onBlur={handleLeave}
-                    className={`relative z-10 block rounded-full px-3.5 py-1.5 text-xs font-mono tracking-wider uppercase focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2 focus-visible:ring-offset-black transition-colors duration-150 cursor-pointer ${
+                    className={`relative z-10 block rounded-full px-3 py-1.5 text-xs font-mono tracking-wider uppercase focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2 focus-visible:ring-offset-black transition-colors duration-150 cursor-pointer ${
                       isTarget ? 'text-white font-medium' : 'text-neutral-400 hover:text-neutral-200'
                     }`}
                   >
@@ -351,12 +443,54 @@ export default function Navbar() {
             })}
           </motion.ul>
 
-          {/* Right CTA Button with Reveal Effect */}
-          <motion.div variants={ITEM_VARIANTS} className="relative z-10">
-            <RevealButton href="#ecosystem">
-              Explorar Stack
-            </RevealButton>
-          </motion.div>
+          {/* Right Actions: Quick Search ⌘K + Smart Morphing Action Button */}
+          <div className="relative z-10 flex items-center gap-2">
+            {/* Quick Search Button */}
+            <button
+              onClick={handleOpenSearch}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border border-neutral-800 bg-neutral-950/80 hover:bg-neutral-900 text-neutral-400 hover:text-white text-xs font-mono transition-all cursor-pointer shadow-inner active:scale-95 group"
+              title="Buscar herramienta (⌘K)"
+            >
+              <Search size={12} className="text-neutral-500 group-hover:text-emerald-400 transition-colors" />
+              <span className="hidden xl:inline text-[11px]">Buscar</span>
+              <kbd className="flex items-center gap-0.5 text-[9px] font-mono text-neutral-500 bg-neutral-900 border border-neutral-800 px-1 py-0.5 rounded">
+                <Command size={9} />
+                <span>K</span>
+              </kbd>
+            </button>
+
+            {/* Smart Morphing Action CTA (Explorar Stack ➔ Volver arriba) */}
+            <div className="overflow-hidden">
+              <AnimatePresence mode="popLayout" initial={false}>
+                {isLowerPage ? (
+                  <motion.button
+                    key="back-to-top"
+                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: -10, scale: 0.95 }}
+                    transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+                    onClick={(e) => handleNavClick(e as any, '#radar')}
+                    className="group relative inline-flex items-center justify-center gap-1.5 rounded-full bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-3.5 py-1.5 font-mono text-xs font-semibold tracking-wide transition-all duration-200 active:scale-95 cursor-pointer shadow-[0_0_12px_rgba(52,211,153,0.15)]"
+                  >
+                    <ArrowUp size={12} className="transition-transform group-hover:-translate-y-0.5" />
+                    <span>Subir</span>
+                  </motion.button>
+                ) : (
+                  <motion.div
+                    key="explore-stack"
+                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: -10, scale: 0.95 }}
+                    transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+                  >
+                    <RevealButton href="#ecosystem">
+                      Explorar Stack
+                    </RevealButton>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          </div>
         </motion.nav>
       </header>
 
@@ -393,8 +527,16 @@ export default function Navbar() {
             <span>DE RADAR</span>
           </Link>
 
-          {/* Mobile Actions: GitHub Link + Animated Hamburger Button */}
+          {/* Mobile Actions: Search + GitHub Link + Animated Hamburger Button */}
           <div className="flex items-center gap-2">
+            <button
+              onClick={handleOpenSearch}
+              className="size-9 rounded-full border border-neutral-800 bg-neutral-950 flex items-center justify-center text-neutral-400 hover:text-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 cursor-pointer"
+              aria-label="Buscar"
+            >
+              <Search size={14} />
+            </button>
+
             <a
               href="https://github.com/JeanArdila711/data-engineering"
               target="_blank"
@@ -501,7 +643,7 @@ export default function Navbar() {
                   </motion.div>
 
                   {/* Centered Large Numbered Navigation Links with Tactile Feedback */}
-                  <nav className="flex flex-col items-start justify-center gap-3 my-auto">
+                  <nav className="flex flex-col items-start justify-center gap-2 my-auto">
                     {LINKS.map((link, i) => (
                       <motion.a
                         key={link.id}
@@ -511,13 +653,13 @@ export default function Navbar() {
                           handleNavClick(e, link.href);
                         }}
                         variants={MOBILE_MENU_VARIANTS}
-                        className="group flex items-center justify-between py-4 w-full border-b border-neutral-900/70 active:bg-neutral-900/30 px-2 rounded-xl transition-all cursor-pointer"
+                        className="group flex items-center justify-between py-3.5 w-full border-b border-neutral-900/70 active:bg-neutral-900/30 px-2 rounded-xl transition-all cursor-pointer"
                       >
                         <div className="flex items-baseline gap-4">
                           <span className="font-mono text-xs tracking-widest text-neutral-500 group-hover:text-emerald-400 transition-colors">
                             {String(i + 1).padStart(2, '0')}
                           </span>
-                          <span className="font-heading text-3xl font-bold tracking-tight text-neutral-200 group-hover:text-white group-hover:translate-x-1.5 transition-all duration-200 uppercase">
+                          <span className="font-heading text-2xl sm:text-3xl font-bold tracking-tight text-neutral-200 group-hover:text-white group-hover:translate-x-1.5 transition-all duration-200 uppercase">
                             {link.label}
                           </span>
                         </div>
@@ -528,6 +670,34 @@ export default function Navbar() {
                         </span>
                       </motion.a>
                     ))}
+
+                    {/* Quick Engine Direct Filter Pills */}
+                    <div className="w-full flex flex-col gap-2 my-2 py-3 border-y border-neutral-900/60">
+                      <span className="text-[10px] font-mono uppercase tracking-widest text-neutral-500 flex items-center gap-1.5">
+                        <Sparkles size={11} className="text-emerald-400" />
+                        <span>Acceso Rápido a Motores</span>
+                      </span>
+                      <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+                        {[
+                          { label: 'DuckDB', slug: 'duckdb' },
+                          { label: 'Polars', slug: 'polars' },
+                          { label: 'Airflow', slug: 'apache-airflow' },
+                          { label: 'dbt Core', slug: 'dbt-core' },
+                          { label: 'Kafka', slug: 'apache-kafka' },
+                        ].map((eng) => (
+                          <button
+                            key={eng.slug}
+                            onClick={(e) => {
+                              closeMenu();
+                              handleNavClick(e as any, '#ecosystem');
+                            }}
+                            className="px-2.5 py-1 rounded-lg border border-neutral-800 bg-neutral-900/80 text-[11px] font-mono text-neutral-300 active:bg-neutral-800 hover:text-white shrink-0 transition-colors cursor-pointer"
+                          >
+                            {eng.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
                   </nav>
 
                   {/* Overlay Bottom Footer with Engineering Telemetry */}
