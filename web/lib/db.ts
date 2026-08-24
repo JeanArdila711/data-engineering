@@ -49,6 +49,25 @@ export type EcosystemStat = {
   article_count: number
 }
 
+export type DigestArticle = {
+  article_id: number
+  title: string
+  url: string
+  summary_en: string | null
+  summary_es: string | null
+}
+
+export type DigestEntry = {
+  tool_slug: string
+  tool_name: string
+  category: string
+  release_count_7d: number
+  breaking_count_7d: number
+  releases_7d: ReleaseHistoryItem[]
+  article_count_7d: number
+  top_articles_7d: DigestArticle[]
+}
+
 let sql: ReturnType<typeof postgres> | null = null
 
 function getSqlClient() {
@@ -121,6 +140,25 @@ export async function getEcosystemStats(): Promise<EcosystemStat[]> {
     `
   } catch (error) {
     console.warn('Postgres connection unavailable for ecosystem stats, falling back to static data:', error)
+    return []
+  }
+}
+
+export async function getDigest(): Promise<DigestEntry[]> {
+  try {
+    const client = getSqlClient()
+    if (!client) {
+      return []
+    }
+    return await client<DigestEntry[]>`
+      select tool_slug, tool_name, category,
+             release_count_7d, breaking_count_7d, releases_7d,
+             article_count_7d, top_articles_7d
+      from mart_digest
+      order by (release_count_7d + article_count_7d) desc
+    `
+  } catch (error) {
+    console.warn('Postgres connection unavailable for digest, falling back to static data:', error)
     return []
   }
 }
