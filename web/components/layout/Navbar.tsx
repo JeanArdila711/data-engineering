@@ -117,28 +117,71 @@ export default function Navbar() {
     targetRef.current = next;
   }
 
-  // Active section tracking via IntersectionObserver for Desktop
+  // Robust Scroll Spy for Active Section (Eliminates ratio jumping between sections of different heights)
   useEffect(() => {
-    const sections = LINKS.map((link) => document.getElementById(link.id)).filter(
-      (el): el is HTMLElement => el !== null
-    );
-    if (sections.length === 0) return;
+    let ticking = false;
 
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const visible = entries
-          .filter((entry) => entry.isIntersecting)
-          .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
-        if (!visible) return;
-        updateLean(visible.target.id);
-        setActive(visible.target.id);
-      },
-      { rootMargin: '-30% 0px -40% 0px', threshold: [0, 0.25, 0.5, 1] }
-    );
+    const onScrollSpy = () => {
+      if (!ticking) {
+        window.requestAnimationFrame(() => {
+          const y = window.scrollY;
 
-    sections.forEach((section) => observer.observe(section));
-    return () => observer.disconnect();
+          // 1. Top of page always locks to 'radar'
+          if (y < 150) {
+            if (targetRef.current !== 'radar') {
+              updateLean('radar');
+              setActive('radar');
+            }
+            ticking = false;
+            return;
+          }
+
+          // 2. Scan section positions relative to viewport
+          const threshold = 220; // pixels from viewport top
+          let currentSection: string = 'radar';
+
+          for (const link of LINKS) {
+            const el = document.getElementById(link.id);
+            if (el) {
+              const top = el.getBoundingClientRect().top;
+              if (top <= threshold) {
+                currentSection = link.id;
+              }
+            }
+          }
+
+          if (currentSection !== targetRef.current) {
+            updateLean(currentSection);
+            setActive(currentSection);
+          }
+
+          ticking = false;
+        });
+        ticking = true;
+      }
+    };
+
+    window.addEventListener('scroll', onScrollSpy, { passive: true });
+    onScrollSpy();
+    return () => window.removeEventListener('scroll', onScrollSpy);
   }, []);
+
+  // Smooth click navigation with fixed navbar offset
+  const handleNavClick = (e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
+    e.preventDefault();
+    const id = href.replace('#', '');
+    const el = document.getElementById(id);
+    if (el) {
+      const navbarHeight = 80;
+      const elementPosition = el.getBoundingClientRect().top + window.scrollY;
+      const offsetPosition = Math.max(0, elementPosition - navbarHeight);
+
+      window.scrollTo({
+        top: offsetPosition,
+        behavior: 'smooth',
+      });
+    }
+  };
 
   // Mobile scroll behavior: auto-hide on scroll down, reveal on scroll up
   useEffect(() => {
@@ -182,7 +225,7 @@ export default function Navbar() {
     if (leaveTimer.current) clearTimeout(leaveTimer.current);
     leaveTimer.current = setTimeout(() => {
       setLean(0);
-      targetRef.current = null;
+      targetRef.current = active;
       setHovered(null);
     }, 140);
   }
@@ -255,16 +298,17 @@ export default function Navbar() {
 
           {/* Brand / Logo with live signal */}
           <motion.div variants={ITEM_VARIANTS} className="relative z-10 flex items-center gap-2.5">
-            <Link
+            <a
               href="#radar"
-              className="flex items-center gap-2 font-mono text-xs font-bold uppercase tracking-[0.25em] text-white hover:text-neutral-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2 focus-visible:ring-offset-black rounded-sm transition-colors"
+              onClick={(e) => handleNavClick(e, '#radar')}
+              className="flex items-center gap-2 font-mono text-xs font-bold uppercase tracking-[0.25em] text-white hover:text-neutral-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2 focus-visible:ring-offset-black rounded-sm transition-colors cursor-pointer"
             >
               <span className="relative flex size-2">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
                 <span className="relative inline-flex rounded-full size-2 bg-emerald-500 shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
               </span>
               <span>DE RADAR</span>
-            </Link>
+            </a>
           </motion.div>
 
           {/* Center: Magnetic Pill Section Navigation */}
@@ -285,36 +329,22 @@ export default function Navbar() {
                       style={{ borderRadius: 9999 }}
                       transition={PILL_SPRING}
                       className="absolute inset-0 z-0 bg-neutral-900 border border-neutral-700/80 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.1)]"
-                    >
-                      {/* Squash & stretch arrival animation */}
-                      <motion.span
-                        key={link.id}
-                        initial={{ scaleX: 1.12 }}
-                        animate={{ scaleX: 1 }}
-                        transition={{ duration: 0.4, ease: IOS_EASE }}
-                        className="block h-full w-full rounded-full"
-                      />
-                    </motion.span>
+                    />
                   )}
 
                   <a
                     href={link.href}
+                    onClick={(e) => handleNavClick(e, link.href)}
                     onMouseEnter={() => handleEnter(link.id)}
                     onFocus={() => handleEnter(link.id)}
                     onBlur={handleLeave}
-                    className={`relative z-10 block rounded-full px-3.5 py-1.5 text-xs font-mono tracking-wider uppercase focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2 focus-visible:ring-offset-black transition-colors duration-150 ${
+                    className={`relative z-10 block rounded-full px-3.5 py-1.5 text-xs font-mono tracking-wider uppercase focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2 focus-visible:ring-offset-black transition-colors duration-150 cursor-pointer ${
                       isTarget ? 'text-white font-medium' : 'text-neutral-400 hover:text-neutral-200'
                     }`}
                   >
-                    <motion.span
-                      key={isTarget ? 'target' : 'idle'}
-                      initial={isTarget ? { x: lean * 5 } : false}
-                      animate={{ x: 0 }}
-                      transition={PILL_SPRING}
-                      className="block"
-                    >
+                    <span className="block">
                       {link.label}
-                    </motion.span>
+                    </span>
                   </a>
                 </li>
               );
@@ -476,9 +506,12 @@ export default function Navbar() {
                       <motion.a
                         key={link.id}
                         href={link.href}
-                        onClick={closeMenu}
+                        onClick={(e) => {
+                          closeMenu();
+                          handleNavClick(e, link.href);
+                        }}
                         variants={MOBILE_MENU_VARIANTS}
-                        className="group flex items-center justify-between py-4 w-full border-b border-neutral-900/70 active:bg-neutral-900/30 px-2 rounded-xl transition-all"
+                        className="group flex items-center justify-between py-4 w-full border-b border-neutral-900/70 active:bg-neutral-900/30 px-2 rounded-xl transition-all cursor-pointer"
                       >
                         <div className="flex items-baseline gap-4">
                           <span className="font-mono text-xs tracking-widest text-neutral-500 group-hover:text-emerald-400 transition-colors">

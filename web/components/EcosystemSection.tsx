@@ -1140,7 +1140,7 @@ export default function EcosystemSection({ entries = [] }: { entries?: Changelog
   }, [allTools, activeTab, searchQuery]);
 
   return (
-    <section id="ecosystem" className="w-full max-w-7xl mx-auto px-5 sm:px-6 py-16 sm:py-20 lg:py-28 relative">
+    <section id="ecosystem" className="w-full max-w-7xl mx-auto px-5 sm:px-6 py-16 sm:py-20 lg:py-28 relative scroll-mt-28">
       
       {/* Section Header */}
       <div className="flex flex-col gap-3">

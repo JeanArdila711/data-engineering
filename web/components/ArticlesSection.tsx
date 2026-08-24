@@ -354,7 +354,7 @@ export default function ArticlesSection({
   }, [items, selectedTool, searchQuery]);
 
   return (
-    <section id="articulos" className="w-full max-w-7xl mx-auto px-5 md:px-6 py-16 md:py-24 relative">
+    <section id="articulos" className="w-full max-w-7xl mx-auto px-5 md:px-6 py-16 md:py-24 relative scroll-mt-28">
       
       {/* 1. Header with Eyebrow, Title and Bilingual Switch */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 mb-10 md:mb-12 border-b border-neutral-800/80 pb-8">

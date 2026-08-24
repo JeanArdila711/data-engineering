@@ -11,6 +11,11 @@
   --foreground: #ededed;
 }
 
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: 5.5rem;
+}
+
 body {
   background: #000000;
   color: #ededed;

@@ -176,7 +176,7 @@ export default function Hero() {
   };
 
   return (
-    <section id="radar" className="relative w-full max-w-7xl mx-auto px-5 md:px-6 pt-24 md:pt-28 pb-12 md:pb-16 mt-4 md:mt-8 flex flex-col gap-8 md:gap-10 overflow-hidden lg:overflow-visible">
+    <section id="radar" className="relative w-full max-w-7xl mx-auto px-5 md:px-6 pt-24 md:pt-28 pb-12 md:pb-16 mt-4 md:mt-8 flex flex-col gap-8 md:gap-10 overflow-hidden lg:overflow-visible scroll-mt-28">
       
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-end gap-6 md:gap-8 relative z-10">
         <div className="flex flex-col gap-4 md:gap-5 max-w-3xl">
