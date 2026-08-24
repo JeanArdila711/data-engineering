@@ -12,7 +12,9 @@ import {
   Cpu,
   Layers,
   Sparkles,
-  GitBranch
+  GitBranch,
+  Zap,
+  Star
 } from 'lucide-react';
 
 export default function Footer() {
@@ -68,10 +70,10 @@ export default function Footer() {
           </div>
         </div>
 
-        {/* 2. Main Navigation & Information Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-8 lg:gap-12 pb-12 border-b border-neutral-800/60">
+        {/* 2. Main Footer Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-10 lg:gap-12 pb-12 border-b border-neutral-800/80">
           
-          {/* Brand & Mission Statement */}
+          {/* Brand & Community Actions (Opción 3) */}
           <div className="md:col-span-5 flex flex-col gap-4">
             <div className="flex items-center gap-2 text-white font-bold tracking-tight text-lg">
               <span className="size-2 rounded-full bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.8)]" />
@@ -82,15 +84,26 @@ export default function Footer() {
               Plataforma de inteligencia técnica automatizada para Data Engineers. Rastreo de releases, detección de breaking changes y resúmenes de arquitectura sin ruido corporativo.
             </p>
 
-            <div className="flex items-center gap-3 mt-2">
+            <div className="flex flex-wrap items-center gap-2.5 mt-2">
+              <a
+                href="https://github.com/JeanArdila711/data-engineering/issues/new?title=%5BSuggestion%5D+Agregar+nuevo+motor+al+Radar&body=%23%23+Herramienta+Sugerida%0A%0A-%20**Nombre:**%20%0A-%20**Repositorio:**%20%0A-%20**Categor%C3%ADa:**%20%0A-%20**Por+qu%C3%A9+deber%C3%ADa+estar+en+el+Radar:**%20"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-mono text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 hover:border-emerald-500/50 transition-all font-medium active:scale-95 shadow-[0_0_12px_rgba(52,211,153,0.15)]"
+              >
+                <Zap size={13} className="text-emerald-400" />
+                <span>Sugerir Motor / Contribuir</span>
+                <ExternalLink size={11} className="text-emerald-400/70" />
+              </a>
+
               <a
                 href="https://github.com/JeanArdila711/data-engineering"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-mono text-neutral-300 bg-neutral-900 hover:bg-neutral-800 border border-neutral-700/70 hover:border-neutral-600 transition-colors"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-mono text-neutral-300 bg-neutral-900 hover:bg-neutral-800 border border-neutral-700/70 hover:border-neutral-600 transition-colors active:scale-95"
               >
-                <GitBranch size={14} className="text-emerald-400" />
-                <span>GitHub Repository</span>
+                <GitBranch size={13} className="text-neutral-400" />
+                <span>Repositorio</span>
                 <ExternalLink size={11} className="text-neutral-500" />
               </a>
             </div>
