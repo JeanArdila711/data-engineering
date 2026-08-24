@@ -46,3 +46,8 @@ class GeminiClient:
         )
         response = self._client.models.generate_content(model=self._judge_model, contents=prompt)
         return response.text.strip().lower().startswith("si")
+
+    def translate(self, text: str) -> str:
+        prompt = f"Traducí este resumen al español, manteniendo el sentido exacto, sin agregar información:\n\n{text}"
+        response = self._client.models.generate_content(model=self._summary_model, contents=prompt)
+        return response.text.strip()
