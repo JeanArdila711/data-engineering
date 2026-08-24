@@ -309,10 +309,11 @@ def test_upsert_mentions_links_tools_to_article(db_conn):
 
 def test_find_duplicate_article_matches_by_content_hash(db_conn):
     source_id = _feed_source_id(db_conn)
-    fp = content_fingerprint("mismo contenido, otra url")
+    text = "mismo contenido, otra url"
+    fp = content_fingerprint(text)
     upsert_article(db_conn, source_id, _article_record("https://a.com/1"), "https://a.com/1", fp, 0.5)
 
-    duplicate = find_duplicate_article(db_conn, "https://b.com/2", fp)
+    duplicate = find_duplicate_article(db_conn, fp, text)
 
     assert duplicate is not None
 
@@ -324,6 +325,26 @@ def test_find_duplicate_article_returns_none_for_distinct_content(db_conn):
         content_fingerprint("texto A"), 0.5,
     )
 
-    duplicate = find_duplicate_article(db_conn, "https://b.com/2", content_fingerprint("texto B, sin relación"))
+    unrelated = "texto B, sin relación"
+    duplicate = find_duplicate_article(db_conn, content_fingerprint(unrelated), unrelated)
 
     assert duplicate is None
+
+
+def test_find_duplicate_article_matches_by_content_similarity(db_conn):
+    # Republicación real: mismo artículo en otro dominio, texto casi-idéntico
+    # (hash exacto no matchea) pero por encima del umbral de trigramas.
+    source_id = _feed_source_id(db_conn)
+    original = (
+        "DuckDB 1.5 rompe la API de extensiones de forma intencional y "
+        "documentada en el changelog oficial del proyecto."
+    )
+    upsert_article(
+        db_conn, source_id, _article_record("https://a.com/1", text=original), "https://a.com/1",
+        content_fingerprint(original), 0.5,
+    )
+
+    near_duplicate = original + " Fuente: blog."
+    duplicate = find_duplicate_article(db_conn, content_fingerprint(near_duplicate), near_duplicate)
+
+    assert duplicate is not None

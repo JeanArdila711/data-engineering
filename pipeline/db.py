@@ -162,11 +162,17 @@ def sync_feed_sources(conn: psycopg.Connection, catalog: Catalog) -> list[tuple[
 
 def find_duplicate_article(
     conn: psycopg.Connection,
-    url_normalized: str,
     content_hash: str,
+    summary_text: str,
     similarity_threshold: float = 0.85,
 ) -> int | None:
-    """Busca una republicación literal: mismo hash exacto, o texto casi-idéntico por trigramas."""
+    """Busca una republicación literal: mismo hash exacto, o texto casi-idéntico por trigramas.
+
+    El fallback compara `summary_text` (no la URL): el caso real de republicación
+    es el mismo artículo con URLs de dominios distintos, así que el contenido es
+    la señal que importa. `articles_content_trgm_idx` (migración 002) indexa esa
+    columna para esta consulta.
+    """
     with conn.cursor() as cur:
         cur.execute("SELECT id FROM articles WHERE content_hash = %s LIMIT 1", (content_hash,))
         row = cur.fetchone()
@@ -174,9 +180,9 @@ def find_duplicate_article(
             return row[0]
 
         cur.execute(
-            "SELECT id FROM articles WHERE similarity(url_normalized, %s) > %s "
-            "ORDER BY similarity(url_normalized, %s) DESC LIMIT 1",
-            (url_normalized, similarity_threshold, url_normalized),
+            "SELECT id FROM articles WHERE similarity(summary_text, %s) > %s "
+            "ORDER BY similarity(summary_text, %s) DESC LIMIT 1",
+            (summary_text, similarity_threshold, summary_text),
         )
         row = cur.fetchone()
         return row[0] if row else None
