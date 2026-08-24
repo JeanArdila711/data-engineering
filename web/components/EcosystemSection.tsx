@@ -23,6 +23,9 @@ import {
   Check,
   BookOpen,
   Cpu,
+  ChevronLeft,
+  ChevronRight,
+  MessageSquare,
   Terminal as TerminalIcon
 } from 'lucide-react';
 import { useToast } from '@/components/ui/toast';
@@ -325,9 +328,13 @@ const springTransition = {
 // Fullscreen & Mobile-Optimized Morphing Modal with Hardware Polish & Ultra-Smooth Exit
 function ExpandedToolModal({ 
   tool, 
+  toolsList = [],
+  onSelectTool,
   onClose 
 }: { 
   tool: ToolDisplay; 
+  toolsList?: ToolDisplay[];
+  onSelectTool?: (tool: ToolDisplay) => void;
   onClose: () => void;
 }) {
   const [copied, setCopied] = useState(false);
@@ -336,17 +343,34 @@ function ExpandedToolModal({
   const Icon = getToolIcon(tool.slug, tool.rawCategory);
   const semver = getSemverBadge(tool.version);
 
+  const currentIndex = toolsList.findIndex((t) => t.slug === tool.slug);
+  const totalCount = toolsList.length;
+
+  const goToPrev = () => {
+    if (!onSelectTool || totalCount === 0) return;
+    const prevIndex = currentIndex > 0 ? currentIndex - 1 : totalCount - 1;
+    onSelectTool(toolsList[prevIndex]);
+  };
+
+  const goToNext = () => {
+    if (!onSelectTool || totalCount === 0) return;
+    const nextIndex = currentIndex < totalCount - 1 ? currentIndex + 1 : 0;
+    onSelectTool(toolsList[nextIndex]);
+  };
+
   useEffect(() => {
     setIsMobile(window.innerWidth < 640);
   }, []);
 
-  // Lock background scroll & ESC key
+  // Lock background scroll & Keyboard Navigation (ESC, ArrowLeft, ArrowRight)
   useEffect(() => {
     const originalOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
+      if (e.key === 'ArrowLeft') goToPrev();
+      if (e.key === 'ArrowRight') goToNext();
     };
     window.addEventListener('keydown', handleKeyDown);
 
@@ -354,7 +378,7 @@ function ExpandedToolModal({
       document.body.style.overflow = originalOverflow;
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [onClose]);
+  }, [onClose, currentIndex, totalCount, onSelectTool]);
 
   const { showToast } = useToast();
 
@@ -382,6 +406,48 @@ function ExpandedToolModal({
     layer: tool.category,
   };
 
+  const getRiskAssessment = () => {
+    if (tool.hasBreaking || semver.label === 'MAJOR') {
+      return {
+        level: 'Alto',
+        label: 'Riesgo: Alto',
+        detail: 'Requiere Staging',
+        className: 'text-red-400 border-red-500/30 bg-red-950/40',
+        dotClass: 'bg-red-400 shadow-[0_0_8px_rgba(248,113,113,0.8)]'
+      };
+    }
+    if (semver.label === 'MINOR') {
+      return {
+        level: 'Medio',
+        label: 'Riesgo: Medio',
+        detail: 'Nuevas Features',
+        className: 'text-amber-400 border-amber-500/30 bg-amber-950/40',
+        dotClass: 'bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.8)]'
+      };
+    }
+    return {
+      level: 'Bajo',
+      label: 'Riesgo: Bajo',
+      detail: 'Seguro en Prod',
+      className: 'text-emerald-400 border-emerald-500/30 bg-emerald-950/40',
+      dotClass: 'bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]'
+    };
+  };
+
+  const risk = getRiskAssessment();
+
+  const copySlackSnippet = () => {
+    const text = `🚀 *${tool.name} ${tool.version} Release Update*
+• *Capa del Stack:* ${meta.layer}
+• *Evaluación:* ${risk.label} (${risk.detail})
+• *Breaking Changes:* ${tool.hasBreaking ? `${tool.breakingChanges?.length || 1} detectados` : 'Ninguno (Release Estable)'}
+• *Instalación:* \`${installCommand}\`
+• *Release Oficial:* ${tool.sourceUrl || `https://github.com/${meta.repo}/releases`}`;
+    
+    navigator.clipboard.writeText(text);
+    showToast('Resumen para Slack copiado', 'Listo para pegar en tu canal de ingeniería');
+  };
+
   const relatedArticle = TOOL_ARTICLES[tool.slug] || TOOL_ARTICLES[tool.slug.replace(/^apache-/, '')];
 
   return (
@@ -397,7 +463,7 @@ function ExpandedToolModal({
         className="fixed inset-0 bg-black/85 backdrop-blur-md pointer-events-auto cursor-pointer"
       />
 
-      {/* Expanded Morphing Card with Mobile Drag-to-Dismiss */}
+      {/* Expanded Morphing Card with Mobile Drag-to-Dismiss & Volumetric State Glow */}
       <motion.div
         layoutId={`tool-card-${tool.slug}`}
         role="dialog"
@@ -415,12 +481,21 @@ function ExpandedToolModal({
         }}
         className="pointer-events-auto relative z-10 w-full max-w-2xl sm:max-w-3xl lg:max-w-4xl max-h-[92vh] sm:max-h-[90vh] bg-neutral-950 border border-neutral-800 rounded-t-[28px] sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col touch-pan-y shadow-[inset_0_1px_0_0_rgba(255,255,255,0.1)]"
       >
+        {/* Volumetric Reactive State Glow */}
+        <div 
+          className={`absolute inset-0 pointer-events-none transition-colors duration-500 rounded-t-[28px] sm:rounded-3xl ${
+            tool.hasBreaking 
+              ? 'bg-[radial-gradient(ellipse_75%_50%_at_0%_0%,rgba(239,68,68,0.12),transparent_70%)]' 
+              : 'bg-[radial-gradient(ellipse_75%_50%_at_0%_0%,rgba(16,185,129,0.12),transparent_70%)]'
+          }`} 
+        />
+
         {/* Mobile Swipe Handle */}
         <div className="w-12 h-1.5 bg-neutral-700/80 rounded-full mx-auto mt-3 mb-1 sm:hidden shrink-0" />
 
         {/* Scrollable Content Container */}
-        <div className="p-6 sm:p-7 lg:p-8 overflow-y-auto flex flex-col gap-4 sm:gap-5 scrollbar-thin scrollbar-thumb-neutral-800">
-          {/* Header Row: Morphing Icon + Title + Category + Close Button */}
+        <div className="p-6 sm:p-7 lg:p-8 overflow-y-auto flex flex-col gap-4 sm:gap-5 scrollbar-thin scrollbar-thumb-neutral-800 relative z-10">
+          {/* Header Row: Morphing Icon + Title + Navigation [← 1/10 →] + Close Button */}
           <div className="flex items-start justify-between gap-4">
             <div className="flex items-center gap-3.5 sm:gap-4">
               <motion.div 
@@ -449,26 +524,53 @@ function ExpandedToolModal({
               </div>
             </div>
 
-            {/* Morphing Close Button with tactile press feedback */}
-            <motion.button
-              aria-label="Cerrar detalle"
-              layoutId={`tool-button-${tool.slug}`}
-              transition={springTransition}
-              whileHover={{ scale: 1.06 }}
-              whileTap={{ scale: 0.88, rotate: -45 }}
-              onClick={(e) => {
-                e.stopPropagation();
-                onClose();
-              }}
-              className="size-10 sm:size-11 rounded-full border border-neutral-800 bg-neutral-900/80 hover:bg-neutral-800 text-neutral-400 hover:text-white flex items-center justify-center transition-colors cursor-pointer shrink-0 focus:outline-none focus:ring-2 focus:ring-emerald-400/40"
-            >
-              <X size={18} />
-            </motion.button>
+            <div className="flex items-center gap-2 shrink-0">
+              {/* Tool Navigation [ ← 1/10 → ] */}
+              {totalCount > 1 && (
+                <div className="flex items-center gap-0.5 bg-neutral-900/90 border border-neutral-800 rounded-full px-2 py-1 text-xs font-mono text-neutral-400 shadow-inner">
+                  <button
+                    onClick={goToPrev}
+                    className="p-1 hover:text-white transition-colors cursor-pointer rounded-full hover:bg-neutral-800 active:scale-90"
+                    title="Herramienta anterior (←)"
+                    aria-label="Herramienta anterior"
+                  >
+                    <ChevronLeft size={13} />
+                  </button>
+                  <span className="text-[11px] text-neutral-300 font-semibold px-1 select-none">
+                    {currentIndex !== -1 ? currentIndex + 1 : 1}/{totalCount}
+                  </span>
+                  <button
+                    onClick={goToNext}
+                    className="p-1 hover:text-white transition-colors cursor-pointer rounded-full hover:bg-neutral-800 active:scale-90"
+                    title="Siguiente herramienta (→)"
+                    aria-label="Siguiente herramienta"
+                  >
+                    <ChevronRight size={13} />
+                  </button>
+                </div>
+              )}
+
+              {/* Morphing Close Button with tactile press feedback */}
+              <motion.button
+                aria-label="Cerrar detalle"
+                layoutId={`tool-button-${tool.slug}`}
+                transition={springTransition}
+                whileHover={{ scale: 1.06 }}
+                whileTap={{ scale: 0.88, rotate: -45 }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onClose();
+                }}
+                className="size-10 sm:size-11 rounded-full border border-neutral-800 bg-neutral-900/80 hover:bg-neutral-800 text-neutral-400 hover:text-white flex items-center justify-center transition-colors cursor-pointer shrink-0 focus:outline-none focus:ring-2 focus:ring-emerald-400/40"
+              >
+                <X size={18} />
+              </motion.button>
+            </div>
           </div>
 
-          {/* Version & Status Banner */}
+          {/* Version, Risk Gauge & Slack Export Banner */}
           <div className="p-3.5 sm:p-4 rounded-2xl border border-neutral-800/80 bg-neutral-900/40 flex flex-wrap items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-2.5 sm:gap-3">
               <motion.span 
                 layoutId={`tool-version-${tool.slug}`}
                 transition={springTransition}
@@ -483,8 +585,23 @@ function ExpandedToolModal({
               >
                 {semver.label}
               </motion.span>
+              <div className={`inline-flex items-center gap-1.5 font-mono text-[10px] font-semibold px-2.5 py-0.5 rounded-full border ${risk.className}`}>
+                <span className={`size-1.5 rounded-full ${risk.dotClass}`} />
+                <span>{risk.label}</span>
+              </div>
             </div>
-            <span className="text-xs text-neutral-400 font-mono">{tool.date}</span>
+
+            <div className="flex items-center gap-2.5">
+              <button
+                onClick={copySlackSnippet}
+                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-mono text-neutral-300 bg-neutral-800/80 hover:bg-neutral-700/80 border border-neutral-700/60 hover:border-neutral-600 transition-colors cursor-pointer active:scale-95"
+                title="Copiar resumen en Markdown para Slack o Teams"
+              >
+                <MessageSquare size={12} className="text-emerald-400" />
+                <span>Slack / Teams</span>
+              </button>
+              <span className="text-xs text-neutral-400 font-mono">{tool.date}</span>
+            </div>
           </div>
 
           {/* Expanded Detail Body: Spacious 2-column layout on Desktop */}
@@ -1082,11 +1199,13 @@ export default function EcosystemSection({ entries = [] }: { entries?: Changelog
         </AnimatePresence>
       </div>
 
-      {/* Morphing Expandable Modal Dialog (Smooth Shared Layout) */}
+      {/* Morphing Expandable Modal Dialog (Smooth Shared Layout & Navigation) */}
       <AnimatePresence>
         {selectedTool && (
           <ExpandedToolModal 
             tool={selectedTool} 
+            toolsList={filteredTools.length > 0 ? filteredTools : allTools}
+            onSelectTool={(t) => setSelectedTool(t)}
             onClose={() => setSelectedTool(null)} 
           />
         )}
