@@ -130,7 +130,7 @@ export async function getEcosystemStats(): Promise<EcosystemStat[]> {
     if (!client) {
       return []
     }
-    return await client<EcosystemStat[]>`
+    const rows = await client<any[]>`
       select tool_slug, tool_name, category, vendor, repo, homepage,
              tracked_since, release_count, breaking_release_count,
              last_version, last_published_at, last_has_breaking,
@@ -138,6 +138,15 @@ export async function getEcosystemStats(): Promise<EcosystemStat[]> {
       from mart_ecosystem
       order by release_count desc
     `
+    return rows.map(r => ({
+      ...r,
+      release_count: Number(r.release_count || 0),
+      breaking_release_count: Number(r.breaking_release_count || 0),
+      article_count: Number(r.article_count || 0),
+      release_history: Array.isArray(r.release_history) 
+        ? r.release_history 
+        : (typeof r.release_history === 'string' ? JSON.parse(r.release_history) : [])
+    }))
   } catch (error) {
     console.warn('Postgres connection unavailable for ecosystem stats, falling back to static data:', error)
     return []
@@ -150,13 +159,27 @@ export async function getDigest(): Promise<DigestEntry[]> {
     if (!client) {
       return []
     }
-    return await client<DigestEntry[]>`
+    const rows = await client<any[]>`
       select tool_slug, tool_name, category,
              release_count_7d, breaking_count_7d, releases_7d,
              article_count_7d, top_articles_7d
       from mart_digest
       order by (release_count_7d + article_count_7d) desc
     `
+    return rows.map(r => ({
+      tool_slug: r.tool_slug,
+      tool_name: r.tool_name,
+      category: r.category,
+      release_count_7d: Number(r.release_count_7d || 0),
+      breaking_count_7d: Number(r.breaking_count_7d || 0),
+      releases_7d: Array.isArray(r.releases_7d) 
+        ? r.releases_7d 
+        : (typeof r.releases_7d === 'string' ? JSON.parse(r.releases_7d) : []),
+      article_count_7d: Number(r.article_count_7d || 0),
+      top_articles_7d: Array.isArray(r.top_articles_7d) 
+        ? r.top_articles_7d 
+        : (typeof r.top_articles_7d === 'string' ? JSON.parse(r.top_articles_7d) : [])
+    }))
   } catch (error) {
     console.warn('Postgres connection unavailable for digest, falling back to static data:', error)
     return []
