@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { motion, useMotionValue, useMotionTemplate, AnimatePresence } from 'framer-motion';
 import { DigestEntry } from '@/lib/db';
 import { 
@@ -17,7 +17,9 @@ import {
   Layers3, 
   Calendar,
   Clock,
-  Cpu
+  Cpu,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 
 const customEase = [0.16, 1, 0.3, 1] as const;
@@ -414,7 +416,17 @@ function DigestCard({ entry, lang }: { entry: DigestEntry; lang: 'es' | 'en' }) 
 
 export default function DigestSection({ entries = [] }: { entries?: DigestEntry[] }) {
   const [lang, setLang] = useState<'es' | 'en'>('es');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [direction, setDirection] = useState(0);
+  const ITEMS_PER_PAGE = 3;
+
   const items = entries.length > 0 ? entries : SAMPLE_DIGEST;
+
+  // Reset page to 1 when entries change
+  useEffect(() => {
+    setCurrentPage(1);
+    setDirection(0);
+  }, [entries]);
 
   // Listen to global language change from Hero
   useEffect(() => {
@@ -433,6 +445,48 @@ export default function DigestSection({ entries = [] }: { entries?: DigestEntry[
   const totalBreaking7D = items.reduce((acc, curr) => acc + curr.breaking_count_7d, 0);
   const totalArticles7D = items.reduce((acc, curr) => acc + curr.article_count_7d, 0);
   const activeEngines7D = items.filter(i => (i.release_count_7d + i.article_count_7d) > 0).length;
+
+  // Pagination slicing
+  const totalPages = Math.ceil(items.length / ITEMS_PER_PAGE) || 1;
+  const paginatedItems = useMemo(() => {
+    const start = (currentPage - 1) * ITEMS_PER_PAGE;
+    return items.slice(start, start + ITEMS_PER_PAGE);
+  }, [items, currentPage]);
+
+  const handlePageChange = (newPage: number) => {
+    if (newPage < 1 || newPage > totalPages || newPage === currentPage) return;
+    setDirection(newPage > currentPage ? 1 : -1);
+    setCurrentPage(newPage);
+  };
+
+  const pageVariants = {
+    enter: (dir: number) => ({
+      x: dir > 0 ? 36 : dir < 0 ? -36 : 0,
+      opacity: 0,
+      filter: 'blur(3px)',
+      scale: 0.99,
+    }),
+    center: {
+      x: 0,
+      opacity: 1,
+      filter: 'blur(0px)',
+      scale: 1,
+      transition: {
+        duration: 0.3,
+        ease: customEase,
+      },
+    },
+    exit: (dir: number) => ({
+      x: dir > 0 ? -36 : dir < 0 ? 36 : 0,
+      opacity: 0,
+      filter: 'blur(3px)',
+      scale: 0.99,
+      transition: {
+        duration: 0.2,
+        ease: [0.4, 0, 1, 1] as const,
+      },
+    }),
+  };
 
   return (
     <section id="digest" className="w-full max-w-7xl mx-auto px-5 sm:px-6 py-16 sm:py-20 lg:py-28 relative scroll-mt-28">
@@ -531,21 +585,124 @@ export default function DigestSection({ entries = [] }: { entries?: DigestEntry[
 
       </div>
 
-      {/* 3. Digest Grid of Cybernetic Radar Capsules */}
-      {items.length === 0 ? (
-        <div className="w-full py-16 text-center rounded-2xl border border-neutral-800/80 bg-neutral-950/50 p-8">
-          <Activity size={24} className="mx-auto text-neutral-600 mb-3" />
-          <p className="text-neutral-400 text-sm font-mono">
-            Sin actividad registrada en los últimos 7 días.
-          </p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 lg:gap-6">
-          {items.map((entry) => (
-            <DigestCard key={entry.tool_slug} entry={entry} lang={lang} />
-          ))}
-        </div>
-      )}
+      {/* 3. Digest Grid of Cybernetic Radar Capsules with Silk Direction-Aware Animation */}
+      <motion.div 
+        layout="position"
+        transition={{ duration: 0.35, ease: customEase }}
+        className="relative overflow-hidden w-full min-h-[360px]"
+      >
+        {items.length === 0 ? (
+          <div className="w-full py-16 text-center rounded-2xl border border-neutral-800/80 bg-neutral-950/50 p-8">
+            <Activity size={24} className="mx-auto text-neutral-600 mb-3" />
+            <p className="text-neutral-400 text-sm font-mono">
+              Sin actividad registrada en los últimos 7 días.
+            </p>
+          </div>
+        ) : (
+          <>
+            <AnimatePresence mode="wait" custom={direction} initial={false}>
+              <motion.div
+                key={`digest-page-${currentPage}`}
+                custom={direction}
+                variants={pageVariants}
+                initial="enter"
+                animate="center"
+                exit="exit"
+                className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 lg:gap-6 w-full"
+              >
+                {paginatedItems.map((entry) => (
+                  <DigestCard key={entry.tool_slug} entry={entry} lang={lang} />
+                ))}
+              </motion.div>
+            </AnimatePresence>
+
+            {/* 4. High-End Interactive Pagination Bar (agent-10 & agent-13) */}
+            {totalPages > 1 && (
+              <motion.div 
+                layout
+                transition={{ duration: 0.35, ease: customEase }}
+                className="mt-10 pt-6 border-t border-neutral-800/80 flex flex-col sm:flex-row items-center justify-between gap-4"
+              >
+                {/* Telemetry Counter */}
+                <div className="text-xs font-mono text-neutral-500 flex items-center gap-2">
+                  <span className="size-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  <span>
+                    Mostrando <strong className="text-neutral-200">{(currentPage - 1) * ITEMS_PER_PAGE + 1}</strong> - <strong className="text-neutral-200">{Math.min(currentPage * ITEMS_PER_PAGE, items.length)}</strong> de <strong className="text-neutral-200">{items.length}</strong> motores con actividad
+                  </span>
+                </div>
+
+                {/* Pagination Controls */}
+                <div className="flex items-center gap-1.5 bg-neutral-900/90 border border-neutral-800 p-1 rounded-xl shadow-inner select-none">
+                  {/* Previous Button */}
+                  <motion.button
+                    onClick={() => handlePageChange(currentPage - 1)}
+                    disabled={currentPage === 1}
+                    whileHover={currentPage !== 1 ? { scale: 1.04 } : {}}
+                    whileTap={currentPage !== 1 ? { scale: 0.94 } : {}}
+                    aria-label="Página anterior"
+                    className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-mono font-medium transition-colors ${
+                      currentPage === 1
+                        ? 'text-neutral-600 opacity-40 cursor-not-allowed'
+                        : 'text-neutral-300 hover:text-white hover:bg-neutral-800 cursor-pointer'
+                    }`}
+                  >
+                    <ChevronLeft size={14} />
+                    <span className="hidden sm:inline">Anterior</span>
+                  </motion.button>
+
+                  {/* Page Pills */}
+                  <div className="flex items-center gap-1 px-1">
+                    {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => {
+                      const isCurrent = currentPage === pageNum;
+
+                      return (
+                        <motion.button
+                          key={pageNum}
+                          onClick={() => handlePageChange(pageNum)}
+                          whileHover={{ scale: 1.08 }}
+                          whileTap={{ scale: 0.92 }}
+                          aria-label={`Ir a página ${pageNum}`}
+                          className={`relative size-8 rounded-lg text-xs font-mono font-medium flex items-center justify-center transition-colors cursor-pointer ${
+                            isCurrent
+                              ? 'text-emerald-300 font-bold'
+                              : 'text-neutral-400 hover:text-white hover:bg-neutral-800/80'
+                          }`}
+                        >
+                          {isCurrent && (
+                            <motion.div
+                              layoutId="active-digest-page-pill"
+                              transition={{ type: 'spring', stiffness: 450, damping: 32 }}
+                              className="absolute inset-0 rounded-lg bg-emerald-950/80 border border-emerald-500/60 shadow-[0_0_14px_rgba(52,211,153,0.22)] z-0"
+                            />
+                          )}
+                          <span className="relative z-10">{pageNum}</span>
+                        </motion.button>
+                      );
+                    })}
+                  </div>
+
+                  {/* Next Button */}
+                  <motion.button
+                    onClick={() => handlePageChange(currentPage + 1)}
+                    disabled={currentPage === totalPages}
+                    whileHover={currentPage !== totalPages ? { scale: 1.04 } : {}}
+                    whileTap={currentPage !== totalPages ? { scale: 0.94 } : {}}
+                    aria-label="Página siguiente"
+                    className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-mono font-medium transition-colors ${
+                      currentPage === totalPages
+                        ? 'text-neutral-600 opacity-40 cursor-not-allowed'
+                        : 'text-neutral-300 hover:text-white hover:bg-neutral-800 cursor-pointer'
+                    }`}
+                  >
+                    <span className="hidden sm:inline">Siguiente</span>
+                    <ChevronRight size={14} />
+                  </motion.button>
+                </div>
+              </motion.div>
+            )}
+          </>
+        )}
+      </motion.div>
 
     </section>
   );
