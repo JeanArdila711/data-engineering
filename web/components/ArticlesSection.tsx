@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { motion, AnimatePresence, useMotionValue, useMotionTemplate } from 'framer-motion';
 import { ArticleEntry } from '@/lib/db';
 import { 
@@ -13,7 +13,9 @@ import {
   BookOpen, 
   Filter,
   CheckCircle2,
-  Tag
+  Tag,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 
 const customEase = [0.4, 0, 0.2, 1] as const;
@@ -329,6 +331,14 @@ export default function ArticlesSection({
     return Array.from(set).sort();
   }, [items]);
 
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 4;
+
+  // Reset page to 1 when filters or search query change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedTool, searchQuery]);
+
   // Filter articles
   const filteredArticles = useMemo(() => {
     return items.filter(article => {
@@ -352,6 +362,30 @@ export default function ArticlesSection({
       return true;
     });
   }, [items, selectedTool, searchQuery]);
+
+  // Paginated articles slice
+  const totalPages = Math.ceil(filteredArticles.length / ITEMS_PER_PAGE) || 1;
+  const paginatedArticles = useMemo(() => {
+    const start = (currentPage - 1) * ITEMS_PER_PAGE;
+    return filteredArticles.slice(start, start + ITEMS_PER_PAGE);
+  }, [filteredArticles, currentPage]);
+
+  const handlePageChange = (page: number) => {
+    if (page < 1 || page > totalPages || page === currentPage) return;
+    setCurrentPage(page);
+    
+    // Smooth scroll up to top of Articles section
+    const el = document.getElementById('articulos');
+    if (el) {
+      const navbarHeight = 80;
+      const elementPosition = el.getBoundingClientRect().top + window.scrollY;
+      const offsetPosition = Math.max(0, elementPosition - navbarHeight);
+      window.scrollTo({
+        top: offsetPosition,
+        behavior: 'smooth',
+      });
+    }
+  };
 
   return (
     <section id="articulos" className="w-full max-w-7xl mx-auto px-5 md:px-6 py-16 md:py-24 relative scroll-mt-28">
@@ -479,20 +513,106 @@ export default function ArticlesSection({
         </div>
       </div>
 
-      {/* 3. Articles Grid with Stable Container */}
-      <div className="min-h-[300px]">
+      {/* 3. Articles Grid with Stable Animated Container */}
+      <div className="min-h-[400px]">
         {filteredArticles.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5 lg:gap-6">
-            <AnimatePresence mode="popLayout" initial={false}>
-              {filteredArticles.map((article) => (
-                <ArticleCard 
-                  key={article.article_id} 
-                  article={article} 
-                  lang={lang} 
-                />
-              ))}
+          <>
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={`page-${currentPage}-${selectedTool}-${searchQuery}`}
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -16 }}
+                transition={{ duration: 0.28, ease: customEase }}
+                className="grid grid-cols-1 md:grid-cols-2 gap-5 lg:gap-6"
+              >
+                {paginatedArticles.map((article) => (
+                  <ArticleCard 
+                    key={article.article_id} 
+                    article={article} 
+                    lang={lang} 
+                  />
+                ))}
+              </motion.div>
             </AnimatePresence>
-          </div>
+
+            {/* 4. High-End Interactive Pagination Bar (agent-10 & agent-13) */}
+            {totalPages > 1 && (
+              <div className="mt-10 pt-6 border-t border-neutral-800/80 flex flex-col sm:flex-row items-center justify-between gap-4">
+                
+                {/* Telemetry Counter */}
+                <div className="text-xs font-mono text-neutral-500 flex items-center gap-2">
+                  <span className="size-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  <span>
+                    Mostrando <strong className="text-neutral-200">{(currentPage - 1) * ITEMS_PER_PAGE + 1}</strong> - <strong className="text-neutral-200">{Math.min(currentPage * ITEMS_PER_PAGE, filteredArticles.length)}</strong> de <strong className="text-neutral-200">{filteredArticles.length}</strong> deep-dives
+                  </span>
+                </div>
+
+                {/* Pagination Controls */}
+                <div className="flex items-center gap-1.5 bg-neutral-900/90 border border-neutral-800 p-1 rounded-xl shadow-inner select-none">
+                  
+                  {/* Previous Button */}
+                  <button
+                    onClick={() => handlePageChange(currentPage - 1)}
+                    disabled={currentPage === 1}
+                    aria-label="Página anterior"
+                    className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-mono font-medium transition-all ${
+                      currentPage === 1
+                        ? 'text-neutral-600 opacity-40 cursor-not-allowed'
+                        : 'text-neutral-300 hover:text-white hover:bg-neutral-800 cursor-pointer active:scale-95'
+                    }`}
+                  >
+                    <ChevronLeft size={14} />
+                    <span className="hidden sm:inline">Anterior</span>
+                  </button>
+
+                  {/* Page Pills */}
+                  <div className="flex items-center gap-1 px-1">
+                    {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => {
+                      const isCurrent = currentPage === pageNum;
+
+                      return (
+                        <button
+                          key={pageNum}
+                          onClick={() => handlePageChange(pageNum)}
+                          aria-label={`Ir a página ${pageNum}`}
+                          className={`relative size-8 rounded-lg text-xs font-mono font-medium flex items-center justify-center transition-colors cursor-pointer ${
+                            isCurrent
+                              ? 'text-emerald-300 font-bold'
+                              : 'text-neutral-400 hover:text-white hover:bg-neutral-800/80'
+                          }`}
+                        >
+                          {isCurrent && (
+                            <motion.div
+                              layoutId="active-article-page-pill"
+                              transition={{ type: 'spring', stiffness: 450, damping: 32 }}
+                              className="absolute inset-0 rounded-lg bg-emerald-950/80 border border-emerald-500/60 shadow-[0_0_14px_rgba(52,211,153,0.22)] z-0"
+                            />
+                          )}
+                          <span className="relative z-10">{pageNum}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* Next Button */}
+                  <button
+                    onClick={() => handlePageChange(currentPage + 1)}
+                    disabled={currentPage === totalPages}
+                    aria-label="Página siguiente"
+                    className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-mono font-medium transition-all ${
+                      currentPage === totalPages
+                        ? 'text-neutral-600 opacity-40 cursor-not-allowed'
+                        : 'text-neutral-300 hover:text-white hover:bg-neutral-800 cursor-pointer active:scale-95'
+                    }`}
+                  >
+                    <span className="hidden sm:inline">Siguiente</span>
+                    <ChevronRight size={14} />
+                  </button>
+                </div>
+              </div>
+            )}
+          </>
         ) : (
           <motion.div
             initial={{ opacity: 0 }}
