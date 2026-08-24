@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 
 const customEase = [0.4, 0, 0.2, 1] as const;
+const smoothEase = [0.16, 1, 0.3, 1] as const;
 
 // 10 Core Tools curated technical articles with 100% verified, active official URLs
 const SAMPLE_ARTICLES: ArticleEntry[] = [
@@ -332,11 +333,13 @@ export default function ArticlesSection({
   }, [items]);
 
   const [currentPage, setCurrentPage] = useState(1);
+  const [direction, setDirection] = useState(0);
   const ITEMS_PER_PAGE = 4;
 
   // Reset page to 1 when filters or search query change
   useEffect(() => {
     setCurrentPage(1);
+    setDirection(0);
   }, [selectedTool, searchQuery]);
 
   // Filter articles
@@ -370,21 +373,40 @@ export default function ArticlesSection({
     return filteredArticles.slice(start, start + ITEMS_PER_PAGE);
   }, [filteredArticles, currentPage]);
 
-  const handlePageChange = (page: number) => {
-    if (page < 1 || page > totalPages || page === currentPage) return;
-    setCurrentPage(page);
-    
-    // Smooth scroll up to top of Articles section
-    const el = document.getElementById('articulos');
-    if (el) {
-      const navbarHeight = 80;
-      const elementPosition = el.getBoundingClientRect().top + window.scrollY;
-      const offsetPosition = Math.max(0, elementPosition - navbarHeight);
-      window.scrollTo({
-        top: offsetPosition,
-        behavior: 'smooth',
-      });
-    }
+  const handlePageChange = (newPage: number) => {
+    if (newPage < 1 || newPage > totalPages || newPage === currentPage) return;
+    setDirection(newPage > currentPage ? 1 : -1);
+    setCurrentPage(newPage);
+  };
+
+  // Direction-Aware Motion Variants (agent-13 & agent-15)
+  const pageVariants = {
+    enter: (dir: number) => ({
+      x: dir > 0 ? 36 : dir < 0 ? -36 : 0,
+      opacity: 0,
+      filter: 'blur(3px)',
+      scale: 0.99,
+    }),
+    center: {
+      x: 0,
+      opacity: 1,
+      filter: 'blur(0px)',
+      scale: 1,
+      transition: {
+        duration: 0.3,
+        ease: smoothEase,
+      },
+    },
+    exit: (dir: number) => ({
+      x: dir > 0 ? -36 : dir < 0 ? 36 : 0,
+      opacity: 0,
+      filter: 'blur(3px)',
+      scale: 0.99,
+      transition: {
+        duration: 0.2,
+        ease: customEase,
+      },
+    }),
   };
 
   return (
@@ -513,17 +535,18 @@ export default function ArticlesSection({
         </div>
       </div>
 
-      {/* 3. Articles Grid with Stable Animated Container */}
-      <div className="min-h-[400px]">
+      {/* 3. Articles Grid with Stable Direction-Aware Container */}
+      <div className="relative overflow-hidden min-h-[460px]">
         {filteredArticles.length > 0 ? (
           <>
-            <AnimatePresence mode="wait">
+            <AnimatePresence mode="wait" custom={direction} initial={false}>
               <motion.div
                 key={`page-${currentPage}-${selectedTool}-${searchQuery}`}
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -16 }}
-                transition={{ duration: 0.28, ease: customEase }}
+                custom={direction}
+                variants={pageVariants}
+                initial="enter"
+                animate="center"
+                exit="exit"
                 className="grid grid-cols-1 md:grid-cols-2 gap-5 lg:gap-6"
               >
                 {paginatedArticles.map((article) => (
@@ -552,19 +575,21 @@ export default function ArticlesSection({
                 <div className="flex items-center gap-1.5 bg-neutral-900/90 border border-neutral-800 p-1 rounded-xl shadow-inner select-none">
                   
                   {/* Previous Button */}
-                  <button
+                  <motion.button
                     onClick={() => handlePageChange(currentPage - 1)}
                     disabled={currentPage === 1}
+                    whileHover={currentPage !== 1 ? { scale: 1.04 } : {}}
+                    whileTap={currentPage !== 1 ? { scale: 0.94 } : {}}
                     aria-label="Página anterior"
-                    className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-mono font-medium transition-all ${
+                    className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-mono font-medium transition-colors ${
                       currentPage === 1
                         ? 'text-neutral-600 opacity-40 cursor-not-allowed'
-                        : 'text-neutral-300 hover:text-white hover:bg-neutral-800 cursor-pointer active:scale-95'
+                        : 'text-neutral-300 hover:text-white hover:bg-neutral-800 cursor-pointer'
                     }`}
                   >
                     <ChevronLeft size={14} />
                     <span className="hidden sm:inline">Anterior</span>
-                  </button>
+                  </motion.button>
 
                   {/* Page Pills */}
                   <div className="flex items-center gap-1 px-1">
@@ -572,9 +597,11 @@ export default function ArticlesSection({
                       const isCurrent = currentPage === pageNum;
 
                       return (
-                        <button
+                        <motion.button
                           key={pageNum}
                           onClick={() => handlePageChange(pageNum)}
+                          whileHover={{ scale: 1.08 }}
+                          whileTap={{ scale: 0.92 }}
                           aria-label={`Ir a página ${pageNum}`}
                           className={`relative size-8 rounded-lg text-xs font-mono font-medium flex items-center justify-center transition-colors cursor-pointer ${
                             isCurrent
@@ -590,25 +617,27 @@ export default function ArticlesSection({
                             />
                           )}
                           <span className="relative z-10">{pageNum}</span>
-                        </button>
+                        </motion.button>
                       );
                     })}
                   </div>
 
                   {/* Next Button */}
-                  <button
+                  <motion.button
                     onClick={() => handlePageChange(currentPage + 1)}
                     disabled={currentPage === totalPages}
+                    whileHover={currentPage !== totalPages ? { scale: 1.04 } : {}}
+                    whileTap={currentPage !== totalPages ? { scale: 0.94 } : {}}
                     aria-label="Página siguiente"
-                    className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-mono font-medium transition-all ${
+                    className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-mono font-medium transition-colors ${
                       currentPage === totalPages
                         ? 'text-neutral-600 opacity-40 cursor-not-allowed'
-                        : 'text-neutral-300 hover:text-white hover:bg-neutral-800 cursor-pointer active:scale-95'
+                        : 'text-neutral-300 hover:text-white hover:bg-neutral-800 cursor-pointer'
                     }`}
                   >
                     <span className="hidden sm:inline">Siguiente</span>
                     <ChevronRight size={14} />
-                  </button>
+                  </motion.button>
                 </div>
               </div>
             )}
