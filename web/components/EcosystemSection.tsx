@@ -273,13 +273,13 @@ function ExpandedToolModal({
             onClose();
           }
         }}
-        className="pointer-events-auto relative z-10 w-full max-w-2xl max-h-[92vh] sm:max-h-[85vh] bg-neutral-950 border border-neutral-800 rounded-t-[28px] sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col touch-pan-y"
+        className="pointer-events-auto relative z-10 w-full max-w-2xl sm:max-w-3xl lg:max-w-4xl max-h-[92vh] sm:max-h-[90vh] bg-neutral-950 border border-neutral-800 rounded-t-[28px] sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col touch-pan-y"
       >
         {/* Mobile Swipe Handle */}
         <div className="w-12 h-1.5 bg-neutral-700/80 rounded-full mx-auto mt-3 mb-1 sm:hidden shrink-0" />
 
         {/* Scrollable Content Container */}
-        <div className="p-6 sm:p-8 overflow-y-auto flex flex-col gap-6 scrollbar-thin scrollbar-thumb-neutral-800">
+        <div className="p-6 sm:p-7 lg:p-8 overflow-y-auto flex flex-col gap-5 scrollbar-thin scrollbar-thumb-neutral-800">
           {/* Header Row: Morphing Icon + Title + Category + Close Button */}
           <div className="flex items-start justify-between gap-4">
             <div className="flex items-center gap-3.5 sm:gap-4">
@@ -327,7 +327,7 @@ function ExpandedToolModal({
           </div>
 
           {/* Version & Status Banner */}
-          <div className="p-4 rounded-2xl border border-neutral-800/80 bg-neutral-900/40 flex flex-wrap items-center justify-between gap-3">
+          <div className="p-3.5 sm:p-4 rounded-2xl border border-neutral-800/80 bg-neutral-900/40 flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-3">
               <motion.span 
                 layoutId={`tool-version-${tool.slug}`}
@@ -347,7 +347,7 @@ function ExpandedToolModal({
             <span className="text-xs text-neutral-400 font-mono">{tool.date}</span>
           </div>
 
-          {/* Expanded Detail Body: Ultra-fast implosion exit (90ms) with micro-scale to eliminate text stretch */}
+          {/* Expanded Detail Body: Spacious 2-column layout on Desktop */}
           <motion.div
             initial={{ opacity: 0, y: 14, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -358,98 +358,104 @@ function ExpandedToolModal({
               transition: { duration: 0.09, ease: [0.32, 0, 0.67, 0] as const } 
             }}
             transition={{ duration: 0.24, delay: 0.05, ease: [0.16, 1, 0.3, 1] as const }}
-            className="flex flex-col gap-6"
+            className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start"
           >
-            {/* Breaking Changes */}
-            {tool.hasBreaking ? (
-              <div className="p-5 rounded-2xl border border-red-500/30 bg-red-950/20 flex flex-col gap-3">
-                <div className="flex items-center gap-2 text-red-400 font-semibold text-sm">
-                  <AlertTriangle size={17} />
-                  <span>Breaking Changes Detectados ({tool.breakingChanges?.length || 1})</span>
-                </div>
-                <ul className="space-y-2 text-xs sm:text-sm text-neutral-300 leading-relaxed pl-1">
-                  {tool.breakingChanges && tool.breakingChanges.length > 0 ? (
-                    tool.breakingChanges.map((change, i) => (
-                      <li key={i} className="flex items-start gap-2">
+            {/* Left Column: Breaking Changes + Command + Summary */}
+            <div className="lg:col-span-7 flex flex-col gap-4">
+              {/* Breaking Changes */}
+              {tool.hasBreaking ? (
+                <div className="p-4 rounded-2xl border border-red-500/30 bg-red-950/20 flex flex-col gap-2.5">
+                  <div className="flex items-center gap-2 text-red-400 font-semibold text-xs sm:text-sm">
+                    <AlertTriangle size={15} />
+                    <span>Breaking Changes Detectados ({tool.breakingChanges?.length || 1})</span>
+                  </div>
+                  <ul className="space-y-1.5 text-xs text-neutral-300 leading-relaxed pl-1">
+                    {tool.breakingChanges && tool.breakingChanges.length > 0 ? (
+                      tool.breakingChanges.map((change, i) => (
+                        <li key={i} className="flex items-start gap-2">
+                          <span className="text-red-400 font-bold select-none">•</span>
+                          <span>{change}</span>
+                        </li>
+                      ))
+                    ) : (
+                      <li className="flex items-start gap-2">
                         <span className="text-red-400 font-bold select-none">•</span>
-                        <span>{change}</span>
+                        <span>Modificaciones en APIs o arquitecturas previas detectadas en el release. Se recomienda auditar el stack antes de actualizar.</span>
                       </li>
-                    ))
-                  ) : (
-                    <li className="flex items-start gap-2">
-                      <span className="text-red-400 font-bold select-none">•</span>
-                      <span>Modificaciones en APIs o arquitecturas previas detectadas en el release. Se recomienda auditar el stack antes de actualizar en producción.</span>
-                    </li>
-                  )}
-                </ul>
-              </div>
-            ) : (
-              <div className="p-4 rounded-2xl border border-emerald-500/20 bg-emerald-950/20 flex items-center gap-3 text-emerald-400 text-xs sm:text-sm">
-                <span className="size-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)] shrink-0" />
-                <span>Release estable verificado sin breaking changes reportados. Actualización recomendada.</span>
-              </div>
-            )}
+                    )}
+                  </ul>
+                </div>
+              ) : (
+                <div className="p-3.5 rounded-2xl border border-emerald-500/20 bg-emerald-950/20 flex items-center gap-2.5 text-emerald-400 text-xs">
+                  <span className="size-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)] shrink-0" />
+                  <span>Release estable verificado sin breaking changes reportados.</span>
+                </div>
+              )}
 
-            {/* Installation Command */}
-            <div className="flex flex-col gap-2">
-              <div className="flex items-center justify-between text-xs font-mono text-neutral-400">
-                <span className="flex items-center gap-1.5 uppercase tracking-wider">
-                  <TerminalIcon size={12} />
-                  <span>Comando de Instalación</span>
-                </span>
-                <button
-                  onClick={copyToClipboard}
-                  className="flex items-center gap-1 text-emerald-400 hover:underline cursor-pointer"
-                >
-                  {copied ? <Check size={12} /> : <Copy size={12} />}
-                  <span>{copied ? '¡Copiado!' : 'Copiar'}</span>
-                </button>
+              {/* Installation Command */}
+              <div className="flex flex-col gap-1.5">
+                <div className="flex items-center justify-between text-xs font-mono text-neutral-400">
+                  <span className="flex items-center gap-1.5 uppercase tracking-wider text-[11px]">
+                    <TerminalIcon size={12} />
+                    <span>Comando de Instalación</span>
+                  </span>
+                  <button
+                    onClick={copyToClipboard}
+                    className="flex items-center gap-1 text-emerald-400 hover:underline cursor-pointer text-[11px]"
+                  >
+                    {copied ? <Check size={12} /> : <Copy size={12} />}
+                    <span>{copied ? '¡Copiado!' : 'Copiar'}</span>
+                  </button>
+                </div>
+                <div className="p-3 rounded-xl border border-neutral-800 bg-black font-mono text-xs text-neutral-300">
+                  <span className="text-emerald-400/90 select-all">{installCommand}</span>
+                </div>
               </div>
-              <div className="p-3.5 rounded-xl border border-neutral-800 bg-black font-mono text-xs sm:text-sm text-neutral-300">
-                <span className="text-emerald-400/90 select-all">{installCommand}</span>
+
+              {/* Summary */}
+              <div className="flex flex-col gap-1.5">
+                <h4 className="text-[11px] font-mono text-neutral-400 uppercase tracking-wider">Propósito en el Ecosistema</h4>
+                <p className="text-xs sm:text-sm text-neutral-300 leading-relaxed font-light">
+                  {tool.summary}
+                </p>
               </div>
             </div>
 
-            {/* Summary */}
-            <div className="flex flex-col gap-2">
-              <h4 className="text-xs font-mono text-neutral-400 uppercase tracking-wider">Propósito en el Ecosistema</h4>
-              <p className="text-sm text-neutral-300 leading-relaxed font-light">
-                {tool.summary}
-              </p>
-            </div>
+            {/* Right Column: Deep-Dives & Blogs + Official Release CTA */}
+            <div className="lg:col-span-5 flex flex-col gap-4 h-full justify-between">
+              {/* Related Articles & Deep-Dives Cross-link */}
+              <div className="p-4 rounded-2xl border border-neutral-800/80 bg-neutral-900/40 flex flex-col gap-2.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-mono text-neutral-200 uppercase tracking-wider flex items-center gap-1.5 font-semibold">
+                    <BookOpen size={13} className="text-emerald-400" />
+                    <span>Deep-Dives & Blogs</span>
+                  </span>
+                  <a 
+                    href="#articulos" 
+                    onClick={onClose}
+                    className="text-[11px] font-mono text-emerald-400 hover:underline flex items-center gap-1"
+                  >
+                    <span>Ver artículos</span>
+                    <span>→</span>
+                  </a>
+                </div>
+                <p className="text-xs text-neutral-400 font-light leading-relaxed">
+                  Revisa los análisis de arquitectura y resúmenes validados por IA sobre {tool.name} en la sección de artículos.
+                </p>
+              </div>
 
-            {/* Related Articles & Deep-Dives Cross-link */}
-            <div className="p-4 rounded-2xl border border-neutral-800/80 bg-neutral-900/40 flex flex-col gap-2.5">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-mono text-neutral-300 uppercase tracking-wider flex items-center gap-1.5 font-semibold">
-                  <BookOpen size={13} className="text-emerald-400" />
-                  <span>Deep-Dives & Blogs Técnicos</span>
-                </span>
-                <a 
-                  href="#articulos" 
-                  onClick={onClose}
-                  className="text-[11px] font-mono text-emerald-400 hover:underline flex items-center gap-1"
+              {/* CTA Button */}
+              <div className="pt-2">
+                <a
+                  href={tool.sourceUrl || '#'}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full flex items-center justify-center gap-2 bg-white text-black hover:bg-neutral-200 font-semibold py-3.5 px-5 rounded-xl text-xs sm:text-sm transition-all shadow-lg active:scale-95 cursor-pointer"
                 >
-                  <span>Explorar artículos</span>
-                  <span>→</span>
+                  <span>Ver Release Oficial en GitHub</span>
+                  <ExternalLink size={14} />
                 </a>
               </div>
-              <p className="text-xs text-neutral-400 font-light leading-relaxed">
-                Revisa los análisis de arquitectura y resúmenes validados por IA sobre {tool.name} en la sección de artículos.
-              </p>
-            </div>
-
-            {/* CTA */}
-            <div className="pt-4 border-t border-neutral-900 flex flex-col sm:flex-row gap-3 justify-end">
-              <a
-                href={tool.sourceUrl || '#'}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="w-full sm:w-auto flex items-center justify-center gap-2 bg-white text-black hover:bg-neutral-200 font-semibold py-3.5 px-6 rounded-xl text-sm transition-all shadow-lg active:scale-95 cursor-pointer"
-              >
-                <span>Ver Release Oficial en GitHub</span>
-                <ExternalLink size={15} />
-              </a>
             </div>
           </motion.div>
         </div>
