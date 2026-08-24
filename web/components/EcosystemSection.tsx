@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo, useEffect, useRef } from 'react';
-import { motion, AnimatePresence, useScroll, useTransform, MotionValue } from 'framer-motion';
+import { motion, AnimatePresence, useScroll, useTransform, useMotionValue, useMotionTemplate, MotionValue } from 'framer-motion';
 import { 
   ArrowUpRight, 
   Command, 
@@ -11,7 +11,6 @@ import {
   Search, 
   ShieldCheck, 
   Sparkles, 
-  Workflow, 
   Server, 
   Code2, 
   Zap, 
@@ -25,38 +24,6 @@ import {
   Terminal as TerminalIcon
 } from 'lucide-react';
 import { ChangelogEntry } from '@/lib/db';
-
-// Modal animation variants — deterministic, never race-conditions
-const backdropVariants = {
-  hidden: { opacity: 0 },
-  visible: { opacity: 1, transition: { duration: 0.2 } },
-  exit: { opacity: 0, transition: { duration: 0.18, delay: 0.05 } },
-};
-
-const modalVariants = {
-  hidden: { opacity: 0, y: 32, scale: 0.97 },
-  visible: {
-    opacity: 1, y: 0, scale: 1,
-    transition: { type: 'spring' as const, stiffness: 380, damping: 32, mass: 0.7 },
-  },
-  exit: {
-    opacity: 0, y: 24, scale: 0.97,
-    transition: { duration: 0.18, ease: [0.4, 0, 1, 1] as const },
-  },
-};
-
-// Mobile bottom-sheet variant
-const sheetVariants = {
-  hidden: { opacity: 0, y: '100%' },
-  visible: {
-    opacity: 1, y: 0,
-    transition: { type: 'spring' as const, stiffness: 380, damping: 36, mass: 0.8 },
-  },
-  exit: {
-    opacity: 0, y: '100%',
-    transition: { duration: 0.2, ease: [0.4, 0, 1, 1] as const },
-  },
-};
 
 // Tool summaries based on official capabilities
 const TOOL_SUMMARIES: Record<string, string> = {
@@ -224,7 +191,15 @@ function EcosystemTitle({ text }: { text: string }) {
   );
 }
 
-// Fullscreen & Mobile-Optimized Modal — deterministic, zero layoutId
+// Apple-calibrated spring physics for instant, zero-lag shared layout morphing
+const springTransition = {
+  type: 'spring' as const,
+  stiffness: 380,
+  damping: 32,
+  mass: 0.6,
+};
+
+// Fullscreen & Mobile-Optimized Morphing Modal with Hardware Polish & Ultra-Smooth Exit
 function ExpandedToolModal({ 
   tool, 
   onClose 
@@ -237,20 +212,22 @@ function ExpandedToolModal({
   const Icon = getToolIcon(tool.slug, tool.rawCategory);
   const semver = getSemverBadge(tool.version);
 
-  // Detect mobile on mount
   useEffect(() => {
     setIsMobile(window.innerWidth < 640);
   }, []);
 
   // Lock background scroll & ESC key
   useEffect(() => {
+    const originalOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
+
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
     };
     window.addEventListener('keydown', handleKeyDown);
+
     return () => {
-      document.body.style.overflow = 'unset';
+      document.body.style.overflow = originalOverflow;
       window.removeEventListener('keydown', handleKeyDown);
     };
   }, [onClose]);
@@ -263,73 +240,122 @@ function ExpandedToolModal({
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const panelVariants = isMobile ? sheetVariants : modalVariants;
-
   return (
-    <>
-      {/* Backdrop — completely separate from modal panel, no parent wrapper */}
+    <div key={`modal-overlay-${tool.slug}`} className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-6 pointer-events-none">
+      {/* Backdrop with progressive blur & synchronized deceleration exit */}
       <motion.div
-        key="backdrop"
-        variants={backdropVariants}
-        initial="hidden"
-        animate="visible"
-        exit="exit"
+        key={`backdrop-${tool.slug}`}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.22, ease: [0.32, 0.72, 0, 1] as const }}
         onClick={onClose}
-        className="fixed inset-0 z-[100] bg-black/85 backdrop-blur-md cursor-pointer"
+        className="fixed inset-0 bg-black/85 backdrop-blur-md pointer-events-auto cursor-pointer"
       />
 
-      {/* Modal Panel */}
-      <div className="fixed inset-0 z-[101] flex items-end sm:items-center justify-center p-0 sm:p-6 pointer-events-none">
-        <motion.div
-          key="modal-panel"
-          variants={panelVariants}
-          initial="hidden"
-          animate="visible"
-          exit="exit"
-          className="relative w-full max-w-2xl max-h-[90vh] sm:max-h-[85vh] bg-neutral-950 border border-neutral-800 rounded-t-3xl sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col pointer-events-auto"
-        >
-          {/* Mobile Swipe Handle */}
-          <div className="w-12 h-1.5 bg-neutral-700/80 rounded-full mx-auto mt-3 mb-1 sm:hidden shrink-0" />
+      {/* Expanded Morphing Card with Mobile Drag-to-Dismiss */}
+      <motion.div
+        layoutId={`tool-card-${tool.slug}`}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={`tool-title-${tool.slug}`}
+        style={{ willChange: 'transform' }}
+        transition={springTransition}
+        drag={isMobile ? "y" : false}
+        dragConstraints={{ top: 0, bottom: 0 }}
+        dragElastic={{ top: 0.02, bottom: 0.55 }}
+        onDragEnd={(_, info) => {
+          if (info.offset.y > 75 || info.velocity.y > 300) {
+            onClose();
+          }
+        }}
+        className="pointer-events-auto relative z-10 w-full max-w-2xl max-h-[92vh] sm:max-h-[85vh] bg-neutral-950 border border-neutral-800 rounded-t-[28px] sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col touch-pan-y"
+      >
+        {/* Mobile Swipe Handle */}
+        <div className="w-12 h-1.5 bg-neutral-700/80 rounded-full mx-auto mt-3 mb-1 sm:hidden shrink-0" />
 
-          {/* Scrollable Content */}
-          <div className="p-6 sm:p-8 overflow-y-auto flex flex-col gap-6">
-            {/* Header Row */}
-            <div className="flex items-start justify-between gap-4">
-              <div className="flex items-center gap-3.5 sm:gap-4">
-                <div className="size-12 sm:size-14 rounded-2xl border border-neutral-800 bg-neutral-900 flex items-center justify-center text-emerald-400 shadow-inner shrink-0">
-                  <Icon size={24} strokeWidth={1.75} />
-                </div>
-                <div>
-                  <h3 className="text-xl sm:text-3xl font-bold text-white tracking-tight">
-                    {tool.name}
-                  </h3>
-                  <p className="font-mono text-xs text-neutral-500 uppercase tracking-wider mt-0.5">
-                    {tool.category}
-                  </p>
-                </div>
-              </div>
-              <button
-                onClick={onClose}
-                className="size-10 sm:size-11 rounded-full border border-neutral-800 bg-neutral-900/80 hover:bg-neutral-800 active:scale-95 text-neutral-400 hover:text-white flex items-center justify-center transition-colors cursor-pointer shrink-0"
-                aria-label="Cerrar"
+        {/* Scrollable Content Container */}
+        <div className="p-6 sm:p-8 overflow-y-auto flex flex-col gap-6 scrollbar-thin scrollbar-thumb-neutral-800">
+          {/* Header Row: Morphing Icon + Title + Category + Close Button */}
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex items-center gap-3.5 sm:gap-4">
+              <motion.div 
+                layoutId={`tool-icon-${tool.slug}`}
+                transition={springTransition}
+                className="size-12 sm:size-14 rounded-2xl border border-neutral-800 bg-neutral-900 flex items-center justify-center text-emerald-400 shadow-inner shrink-0"
               >
-                <X size={18} />
-              </button>
-            </div>
-
-            {/* Version & Status Banner */}
-            <div className="p-4 rounded-2xl border border-neutral-800/80 bg-neutral-900/40 flex flex-wrap items-center justify-between gap-3">
-              <div className="flex items-center gap-3">
-                <span className="font-mono text-2xl sm:text-3xl font-light text-white">
-                  {tool.version}
-                </span>
-                <span className={`font-mono text-[10px] font-bold px-2 py-0.5 rounded border ${semver.className}`}>
-                  {semver.label}
-                </span>
+                <Icon size={24} strokeWidth={1.75} />
+              </motion.div>
+              <div>
+                <motion.h3 
+                  id={`tool-title-${tool.slug}`}
+                  layoutId={`tool-title-${tool.slug}`}
+                  transition={springTransition}
+                  className="text-xl sm:text-3xl font-bold text-white tracking-tight"
+                >
+                  {tool.name}
+                </motion.h3>
+                <motion.p 
+                  layoutId={`tool-category-${tool.slug}`}
+                  transition={springTransition}
+                  className="font-mono text-xs text-neutral-400 uppercase tracking-wider mt-0.5"
+                >
+                  {tool.category}
+                </motion.p>
               </div>
-              <span className="text-xs text-neutral-400 font-mono">{tool.date}</span>
             </div>
 
+            {/* Morphing Close Button with tactile press feedback */}
+            <motion.button
+              aria-label="Cerrar detalle"
+              layoutId={`tool-button-${tool.slug}`}
+              transition={springTransition}
+              whileHover={{ scale: 1.06 }}
+              whileTap={{ scale: 0.88, rotate: -45 }}
+              onClick={(e) => {
+                e.stopPropagation();
+                onClose();
+              }}
+              className="size-10 sm:size-11 rounded-full border border-neutral-800 bg-neutral-900/80 hover:bg-neutral-800 text-neutral-400 hover:text-white flex items-center justify-center transition-colors cursor-pointer shrink-0 focus:outline-none focus:ring-2 focus:ring-emerald-400/40"
+            >
+              <X size={18} />
+            </motion.button>
+          </div>
+
+          {/* Version & Status Banner */}
+          <div className="p-4 rounded-2xl border border-neutral-800/80 bg-neutral-900/40 flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <motion.span 
+                layoutId={`tool-version-${tool.slug}`}
+                transition={springTransition}
+                className="font-mono text-2xl sm:text-3xl font-light text-white"
+              >
+                {tool.version}
+              </motion.span>
+              <motion.span 
+                layoutId={`tool-badge-${tool.slug}`}
+                transition={springTransition}
+                className={`font-mono text-[10px] font-bold px-2 py-0.5 rounded border ${semver.className}`}
+              >
+                {semver.label}
+              </motion.span>
+            </div>
+            <span className="text-xs text-neutral-400 font-mono">{tool.date}</span>
+          </div>
+
+          {/* Expanded Detail Body: Ultra-fast implosion exit (90ms) with micro-scale to eliminate text stretch */}
+          <motion.div
+            initial={{ opacity: 0, y: 14, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ 
+              opacity: 0, 
+              scale: 0.96, 
+              y: -4, 
+              transition: { duration: 0.09, ease: [0.32, 0, 0.67, 0] as const } 
+            }}
+            transition={{ duration: 0.24, delay: 0.05, ease: [0.16, 1, 0.3, 1] as const }}
+            className="flex flex-col gap-6"
+          >
             {/* Breaking Changes */}
             {tool.hasBreaking ? (
               <div className="p-5 rounded-2xl border border-red-500/30 bg-red-950/20 flex flex-col gap-3">
@@ -400,10 +426,10 @@ function ExpandedToolModal({
                 <ExternalLink size={15} />
               </a>
             </div>
-          </div>
-        </motion.div>
-      </div>
-    </>
+          </motion.div>
+        </div>
+      </motion.div>
+    </div>
   );
 }
 
@@ -431,7 +457,7 @@ function getToolRepoSlug(slug: string): string {
   return map[slug.toLowerCase()] || `${slug}`;
 }
 
-// High-end Interactive Tool Card with Clean Morphing Transition & Hardware Polish
+// Pro-grade Interactive Tool Card — Clean 1:1 Shared Layout Morphing & GPU Glow (No CSS transform conflicts)
 function ToolCard({ 
   tool, 
   onSelect 
@@ -443,93 +469,139 @@ function ToolCard({
   const Icon = getToolIcon(tool.slug, tool.rawCategory);
   const semver = getSemverBadge(tool.version);
 
+  // High-frequency GPU mouse tracking via useMotionValue (Zero React re-renders, 120fps)
+  const mouseX = useMotionValue(0);
+  const mouseY = useMotionValue(0);
+
+  function handleMouseMove({ currentTarget, clientX, clientY }: React.MouseEvent<HTMLDivElement>) {
+    const { left, top } = currentTarget.getBoundingClientRect();
+    mouseX.set(clientX - left);
+    mouseY.set(clientY - top);
+  }
+
+  // Spotlight radial gradient (subtle metallic white/emerald reflection)
+  const borderSpotlight = useMotionTemplate`radial-gradient(260px circle at ${mouseX}px ${mouseY}px, rgba(52, 211, 153, 0.12), transparent 80%)`;
+
   return (
-    <article
+    <motion.article
+      layoutId={`tool-card-${tool.slug}`}
+      transition={springTransition}
+      style={{ willChange: 'transform' }}
+      onMouseMove={handleMouseMove}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       onClick={() => onSelect(tool)}
-      className={`group relative overflow-hidden rounded-2xl bg-gradient-to-b from-neutral-900/40 via-neutral-950/80 to-neutral-950/95 p-6 backdrop-blur-sm transition-all duration-200 hover:-translate-y-1 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.07)] flex flex-col justify-between cursor-pointer border active:scale-[0.985] ${
-        tool.hasBreaking 
-          ? 'border-neutral-800/80 border-l-2 border-l-red-500/80 hover:border-neutral-700 hover:border-l-red-400 hover:shadow-[0_8px_30px_rgba(239,68,68,0.08)]' 
-          : 'border-neutral-800/80 hover:border-neutral-600 hover:shadow-[0_8px_30px_rgba(255,255,255,0.04)]'
-      }`}
+      className="group relative overflow-hidden rounded-2xl bg-neutral-950/90 border border-neutral-800/80 hover:border-neutral-700 p-6 flex flex-col justify-between cursor-pointer shadow-[inset_0_1px_0_0_rgba(255,255,255,0.04)]"
     >
-      <div className="relative z-10 flex flex-col h-full">
-        {/* Card Header: Icon + Name + Category + Interactive Plus Action */}
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex items-center gap-3.5">
-            <div className="flex size-11 shrink-0 items-center justify-center rounded-xl border border-neutral-800/90 bg-neutral-900/90 text-neutral-300 group-hover:text-emerald-400 group-hover:border-neutral-700 transition-colors shadow-inner">
-              <Icon size={20} strokeWidth={1.75} />
-            </div>
-            <div>
-              <h3 className="font-semibold text-base tracking-tight text-neutral-100 group-hover:text-white transition-colors">
-                {tool.name}
-              </h3>
-              <p className="mt-0.5 font-mono text-[11px] text-neutral-500 tracking-wide uppercase">
-                {tool.category}
-              </p>
-            </div>
-          </div>
-          
-          {/* Action Plus Button that animates on hover */}
-          <div className="size-8 rounded-full border border-neutral-800 bg-neutral-900/60 group-hover:bg-neutral-800 group-hover:border-neutral-700 flex items-center justify-center text-neutral-400 group-hover:text-white transition-all duration-300">
-            <Plus 
-              size={15} 
-              className={`transition-transform duration-300 ${isHovered ? 'rotate-90 text-emerald-400' : ''}`} 
-            />
-          </div>
-        </div>
+      {/* Subtle GPU Spotlight Glow Overlay */}
+      <motion.div
+        className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none z-0"
+        style={{
+          background: borderSpotlight,
+        }}
+      />
 
-        {/* Unified Telemetry Row: Version + SemVer Tag + Date (No dividing lines) */}
-        <div className="mt-6 flex items-baseline justify-between">
-          <div className="flex items-baseline gap-2.5">
-            <span className="font-mono text-2xl md:text-3xl font-light tracking-tight text-white group-hover:text-neutral-100 transition-colors">
-              {tool.version}
-            </span>
-            <span className={`font-mono text-[9px] font-semibold px-1.5 py-0.5 rounded border ${semver.className}`}>
-              {semver.label}
+      <div className="relative z-10 flex flex-col h-full justify-between">
+        <div>
+          {/* Header: Icon with micro-elevation + Title + Category + Plus action */}
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-center gap-3.5">
+              <motion.div 
+                layoutId={`tool-icon-${tool.slug}`}
+                transition={springTransition}
+                className="flex size-11 shrink-0 items-center justify-center rounded-xl border border-neutral-800/90 bg-neutral-900/90 text-neutral-300 group-hover:text-emerald-400 group-hover:border-neutral-700/80 group-hover:-translate-y-0.5 transition-all duration-200 shadow-inner"
+              >
+                <Icon size={20} strokeWidth={1.5} />
+              </motion.div>
+              <div>
+                <motion.h3 
+                  layoutId={`tool-title-${tool.slug}`}
+                  transition={springTransition}
+                  className="font-semibold text-base tracking-tight text-neutral-200 group-hover:text-white transition-colors duration-150"
+                >
+                  {tool.name}
+                </motion.h3>
+                <motion.p 
+                  layoutId={`tool-category-${tool.slug}`}
+                  transition={springTransition}
+                  className="mt-0.5 font-mono text-[11px] text-neutral-500 group-hover:text-neutral-400 tracking-wider uppercase transition-colors duration-150"
+                >
+                  {tool.category}
+                </motion.p>
+              </div>
+            </div>
+            
+            {/* Plus Button with elastic hover response */}
+            <motion.div 
+              layoutId={`tool-button-${tool.slug}`}
+              transition={springTransition}
+              whileHover={{ scale: 1.12 }}
+              whileTap={{ scale: 0.9 }}
+              className="size-7 rounded-lg border border-neutral-800/80 bg-neutral-900/50 group-hover:bg-neutral-800 group-hover:border-neutral-700 flex items-center justify-center text-neutral-400 group-hover:text-white transition-colors duration-150"
+            >
+              <Plus 
+                size={13} 
+                className={`transition-transform duration-200 ${isHovered ? 'rotate-90 text-neutral-200' : ''}`} 
+              />
+            </motion.div>
+          </div>
+
+          {/* Telemetry Row: Version + SemVer Tag + Date */}
+          <div className="mt-6 flex items-baseline justify-between">
+            <div className="flex items-baseline gap-2.5">
+              <motion.span 
+                layoutId={`tool-version-${tool.slug}`}
+                transition={springTransition}
+                className="font-mono text-2xl md:text-3xl font-light tracking-tight text-neutral-100 group-hover:text-white transition-colors duration-150"
+              >
+                {tool.version}
+              </motion.span>
+              <motion.span 
+                layoutId={`tool-badge-${tool.slug}`}
+                transition={springTransition}
+                className={`font-mono text-[9px] font-semibold px-1.5 py-0.5 rounded border ${semver.className}`}
+              >
+                {semver.label}
+              </motion.span>
+            </div>
+            <span className="text-xs font-light text-neutral-500 font-mono">
+              {tool.date}
             </span>
           </div>
-          <span className="text-xs font-light text-neutral-500 font-mono">
-            {tool.date}
-          </span>
-        </div>
 
-        {/* Status Alert Badge */}
-        <div className="mt-3.5">
-          {tool.hasBreaking ? (
-            <span className="inline-flex items-center gap-2 rounded-full border border-red-500/30 bg-red-950/40 px-2.5 py-1 font-mono text-[10px] text-red-300 shadow-[0_0_15px_rgba(239,68,68,0.15)]">
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+          {/* Status Alert Badge */}
+          <div className="mt-3.5">
+            {tool.hasBreaking ? (
+              <span className="inline-flex items-center gap-1.5 rounded-md border border-rose-500/20 bg-rose-950/20 px-2 py-0.5 font-mono text-[10px] text-rose-300">
+                <span className="size-1.5 rounded-full bg-rose-400" />
+                Breaking Changes
               </span>
-              Breaking Changes Detectados
-            </span>
-          ) : (
-            <span className="inline-flex items-center gap-2 rounded-full border border-neutral-800/90 bg-neutral-900/60 px-2.5 py-1 font-mono text-[10px] text-neutral-400">
-              <span className="size-1.5 rounded-full bg-emerald-400/90 shadow-[0_0_6px_rgba(52,211,153,0.7)]" />
-              Release Estable
-            </span>
-          )}
+            ) : (
+              <span className="inline-flex items-center gap-1.5 rounded-md border border-neutral-800/80 bg-neutral-900/40 px-2 py-0.5 font-mono text-[10px] text-neutral-400">
+                <span className="size-1.5 rounded-full bg-emerald-400/80" />
+                Release Estable
+              </span>
+            )}
+          </div>
+
+          {/* Summary Description */}
+          <p className="mt-4 text-sm leading-relaxed text-neutral-400 font-light line-clamp-2">
+            {tool.summary}
+          </p>
         </div>
 
-        {/* Clean Summary Description */}
-        <p className="mt-4 text-sm leading-relaxed text-neutral-400 font-light line-clamp-2">
-          {tool.summary}
-        </p>
-
-        {/* Technical High-Value Footer: Official Repo Slug + Expand Action */}
+        {/* Technical Footer: Slug + Subtle Micro-arrow Animation */}
         <div className="mt-6 pt-4 border-t border-neutral-900/90 flex items-center justify-between">
-          <span className="font-mono text-xs text-neutral-600 group-hover:text-neutral-400 transition-colors">
+          <span className="font-mono text-xs text-neutral-600 group-hover:text-neutral-300 transition-colors duration-150">
             {getToolRepoSlug(tool.slug)}
           </span>
-          <span className="inline-flex items-center gap-1.5 text-xs font-mono font-medium text-neutral-300 group-hover:text-white transition-colors">
-            <span>Expandir</span>
-            <ArrowUpRight size={13} className="transition-transform duration-200 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:text-emerald-400" />
+          <span className="inline-flex items-center gap-1 text-xs font-mono text-neutral-400 group-hover:text-white transition-colors duration-150">
+            <span>Detalles</span>
+            <ArrowUpRight size={13} className="transition-transform duration-150 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:text-emerald-400" />
           </span>
         </div>
       </div>
-    </article>
+    </motion.article>
   );
 }
 

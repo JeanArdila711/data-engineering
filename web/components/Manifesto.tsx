@@ -44,7 +44,7 @@ export default function Manifesto() {
   }, [titleText]);
 
   return (
-    <section className="w-full max-w-5xl mx-auto px-6 py-16 md:py-32 relative flex flex-col gap-12 md:gap-16">
+    <section id="manifiesto" className="w-full max-w-5xl mx-auto px-6 py-16 md:py-32 relative flex flex-col gap-12 md:gap-16">
       
       {/* Scroll Reveal Title (Letter by Letter) */}
       <div className="w-full" ref={titleRef}>

@@ -3,6 +3,7 @@ import Hero from '@/components/Hero'
 import Manifesto from '@/components/Manifesto'
 import EcosystemSection from '@/components/EcosystemSection'
 import ParticlesBackground from '@/components/ParticlesBackground'
+import Navbar from '@/components/layout/Navbar'
 
 export default async function Home() {
   let entries: ChangelogEntry[] = []
@@ -14,6 +15,9 @@ export default async function Home() {
 
   return (
     <main className="w-full flex flex-col items-center min-h-screen bg-black text-white relative">
+      {/* Dynamic Unified Navbar (Desktop Magnetic Pill + Mobile Auto-hide Overlay) */}
+      <Navbar />
+
       {/* Global Interactive Data Cosmos Background */}
       <ParticlesBackground />
 
