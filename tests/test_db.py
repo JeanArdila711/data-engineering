@@ -4,11 +4,20 @@ from pathlib import Path
 from pipeline.changes import ExtractedChange
 from pipeline.config import Catalog, Tool
 from pipeline.db import apply_migrations, quarantine, save_raw_fetch, sync_catalog, sync_sources, upsert_releases
+from pipeline.dedup import content_fingerprint, normalize_url
+from pipeline.db import (
+    find_duplicate_article,
+    sync_feed_sources,
+    upsert_article,
+    upsert_mentions,
+)
 from pipeline.sources.github import ReleaseRecord
+from pipeline.sources.rss import ArticleRecord
 
 T0 = datetime(2026, 1, 1, tzinfo=timezone.utc)
 T1 = datetime(2026, 2, 1, tzinfo=timezone.utc)
 DS = date(2026, 8, 4)
+T_ARTICLE = datetime(2026, 8, 1, tzinfo=timezone.utc)
 
 
 def _tables(conn) -> set[str]:
@@ -226,3 +235,95 @@ def test_quarantine_records_error_with_payload(db_conn):
         row = cur.fetchone()
 
     assert row == ("duckdb:github_releases", "parse", "esquema inesperado", "{}")
+
+
+def _catalog_with_feed() -> Catalog:
+    return Catalog(
+        tools=[
+            Tool(
+                slug="duckdb", name="DuckDB", category="query-engine",
+                feeds=[{"kind": "rss", "url": "https://duckdb.org/feed.xml"}],
+            )
+        ]
+    )
+
+
+def _article_record(url: str = "https://duckdb.org/a", text: str = "contenido") -> ArticleRecord:
+    return ArticleRecord(url=url, title="T", author=None, published_at=T_ARTICLE, summary_text=text)
+
+
+def test_sync_feed_sources_registers_one_row_per_feed(db_conn):
+    refs = sync_feed_sources(db_conn, _catalog_with_feed())
+    assert refs == [("duckdb", refs[0][1], "https://duckdb.org/feed.xml")]
+
+
+def test_sync_feed_sources_is_idempotent(db_conn):
+    first = sync_feed_sources(db_conn, _catalog_with_feed())
+    second = sync_feed_sources(db_conn, _catalog_with_feed())
+    assert first == second
+
+
+def _feed_source_id(conn) -> int:
+    return sync_feed_sources(conn, _catalog_with_feed())[0][1]
+
+
+def test_upsert_article_inserts_new(db_conn):
+    source_id = _feed_source_id(db_conn)
+    record = _article_record()
+
+    article_id = upsert_article(
+        db_conn, source_id, record, normalize_url(record.url), content_fingerprint(record.summary_text), 0.5
+    )
+
+    assert article_id is not None
+    with db_conn.cursor() as cur:
+        cur.execute("SELECT count(*) FROM articles")
+        assert cur.fetchone()[0] == 1
+
+
+def test_upsert_article_skips_duplicate_url(db_conn):
+    source_id = _feed_source_id(db_conn)
+    record = _article_record()
+    url_norm = normalize_url(record.url)
+    fp = content_fingerprint(record.summary_text)
+
+    first = upsert_article(db_conn, source_id, record, url_norm, fp, 0.5)
+    second = upsert_article(db_conn, source_id, record, url_norm, fp, 0.5)
+
+    assert first is not None
+    assert second is None
+
+
+def test_upsert_mentions_links_tools_to_article(db_conn):
+    source_id = _feed_source_id(db_conn)
+    article_id = upsert_article(
+        db_conn, source_id, _article_record(), normalize_url("https://duckdb.org/a"), "hash", 0.5
+    )
+
+    upsert_mentions(db_conn, article_id, {"duckdb", "polars"})
+
+    with db_conn.cursor() as cur:
+        cur.execute("SELECT tool_slug FROM fct_article_mention WHERE article_id = %s ORDER BY tool_slug", (article_id,))
+        assert [row[0] for row in cur.fetchall()] == ["duckdb", "polars"]
+
+
+def test_find_duplicate_article_matches_by_content_hash(db_conn):
+    source_id = _feed_source_id(db_conn)
+    fp = content_fingerprint("mismo contenido, otra url")
+    upsert_article(db_conn, source_id, _article_record("https://a.com/1"), "https://a.com/1", fp, 0.5)
+
+    duplicate = find_duplicate_article(db_conn, "https://b.com/2", fp)
+
+    assert duplicate is not None
+
+
+def test_find_duplicate_article_returns_none_for_distinct_content(db_conn):
+    source_id = _feed_source_id(db_conn)
+    upsert_article(
+        db_conn, source_id, _article_record("https://a.com/1"), "https://a.com/1",
+        content_fingerprint("texto A"), 0.5,
+    )
+
+    duplicate = find_duplicate_article(db_conn, "https://b.com/2", content_fingerprint("texto B, sin relación"))
+
+    assert duplicate is None

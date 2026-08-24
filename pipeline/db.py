@@ -144,6 +144,79 @@ def upsert_releases(conn: psycopg.Connection, records: list[ReleaseRecord]) -> i
     return inserted
 
 
+def sync_feed_sources(conn: psycopg.Connection, catalog: Catalog) -> list[tuple[str, int, str]]:
+    """Registra una fuente 'rss' por feed declarado. Un tool puede tener varios feeds."""
+    refs: list[tuple[str, int, str]] = []
+    with conn.cursor() as cur:
+        for tool in catalog.tools:
+            for feed in tool.feeds:
+                cur.execute(
+                    "INSERT INTO sources (tool_slug, kind, url) VALUES (%s, %s, %s) "
+                    "ON CONFLICT (tool_slug, kind, url) DO UPDATE SET url = EXCLUDED.url "
+                    "RETURNING id",
+                    (tool.slug, feed.kind, feed.url),
+                )
+                refs.append((tool.slug, cur.fetchone()[0], feed.url))
+    return refs
+
+
+def find_duplicate_article(
+    conn: psycopg.Connection,
+    url_normalized: str,
+    content_hash: str,
+    similarity_threshold: float = 0.85,
+) -> int | None:
+    """Busca una republicación literal: mismo hash exacto, o texto casi-idéntico por trigramas."""
+    with conn.cursor() as cur:
+        cur.execute("SELECT id FROM articles WHERE content_hash = %s LIMIT 1", (content_hash,))
+        row = cur.fetchone()
+        if row:
+            return row[0]
+
+        cur.execute(
+            "SELECT id FROM articles WHERE similarity(url_normalized, %s) > %s "
+            "ORDER BY similarity(url_normalized, %s) DESC LIMIT 1",
+            (url_normalized, similarity_threshold, url_normalized),
+        )
+        row = cur.fetchone()
+        return row[0] if row else None
+
+
+def upsert_article(
+    conn: psycopg.Connection,
+    feed_source_id: int,
+    record,
+    url_normalized: str,
+    content_hash: str,
+    score: float,
+) -> int | None:
+    """Inserta un artículo nuevo por url_normalized. Devuelve None si ya existía."""
+    with conn.cursor() as cur:
+        cur.execute(
+            "INSERT INTO articles "
+            "(feed_source_id, url, url_normalized, title, author, published_at, summary_text, "
+            "content_hash, relevance_score) "
+            "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s) "
+            "ON CONFLICT (url_normalized) DO NOTHING RETURNING id",
+            (
+                feed_source_id, record.url, url_normalized, record.title, record.author,
+                record.published_at, record.summary_text, content_hash, score,
+            ),
+        )
+        row = cur.fetchone()
+        return row[0] if row else None
+
+
+def upsert_mentions(conn: psycopg.Connection, article_id: int, tool_slugs: set[str]) -> None:
+    with conn.cursor() as cur:
+        for slug in tool_slugs:
+            cur.execute(
+                "INSERT INTO fct_article_mention (article_id, tool_slug) VALUES (%s, %s) "
+                "ON CONFLICT (article_id, tool_slug) DO NOTHING",
+                (article_id, slug),
+            )
+
+
 def quarantine(
     conn: psycopg.Connection,
     source_ref: str,
