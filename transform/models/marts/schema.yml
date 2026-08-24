@@ -22,3 +22,14 @@ models:
         tests: [not_null]
       - name: tool_names
         tests: [not_null]
+
+  - name: mart_ecosystem
+    columns:
+      - name: tool_slug
+        tests: [unique, not_null]
+      - name: tool_name
+        tests: [not_null]
+      - name: release_count
+        tests: [not_null]
+      - name: article_count
+        tests: [not_null]
