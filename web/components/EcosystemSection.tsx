@@ -21,8 +21,10 @@ import {
   Plus,
   Copy,
   Check,
+  BookOpen,
   Terminal as TerminalIcon
 } from 'lucide-react';
+import { useToast } from '@/components/ui/toast';
 import { ChangelogEntry } from '@/lib/db';
 
 // Tool summaries based on official capabilities
@@ -232,11 +234,13 @@ function ExpandedToolModal({
     };
   }, [onClose]);
 
+  const { showToast } = useToast();
   const installCommand = `uv add ${tool.slug}==${tool.version.replace(/^v/, '')}`;
 
   const copyToClipboard = () => {
     navigator.clipboard.writeText(installCommand);
     setCopied(true);
+    showToast('Comando copiado al portapapeles', installCommand);
     setTimeout(() => setCopied(false), 2000);
   };
 
@@ -411,6 +415,27 @@ function ExpandedToolModal({
               <h4 className="text-xs font-mono text-neutral-400 uppercase tracking-wider">Propósito en el Ecosistema</h4>
               <p className="text-sm text-neutral-300 leading-relaxed font-light">
                 {tool.summary}
+              </p>
+            </div>
+
+            {/* Related Articles & Deep-Dives Cross-link */}
+            <div className="p-4 rounded-2xl border border-neutral-800/80 bg-neutral-900/40 flex flex-col gap-2.5">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-mono text-neutral-300 uppercase tracking-wider flex items-center gap-1.5 font-semibold">
+                  <BookOpen size={13} className="text-emerald-400" />
+                  <span>Deep-Dives & Blogs Técnicos</span>
+                </span>
+                <a 
+                  href="#articulos" 
+                  onClick={onClose}
+                  className="text-[11px] font-mono text-emerald-400 hover:underline flex items-center gap-1"
+                >
+                  <span>Explorar artículos</span>
+                  <span>→</span>
+                </a>
+              </div>
+              <p className="text-xs text-neutral-400 font-light leading-relaxed">
+                Revisa los análisis de arquitectura y resúmenes validados por IA sobre {tool.name} en la sección de artículos.
               </p>
             </div>
 

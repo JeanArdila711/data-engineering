@@ -5,6 +5,7 @@ import EcosystemSection from '@/components/EcosystemSection'
 import ArticlesSection from '@/components/ArticlesSection'
 import ParticlesBackground from '@/components/ParticlesBackground'
 import Navbar from '@/components/layout/Navbar'
+import Footer from '@/components/layout/Footer'
 
 export default async function Home() {
   let entries: ChangelogEntry[] = []
@@ -40,6 +41,9 @@ export default async function Home() {
 
       {/* 4. Curated Technical Articles & Anchored Summaries (Fase 2) */}
       <ArticlesSection articles={articles} />
+
+      {/* 5. Engineering Telemetry Footer & Systems Status */}
+      <Footer />
     </main>
   )
 }
