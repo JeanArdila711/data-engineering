@@ -325,7 +325,7 @@ const springTransition = {
   mass: 0.6,
 };
 
-// Fullscreen & Mobile-Optimized Morphing Modal with Hardware Polish & Ultra-Smooth Exit
+// Fullscreen & Mobile-Optimized Morphing Modal with Directional Silky Navigation
 function ExpandedToolModal({ 
   tool, 
   toolsList = [],
@@ -339,6 +339,7 @@ function ExpandedToolModal({
 }) {
   const [copied, setCopied] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [direction, setDirection] = useState<1 | -1>(1);
   const [pkgManager, setPkgManager] = useState<'uv' | 'pip' | 'poetry'>('uv');
   const Icon = getToolIcon(tool.slug, tool.rawCategory);
   const semver = getSemverBadge(tool.version);
@@ -348,12 +349,14 @@ function ExpandedToolModal({
 
   const goToPrev = () => {
     if (!onSelectTool || totalCount === 0) return;
+    setDirection(-1);
     const prevIndex = currentIndex > 0 ? currentIndex - 1 : totalCount - 1;
     onSelectTool(toolsList[prevIndex]);
   };
 
   const goToNext = () => {
     if (!onSelectTool || totalCount === 0) return;
+    setDirection(1);
     const nextIndex = currentIndex < totalCount - 1 ? currentIndex + 1 : 0;
     onSelectTool(toolsList[nextIndex]);
   };
@@ -451,26 +454,28 @@ function ExpandedToolModal({
   const relatedArticle = TOOL_ARTICLES[tool.slug] || TOOL_ARTICLES[tool.slug.replace(/^apache-/, '')];
 
   return (
-    <div key={`modal-overlay-${tool.slug}`} className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-6 pointer-events-none">
-      {/* Backdrop with progressive blur & synchronized deceleration exit */}
+    <div key="active-tool-modal-overlay" className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-6 pointer-events-none">
+      {/* Backdrop with progressive blur */}
       <motion.div
-        key={`backdrop-${tool.slug}`}
+        key="active-tool-modal-backdrop"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        transition={{ duration: 0.22, ease: [0.32, 0.72, 0, 1] as const }}
+        transition={{ duration: 0.2, ease: [0.32, 0.72, 0, 1] }}
         onClick={onClose}
         className="fixed inset-0 bg-black/85 backdrop-blur-md pointer-events-auto cursor-pointer"
       />
 
-      {/* Expanded Morphing Card with Mobile Drag-to-Dismiss & Volumetric State Glow */}
+      {/* Rock-Solid Modal Window Frame with Directional Content Crossfade */}
       <motion.div
-        layoutId={`tool-card-${tool.slug}`}
+        key="active-tool-modal-dialog"
+        initial={{ opacity: 0, scale: 0.96, y: 16 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.96, y: 8, transition: { duration: 0.14 } }}
+        transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
         role="dialog"
         aria-modal="true"
-        aria-labelledby={`tool-title-${tool.slug}`}
-        style={{ willChange: 'transform' }}
-        transition={springTransition}
+        aria-labelledby="tool-title-heading"
         drag={isMobile ? "y" : false}
         dragConstraints={{ top: 0, bottom: 0 }}
         dragElastic={{ top: 0.02, bottom: 0.55 }}
@@ -495,32 +500,23 @@ function ExpandedToolModal({
 
         {/* Scrollable Content Container */}
         <div className="p-6 sm:p-7 lg:p-8 overflow-y-auto flex flex-col gap-4 sm:gap-5 scrollbar-thin scrollbar-thumb-neutral-800 relative z-10">
-          {/* Header Row: Morphing Icon + Title + Navigation [← 1/10 →] + Close Button */}
+          
+          {/* Header Row: Icon + Title + Navigation + Close Button */}
           <div className="flex items-start justify-between gap-4">
-            <div className="flex items-center gap-3.5 sm:gap-4">
-              <motion.div 
-                layoutId={`tool-icon-${tool.slug}`}
-                transition={springTransition}
-                className="size-12 sm:size-14 rounded-2xl border border-neutral-800 bg-neutral-900 flex items-center justify-center text-emerald-400 shadow-inner shrink-0"
-              >
+            <div className="flex items-center gap-3.5 sm:gap-4 min-w-0">
+              <div className="size-12 sm:size-14 rounded-2xl border border-neutral-800 bg-neutral-900 flex items-center justify-center text-emerald-400 shadow-inner shrink-0">
                 <Icon size={24} strokeWidth={1.75} />
-              </motion.div>
-              <div>
-                <motion.h3 
-                  id={`tool-title-${tool.slug}`}
-                  layoutId={`tool-title-${tool.slug}`}
-                  transition={springTransition}
-                  className="text-xl sm:text-3xl font-bold text-white tracking-tight"
+              </div>
+              <div className="min-w-0">
+                <h3 
+                  id="tool-title-heading"
+                  className="text-xl sm:text-3xl font-bold text-white tracking-tight truncate"
                 >
                   {tool.name}
-                </motion.h3>
-                <motion.p 
-                  layoutId={`tool-category-${tool.slug}`}
-                  transition={springTransition}
-                  className="font-mono text-xs text-neutral-400 uppercase tracking-wider mt-0.5"
-                >
+                </h3>
+                <p className="font-mono text-xs text-neutral-400 uppercase tracking-wider mt-0.5 truncate">
                   {tool.category}
-                </motion.p>
+                </p>
               </div>
             </div>
 
@@ -550,273 +546,275 @@ function ExpandedToolModal({
                 </div>
               )}
 
-              {/* Morphing Close Button with tactile press feedback */}
-              <motion.button
+              {/* Close Button */}
+              <button
                 aria-label="Cerrar detalle"
-                layoutId={`tool-button-${tool.slug}`}
-                transition={springTransition}
-                whileHover={{ scale: 1.06 }}
-                whileTap={{ scale: 0.88, rotate: -45 }}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onClose();
-                }}
-                className="size-10 sm:size-11 rounded-full border border-neutral-800 bg-neutral-900/80 hover:bg-neutral-800 text-neutral-400 hover:text-white flex items-center justify-center transition-colors cursor-pointer shrink-0 focus:outline-none focus:ring-2 focus:ring-emerald-400/40"
+                onClick={onClose}
+                className="size-10 sm:size-11 rounded-full border border-neutral-800 bg-neutral-900/80 hover:bg-neutral-800 text-neutral-400 hover:text-white flex items-center justify-center transition-colors cursor-pointer shrink-0 focus:outline-none focus:ring-2 focus:ring-emerald-400/40 active:scale-90"
               >
                 <X size={18} />
-              </motion.button>
-            </div>
-          </div>
-
-          {/* Version, Risk Gauge & Slack Export Banner */}
-          <div className="p-3.5 sm:p-4 rounded-2xl border border-neutral-800/80 bg-neutral-900/40 flex flex-wrap items-center justify-between gap-3">
-            <div className="flex flex-wrap items-center gap-2.5 sm:gap-3">
-              <motion.span 
-                layoutId={`tool-version-${tool.slug}`}
-                transition={springTransition}
-                className="font-mono text-2xl sm:text-3xl font-light text-white"
-              >
-                {tool.version}
-              </motion.span>
-              <motion.span 
-                layoutId={`tool-badge-${tool.slug}`}
-                transition={springTransition}
-                className={`font-mono text-[10px] font-bold px-2 py-0.5 rounded border ${semver.className}`}
-              >
-                {semver.label}
-              </motion.span>
-              <div className={`inline-flex items-center gap-1.5 font-mono text-[10px] font-semibold px-2.5 py-0.5 rounded-full border ${risk.className}`}>
-                <span className={`size-1.5 rounded-full ${risk.dotClass}`} />
-                <span>{risk.label}</span>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2.5">
-              <button
-                onClick={copySlackSnippet}
-                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-mono text-neutral-300 bg-neutral-800/80 hover:bg-neutral-700/80 border border-neutral-700/60 hover:border-neutral-600 transition-colors cursor-pointer active:scale-95"
-                title="Copiar resumen en Markdown para Slack o Teams"
-              >
-                <MessageSquare size={12} className="text-emerald-400" />
-                <span>Slack / Teams</span>
               </button>
-              <span className="text-xs text-neutral-400 font-mono">{tool.date}</span>
             </div>
           </div>
 
-          {/* Expanded Detail Body: Spacious 2-column layout on Desktop */}
-          <motion.div
-            initial={{ opacity: 0, y: 14, scale: 0.98 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ 
-              opacity: 0, 
-              scale: 0.96, 
-              y: -4, 
-              transition: { duration: 0.09, ease: [0.32, 0, 0.67, 0] as const } 
-            }}
-            transition={{ duration: 0.24, delay: 0.05, ease: [0.16, 1, 0.3, 1] as const }}
-            className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-5 items-start"
-          >
-            {/* Left Column: Breaking Changes + Command with PM switcher + Summary */}
-            <div className="lg:col-span-7 flex flex-col gap-3.5 sm:gap-4">
-              {/* Breaking Changes */}
-              {tool.hasBreaking ? (
-                <div className="p-4 rounded-2xl border border-red-500/30 bg-red-950/20 flex flex-col gap-2">
-                  <div className="flex items-center gap-2 text-red-400 font-semibold text-xs sm:text-sm">
-                    <AlertTriangle size={15} />
-                    <span>Breaking Changes Detectados ({tool.breakingChanges?.length || 1})</span>
-                  </div>
-                  <ul className="space-y-1 text-xs text-neutral-300 leading-relaxed pl-1">
-                    {tool.breakingChanges && tool.breakingChanges.length > 0 ? (
-                      tool.breakingChanges.map((change, i) => (
-                        <li key={i} className="flex items-start gap-2">
-                          <span className="text-red-400 font-bold select-none">•</span>
-                          <span>{change}</span>
-                        </li>
-                      ))
-                    ) : (
-                      <li className="flex items-start gap-2">
-                        <span className="text-red-400 font-bold select-none">•</span>
-                        <span>Modificaciones en APIs o arquitecturas previas detectadas en el release. Se recomienda auditar el stack antes de actualizar.</span>
-                      </li>
-                    )}
-                  </ul>
-                </div>
-              ) : (
-                <div className="p-3.5 rounded-2xl border border-emerald-500/20 bg-emerald-950/20 flex items-center gap-2.5 text-emerald-400 text-xs">
-                  <span className="size-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)] shrink-0" />
-                  <span>Release estable verificado sin breaking changes reportados. Actualización recomendada.</span>
-                </div>
-              )}
-
-              {/* Installation Command with Package Manager Switcher */}
-              <div className="flex flex-col gap-1.5">
-                <div className="flex items-center justify-between text-xs font-mono text-neutral-400">
-                  <div className="flex items-center gap-2">
-                    <span className="flex items-center gap-1.5 uppercase tracking-wider text-[11px]">
-                      <TerminalIcon size={12} />
-                      <span>Comando de Instalación</span>
-                    </span>
-                  </div>
-
-                  {/* Package Manager Switcher Tabs */}
-                  <div className="flex items-center gap-1 bg-neutral-900/90 p-0.5 rounded-lg border border-neutral-800">
-                    {(['uv', 'pip', 'poetry'] as const).map((pm) => (
-                      <button
-                        key={pm}
-                        onClick={() => setPkgManager(pm)}
-                        className={`relative px-2 py-0.5 rounded-md text-[10px] font-mono transition-colors cursor-pointer ${
-                          pkgManager === pm ? 'text-white font-bold' : 'text-neutral-500 hover:text-neutral-300'
-                        }`}
-                      >
-                        {pkgManager === pm && (
-                          <motion.div
-                            layoutId={`active-pkg-pill-${tool.slug}`}
-                            className="absolute inset-0 bg-neutral-800 border border-neutral-700/60 rounded-md -z-0"
-                            transition={{ type: 'spring', stiffness: 450, damping: 30 }}
-                          />
-                        )}
-                        <span className="relative z-10">{pm}</span>
-                      </button>
-                    ))}
+          {/* Smooth Directional Crossfade Content Wrapper */}
+          <AnimatePresence mode="wait" custom={direction} initial={false}>
+            <motion.div
+              key={tool.slug}
+              custom={direction}
+              variants={{
+                enter: (dir: number) => ({
+                  opacity: 0,
+                  x: dir * 12,
+                }),
+                center: {
+                  opacity: 1,
+                  x: 0,
+                  transition: {
+                    duration: 0.16,
+                    ease: [0.25, 1, 0.5, 1],
+                  },
+                },
+                exit: (dir: number) => ({
+                  opacity: 0,
+                  x: -dir * 12,
+                  transition: {
+                    duration: 0.12,
+                    ease: [0.4, 0, 1, 1],
+                  },
+                }),
+              }}
+              initial="enter"
+              animate="center"
+              exit="exit"
+              className="flex flex-col gap-4 sm:gap-5"
+            >
+              {/* Version, Risk Gauge & Slack Export Banner */}
+              <div className="p-3.5 sm:p-4 rounded-2xl border border-neutral-800/80 bg-neutral-900/40 flex flex-wrap items-center justify-between gap-3">
+                <div className="flex flex-wrap items-center gap-2.5 sm:gap-3">
+                  <span className="font-mono text-2xl sm:text-3xl font-light text-white">
+                    {tool.version}
+                  </span>
+                  <span className={`font-mono text-[10px] font-bold px-2 py-0.5 rounded border ${semver.className}`}>
+                    {semver.label}
+                  </span>
+                  <div className={`inline-flex items-center gap-1.5 font-mono text-[10px] font-semibold px-2.5 py-0.5 rounded-full border ${risk.className}`}>
+                    <span className={`size-1.5 rounded-full ${risk.dotClass}`} />
+                    <span>{risk.label}</span>
                   </div>
                 </div>
 
-                <div className="p-3 rounded-xl border border-neutral-800 bg-black font-mono text-xs flex items-center justify-between gap-2">
-                  <span className="text-emerald-400/90 select-all truncate">{installCommand}</span>
+                <div className="flex items-center gap-2.5">
                   <button
-                    onClick={copyToClipboard}
-                    className="flex items-center gap-1 text-neutral-400 hover:text-emerald-400 transition-colors shrink-0 text-[11px] cursor-pointer"
-                    title="Copiar comando"
+                    onClick={copySlackSnippet}
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-mono text-neutral-300 bg-neutral-800/80 hover:bg-neutral-700/80 border border-neutral-700/60 hover:border-neutral-600 transition-colors cursor-pointer active:scale-95"
+                    title="Copiar resumen en Markdown para Slack o Teams"
                   >
-                    {copied ? <Check size={13} className="text-emerald-400" /> : <Copy size={13} />}
-                    <span>{copied ? '¡Copiado!' : 'Copiar'}</span>
+                    <MessageSquare size={12} className="text-emerald-400" />
+                    <span>Slack / Teams</span>
                   </button>
+                  <span className="text-xs text-neutral-400 font-mono">{tool.date}</span>
                 </div>
               </div>
 
-              {/* Summary */}
-              <div className="flex flex-col gap-1">
-                <h4 className="text-[11px] font-mono text-neutral-400 uppercase tracking-wider">Propósito en el Ecosistema</h4>
-                <p className="text-xs sm:text-sm text-neutral-300 leading-relaxed font-light">
-                  {tool.summary}
-                </p>
-              </div>
-            </div>
+              {/* 2-Column Body Layout */}
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-5 items-start">
+                {/* Left Column: Breaking Changes + Command + Summary */}
+                <div className="lg:col-span-7 flex flex-col gap-3.5 sm:gap-4">
+                  {/* Breaking Changes */}
+                  {tool.hasBreaking ? (
+                    <div className="p-4 rounded-2xl border border-red-500/30 bg-red-950/20 flex flex-col gap-2">
+                      <div className="flex items-center gap-2 text-red-400 font-semibold text-xs sm:text-sm">
+                        <AlertTriangle size={15} />
+                        <span>Breaking Changes Detectados ({tool.breakingChanges?.length || 1})</span>
+                      </div>
+                      <ul className="space-y-1 text-xs text-neutral-300 leading-relaxed pl-1">
+                        {tool.breakingChanges && tool.breakingChanges.length > 0 ? (
+                          tool.breakingChanges.map((change, i) => (
+                            <li key={i} className="flex items-start gap-2">
+                              <span className="text-red-400 font-bold select-none">•</span>
+                              <span>{change}</span>
+                            </li>
+                          ))
+                        ) : (
+                          <li className="flex items-start gap-2">
+                            <span className="text-red-400 font-bold select-none">•</span>
+                            <span>Modificaciones en APIs o arquitecturas previas detectadas en el release. Se recomienda auditar el stack antes de actualizar.</span>
+                          </li>
+                        )}
+                      </ul>
+                    </div>
+                  ) : (
+                    <div className="p-3.5 rounded-2xl border border-emerald-500/20 bg-emerald-950/20 flex items-center gap-2.5 text-emerald-400 text-xs">
+                      <span className="size-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)] shrink-0" />
+                      <span>Release estable verificado sin breaking changes reportados. Actualización recomendada.</span>
+                    </div>
+                  )}
 
-            {/* Right Column: Deep-Dives Real + Architecture Specs + Shimmer CTA */}
-            <div className="lg:col-span-5 flex flex-col gap-3.5 sm:gap-4 h-full justify-between">
-              {/* Related Real Technical Article Card */}
-              {relatedArticle ? (
-                <div className="p-3.5 sm:p-4 rounded-2xl border border-neutral-800/80 bg-neutral-900/40 flex flex-col gap-2 relative overflow-hidden group">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-mono text-neutral-300 uppercase tracking-wider flex items-center gap-1.5 font-semibold">
-                      <BookOpen size={13} className="text-emerald-400" />
-                      <span>Deep-Dive Técnico</span>
+                  {/* Installation Command with Package Manager Switcher */}
+                  <div className="flex flex-col gap-1.5">
+                    <div className="flex items-center justify-between text-xs font-mono text-neutral-400">
+                      <div className="flex items-center gap-2">
+                        <span className="flex items-center gap-1.5 uppercase tracking-wider text-[11px]">
+                          <TerminalIcon size={12} />
+                          <span>Comando de Instalación</span>
+                        </span>
+                      </div>
+
+                      {/* Package Manager Switcher Tabs */}
+                      <div className="flex items-center gap-1 bg-neutral-900/90 p-0.5 rounded-lg border border-neutral-800">
+                        {(['uv', 'pip', 'poetry'] as const).map((pm) => (
+                          <button
+                            key={pm}
+                            onClick={() => setPkgManager(pm)}
+                            className={`relative px-2 py-0.5 rounded-md text-[10px] font-mono transition-colors cursor-pointer ${
+                              pkgManager === pm ? 'text-white font-bold bg-neutral-800 border border-neutral-700/60' : 'text-neutral-500 hover:text-neutral-300'
+                            }`}
+                          >
+                            <span>{pm}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="p-3 rounded-xl border border-neutral-800 bg-black font-mono text-xs flex items-center justify-between gap-2">
+                      <span className="text-emerald-400/90 select-all truncate">{installCommand}</span>
+                      <button
+                        onClick={copyToClipboard}
+                        className="flex items-center gap-1 text-neutral-400 hover:text-emerald-400 transition-colors shrink-0 text-[11px] cursor-pointer"
+                        title="Copiar comando"
+                      >
+                        {copied ? <Check size={13} className="text-emerald-400" /> : <Copy size={13} />}
+                        <span>{copied ? '¡Copiado!' : 'Copiar'}</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Summary */}
+                  <div className="flex flex-col gap-1">
+                    <h4 className="text-[11px] font-mono text-neutral-400 uppercase tracking-wider">Propósito en el Ecosistema</h4>
+                    <p className="text-xs sm:text-sm text-neutral-300 leading-relaxed font-light">
+                      {tool.summary}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Right Column: Deep-Dives Real + Architecture Specs + Shimmer CTA */}
+                <div className="lg:col-span-5 flex flex-col gap-3.5 sm:gap-4 h-full justify-between">
+                  {/* Related Real Technical Article Card */}
+                  {relatedArticle ? (
+                    <div className="p-3.5 sm:p-4 rounded-2xl border border-neutral-800/80 bg-neutral-900/40 flex flex-col gap-2 relative overflow-hidden group">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-mono text-neutral-300 uppercase tracking-wider flex items-center gap-1.5 font-semibold">
+                          <BookOpen size={13} className="text-emerald-400" />
+                          <span>Deep-Dive Técnico</span>
+                        </span>
+                        <a 
+                          href={relatedArticle.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-[11px] font-mono text-emerald-400 hover:underline flex items-center gap-0.5"
+                        >
+                          <span>Leer</span>
+                          <ArrowUpRight size={12} />
+                        </a>
+                      </div>
+                      <a
+                        href={relatedArticle.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs sm:text-sm font-semibold text-white group-hover:text-emerald-300 transition-colors leading-snug line-clamp-2"
+                      >
+                        {relatedArticle.title}
+                      </a>
+                      <p className="text-[11px] text-neutral-400 font-light leading-relaxed line-clamp-2">
+                        {relatedArticle.summary}
+                      </p>
+                      <div className="flex items-center justify-between text-[10px] font-mono text-neutral-500 pt-1 border-t border-neutral-800/60">
+                        <span>{relatedArticle.author}</span>
+                        <a href="#articulos" onClick={onClose} className="hover:text-emerald-400 transition-colors">
+                          Ver artículos →
+                        </a>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="p-3.5 rounded-2xl border border-neutral-800/80 bg-neutral-900/40 flex flex-col gap-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-mono text-neutral-200 uppercase tracking-wider flex items-center gap-1.5 font-semibold">
+                          <BookOpen size={13} className="text-emerald-400" />
+                          <span>Deep-Dives & Blogs</span>
+                        </span>
+                        <a 
+                          href="#articulos" 
+                          onClick={onClose}
+                          className="text-[11px] font-mono text-emerald-400 hover:underline flex items-center gap-1"
+                        >
+                          <span>Ver artículos</span>
+                          <span>→</span>
+                        </a>
+                      </div>
+                      <p className="text-xs text-neutral-400 font-light leading-relaxed">
+                        Revisa los análisis de arquitectura y resúmenes validados por IA sobre {tool.name} en la sección de artículos.
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Architecture & Engineering Hardware Specs */}
+                  <div className="p-3 sm:p-3.5 rounded-2xl border border-neutral-800/80 bg-neutral-900/30 flex flex-col gap-2">
+                    <span className="text-[10px] font-mono text-neutral-400 uppercase tracking-widest font-semibold flex items-center gap-1.5">
+                      <Cpu size={12} className="text-emerald-400" />
+                      <span>Especificaciones de Ingeniería</span>
                     </span>
-                    <a 
-                      href={relatedArticle.url}
+                    <div className="grid grid-cols-2 gap-2 text-xs font-mono">
+                      <div className="flex flex-col gap-0.5">
+                        <span className="text-[10px] text-neutral-500">Repo Oficial</span>
+                        <a 
+                          href={`https://github.com/${meta.repo}`} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="text-neutral-300 hover:text-emerald-400 truncate flex items-center gap-1 transition-colors"
+                          title={meta.repo}
+                        >
+                          <span className="truncate">{meta.repo}</span>
+                          <ArrowUpRight size={10} className="shrink-0 text-neutral-500" />
+                        </a>
+                      </div>
+                      <div className="flex flex-col gap-0.5">
+                        <span className="text-[10px] text-neutral-500">Licencia</span>
+                        <span className="text-neutral-300 truncate">{meta.license}</span>
+                      </div>
+                      <div className="flex flex-col gap-0.5">
+                        <span className="text-[10px] text-neutral-500">Runtime</span>
+                        <span className="text-neutral-300 truncate">{meta.runtime}</span>
+                      </div>
+                      <div className="flex flex-col gap-0.5">
+                        <span className="text-[10px] text-neutral-500">Capa del Stack</span>
+                        <span className="text-neutral-300 truncate">{meta.layer}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* CTA Button with Metallic Shimmer & Tactile Elastic Press */}
+                  <div className="pt-1">
+                    <motion.a
+                      href={tool.sourceUrl || `https://github.com/${meta.repo}/releases`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-[11px] font-mono text-emerald-400 hover:underline flex items-center gap-0.5"
+                      whileHover={{ scale: 1.01 }}
+                      whileTap={{ scale: 0.96 }}
+                      className="group relative w-full flex items-center justify-center gap-2 bg-white text-black hover:bg-neutral-100 font-semibold py-3 px-5 rounded-xl text-xs sm:text-sm overflow-hidden shadow-lg transition-all active:scale-95 cursor-pointer"
                     >
-                      <span>Leer</span>
-                      <ArrowUpRight size={12} />
-                    </a>
-                  </div>
-                  <a
-                    href={relatedArticle.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-xs sm:text-sm font-semibold text-white group-hover:text-emerald-300 transition-colors leading-snug line-clamp-2"
-                  >
-                    {relatedArticle.title}
-                  </a>
-                  <p className="text-[11px] text-neutral-400 font-light leading-relaxed line-clamp-2">
-                    {relatedArticle.summary}
-                  </p>
-                  <div className="flex items-center justify-between text-[10px] font-mono text-neutral-500 pt-1 border-t border-neutral-800/60">
-                    <span>{relatedArticle.author}</span>
-                    <a href="#articulos" onClick={onClose} className="hover:text-emerald-400 transition-colors">
-                      Ver artículos →
-                    </a>
-                  </div>
-                </div>
-              ) : (
-                <div className="p-3.5 rounded-2xl border border-neutral-800/80 bg-neutral-900/40 flex flex-col gap-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-mono text-neutral-200 uppercase tracking-wider flex items-center gap-1.5 font-semibold">
-                      <BookOpen size={13} className="text-emerald-400" />
-                      <span>Deep-Dives & Blogs</span>
-                    </span>
-                    <a 
-                      href="#articulos" 
-                      onClick={onClose}
-                      className="text-[11px] font-mono text-emerald-400 hover:underline flex items-center gap-1"
-                    >
-                      <span>Ver artículos</span>
-                      <span>→</span>
-                    </a>
-                  </div>
-                  <p className="text-xs text-neutral-400 font-light leading-relaxed">
-                    Revisa los análisis de arquitectura y resúmenes validados por IA sobre {tool.name} en la sección de artículos.
-                  </p>
-                </div>
-              )}
-
-              {/* Architecture & Engineering Hardware Specs */}
-              <div className="p-3 sm:p-3.5 rounded-2xl border border-neutral-800/80 bg-neutral-900/30 flex flex-col gap-2">
-                <span className="text-[10px] font-mono text-neutral-400 uppercase tracking-widest font-semibold flex items-center gap-1.5">
-                  <Cpu size={12} className="text-emerald-400" />
-                  <span>Especificaciones de Ingeniería</span>
-                </span>
-                <div className="grid grid-cols-2 gap-2 text-xs font-mono">
-                  <div className="flex flex-col gap-0.5">
-                    <span className="text-[10px] text-neutral-500">Repo Oficial</span>
-                    <a 
-                      href={`https://github.com/${meta.repo}`} 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="text-neutral-300 hover:text-emerald-400 truncate flex items-center gap-1 transition-colors"
-                      title={meta.repo}
-                    >
-                      <span className="truncate">{meta.repo}</span>
-                      <ArrowUpRight size={10} className="shrink-0 text-neutral-500" />
-                    </a>
-                  </div>
-                  <div className="flex flex-col gap-0.5">
-                    <span className="text-[10px] text-neutral-500">Licencia</span>
-                    <span className="text-neutral-300 truncate">{meta.license}</span>
-                  </div>
-                  <div className="flex flex-col gap-0.5">
-                    <span className="text-[10px] text-neutral-500">Runtime</span>
-                    <span className="text-neutral-300 truncate">{meta.runtime}</span>
-                  </div>
-                  <div className="flex flex-col gap-0.5">
-                    <span className="text-[10px] text-neutral-500">Capa del Stack</span>
-                    <span className="text-neutral-300 truncate">{meta.layer}</span>
+                      {/* Shimmer linear ray */}
+                      <div className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-700 bg-gradient-to-r from-transparent via-black/10 to-transparent pointer-events-none" />
+                      <span className="relative z-10">Ver Release Oficial en GitHub</span>
+                      <ExternalLink size={14} className="relative z-10 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+                    </motion.a>
                   </div>
                 </div>
               </div>
+            </motion.div>
+          </AnimatePresence>
 
-              {/* CTA Button with Metallic Shimmer & Tactile Elastic Press */}
-              <div className="pt-1">
-                <motion.a
-                  href={tool.sourceUrl || `https://github.com/${meta.repo}/releases`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  whileHover={{ scale: 1.01 }}
-                  whileTap={{ scale: 0.96 }}
-                  className="group relative w-full flex items-center justify-center gap-2 bg-white text-black hover:bg-neutral-100 font-semibold py-3 px-5 rounded-xl text-xs sm:text-sm overflow-hidden shadow-lg transition-all active:scale-95 cursor-pointer"
-                >
-                  {/* Shimmer linear ray */}
-                  <div className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-700 bg-gradient-to-r from-transparent via-black/10 to-transparent pointer-events-none" />
-                  <span className="relative z-10">Ver Release Oficial en GitHub</span>
-                  <ExternalLink size={14} className="relative z-10 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
-                </motion.a>
-              </div>
-            </div>
-          </motion.div>
         </div>
       </motion.div>
     </div>
