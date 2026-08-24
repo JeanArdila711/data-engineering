@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { motion, useMotionValue, useMotionTemplate } from 'framer-motion';
 import { ArrowRight, Terminal as TerminalIcon } from 'lucide-react';
+import { RevealButton } from '@/components/ui/reveal-button';
 import ParticlesBackground from './ParticlesBackground';
 
 const customEase = [0.4, 0, 0.2, 1] as const;
@@ -160,18 +161,6 @@ function PipelineTerminal() {
   );
 }
 
-const letterBounceVariants = {
-  rest: { y: 0 },
-  hover: (i: number) => ({
-    y: [0, -5, 0],
-    transition: {
-      duration: 0.38,
-      delay: i * 0.018,
-      ease: [0.34, 1.56, 0.64, 1] as const,
-    },
-  }),
-};
-
 export default function Hero() {
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -229,33 +218,9 @@ export default function Hero() {
           transition={{ ease: customEase, duration: 0.8, delay: 0.3 }}
           className="w-full lg:w-auto mt-4 lg:mt-0"
         >
-          <motion.button 
-            initial="rest"
-            whileHover="hover"
-            animate="rest"
-            className="relative w-full lg:w-auto group flex items-center justify-center px-6 md:px-7 py-3 md:py-3.5 rounded-full font-semibold text-sm md:text-base active:scale-95 overflow-hidden shadow-[0_0_20px_rgba(255,255,255,0.15)] hover:shadow-[0_0_30px_rgba(255,255,255,0.2)] bg-white border border-transparent transition-all duration-500 cursor-pointer"
-          >
-            
-            {/* El agujero negro con timing balanceado y suave */}
-            <span className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[150%] aspect-square bg-neutral-950 rounded-full scale-0 group-hover:scale-100 transition-transform duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] z-0 pointer-events-none"></span>
-            
-            {/* Contenedor del texto con rebote letra por letra que vuelve a su sitio y color blanco */}
-            <span className="relative z-10 flex items-center gap-3 text-black group-hover:text-white transition-colors duration-300 pointer-events-none">
-              <span className="flex">
-                {"Explorar Stack".split("").map((char, index) => (
-                  <motion.span 
-                    key={index} 
-                    custom={index}
-                    variants={letterBounceVariants}
-                    className="inline-block"
-                  >
-                    {char === " " ? "\u00A0" : char}
-                  </motion.span>
-                ))}
-              </span>
-              <ArrowRight className="w-4 h-4 group-hover:translate-x-1.5 transition-transform duration-300" />
-            </span>
-          </motion.button>
+          <RevealButton href="#ecosystem" size="lg">
+            Explorar Stack
+          </RevealButton>
         </motion.div>
       </div>
 
