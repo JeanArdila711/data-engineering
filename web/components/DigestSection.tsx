@@ -68,15 +68,21 @@ function DigestCard({ entry }: { entry: DigestEntry }) {
           <div className="flex flex-col gap-1.5">
             <span>{entry.article_count_7d} artículo{entry.article_count_7d > 1 ? 's' : ''}</span>
             {entry.top_articles_7d.slice(0, 2).map((article) => (
-              <a
-                key={article.article_id}
-                href={article.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-neutral-500 hover:text-emerald-400 transition-colors underline decoration-neutral-700 underline-offset-2"
-              >
-                {article.title}
-              </a>
+              <div key={article.article_id} className="flex flex-col gap-0.5">
+                <a
+                  href={article.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-neutral-500 hover:text-emerald-400 transition-colors underline decoration-neutral-700 underline-offset-2"
+                >
+                  {article.title}
+                </a>
+                {(article.summary_es || article.summary_en) && (
+                  <p className="text-neutral-600 text-[11px] leading-relaxed">
+                    {article.summary_es || article.summary_en}
+                  </p>
+                )}
+              </div>
             ))}
           </div>
         </div>
