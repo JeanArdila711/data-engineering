@@ -13,3 +13,12 @@ models:
         tests: [not_null]
       - name: has_breaking
         tests: [not_null]
+
+  - name: mart_articles
+    columns:
+      - name: article_id
+        tests: [unique, not_null]
+      - name: url
+        tests: [not_null]
+      - name: tool_names
+        tests: [not_null]

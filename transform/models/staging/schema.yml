@@ -7,6 +7,9 @@ sources:
       - name: dim_tool
       - name: fct_release
       - name: release_changes
+      - name: articles
+      - name: fct_article_mention
+      - name: summaries
 
 models:
   - name: stg_tools
@@ -23,4 +26,11 @@ models:
       - name: version
         tests: [not_null]
       - name: published_at
+        tests: [not_null]
+
+  - name: stg_articles
+    columns:
+      - name: article_id
+        tests: [unique, not_null]
+      - name: relevance_score
         tests: [not_null]
