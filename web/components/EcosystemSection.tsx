@@ -486,12 +486,12 @@ function ExpandedToolModal({
         }}
         className="pointer-events-auto relative z-10 w-full max-w-2xl sm:max-w-3xl lg:max-w-4xl max-h-[92vh] sm:max-h-[90vh] bg-neutral-950 border border-neutral-800 rounded-t-[28px] sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col touch-pan-y shadow-[inset_0_1px_0_0_rgba(255,255,255,0.1)]"
       >
-        {/* Volumetric Reactive State Glow */}
+        {/* Volumetric Reactive Ambient Glow with smooth color morphing */}
         <div 
-          className={`absolute inset-0 pointer-events-none transition-colors duration-500 rounded-t-[28px] sm:rounded-3xl ${
+          className={`absolute inset-0 pointer-events-none transition-all duration-700 ease-out rounded-t-[28px] sm:rounded-3xl ${
             tool.hasBreaking 
-              ? 'bg-[radial-gradient(ellipse_75%_50%_at_0%_0%,rgba(239,68,68,0.12),transparent_70%)]' 
-              : 'bg-[radial-gradient(ellipse_75%_50%_at_0%_0%,rgba(16,185,129,0.12),transparent_70%)]'
+              ? 'bg-[radial-gradient(ellipse_75%_50%_at_0%_0%,rgba(239,68,68,0.14),transparent_70%)]' 
+              : 'bg-[radial-gradient(ellipse_75%_50%_at_0%_0%,rgba(16,185,129,0.14),transparent_70%)]'
           }`} 
         />
 
@@ -501,19 +501,29 @@ function ExpandedToolModal({
         {/* Scrollable Content Container */}
         <div className="p-6 sm:p-7 lg:p-8 overflow-y-auto flex flex-col gap-4 sm:gap-5 scrollbar-thin scrollbar-thumb-neutral-800 relative z-10">
           
-          {/* Header Row: Icon + Title + Navigation + Close Button */}
+          {/* Header Row: Icon + Title with Rolling Header + Navigation + Close Button */}
           <div className="flex items-start justify-between gap-4">
             <div className="flex items-center gap-3.5 sm:gap-4 min-w-0">
               <div className="size-12 sm:size-14 rounded-2xl border border-neutral-800 bg-neutral-900 flex items-center justify-center text-emerald-400 shadow-inner shrink-0">
                 <Icon size={24} strokeWidth={1.75} />
               </div>
               <div className="min-w-0">
-                <h3 
-                  id="tool-title-heading"
-                  className="text-xl sm:text-3xl font-bold text-white tracking-tight truncate"
-                >
-                  {tool.name}
-                </h3>
+                <div className="overflow-hidden h-8 sm:h-9 flex items-center">
+                  <AnimatePresence mode="popLayout" custom={direction} initial={false}>
+                    <motion.h3 
+                      key={`title-${tool.slug}`}
+                      custom={direction}
+                      initial={{ y: direction > 0 ? 16 : -16, opacity: 0 }}
+                      animate={{ y: 0, opacity: 1 }}
+                      exit={{ y: direction > 0 ? -16 : 16, opacity: 0 }}
+                      transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+                      id="tool-title-heading"
+                      className="text-xl sm:text-3xl font-bold text-white tracking-tight truncate inline-block"
+                    >
+                      {tool.name}
+                    </motion.h3>
+                  </AnimatePresence>
+                </div>
                 <p className="font-mono text-xs text-neutral-400 uppercase tracking-wider mt-0.5 truncate">
                   {tool.category}
                 </p>
@@ -557,30 +567,38 @@ function ExpandedToolModal({
             </div>
           </div>
 
-          {/* Smooth Directional Crossfade Content Wrapper */}
+          {/* Smooth Linear Spring Carousel Track */}
           <AnimatePresence mode="wait" custom={direction} initial={false}>
             <motion.div
               key={tool.slug}
               custom={direction}
               variants={{
                 enter: (dir: number) => ({
+                  x: dir > 0 ? 36 : -36,
                   opacity: 0,
-                  x: dir * 12,
+                  scale: 0.985,
+                  filter: 'blur(2px)',
                 }),
                 center: {
-                  opacity: 1,
                   x: 0,
+                  opacity: 1,
+                  scale: 1,
+                  filter: 'blur(0px)',
                   transition: {
-                    duration: 0.16,
-                    ease: [0.25, 1, 0.5, 1],
+                    type: 'spring',
+                    stiffness: 420,
+                    damping: 34,
+                    mass: 0.65,
                   },
                 },
                 exit: (dir: number) => ({
+                  x: dir > 0 ? -36 : 36,
                   opacity: 0,
-                  x: -dir * 12,
+                  scale: 0.985,
+                  filter: 'blur(2px)',
                   transition: {
-                    duration: 0.12,
-                    ease: [0.4, 0, 1, 1],
+                    duration: 0.13,
+                    ease: [0.36, 0, 0.66, 0] as const,
                   },
                 }),
               }}
@@ -589,18 +607,57 @@ function ExpandedToolModal({
               exit="exit"
               className="flex flex-col gap-4 sm:gap-5"
             >
-              {/* Version, Risk Gauge & Slack Export Banner */}
+              {/* Version, Rolling Odometer, Risk Gauge & Slack Export Banner */}
               <div className="p-3.5 sm:p-4 rounded-2xl border border-neutral-800/80 bg-neutral-900/40 flex flex-wrap items-center justify-between gap-3">
                 <div className="flex flex-wrap items-center gap-2.5 sm:gap-3">
-                  <span className="font-mono text-2xl sm:text-3xl font-light text-white">
-                    {tool.version}
-                  </span>
-                  <span className={`font-mono text-[10px] font-bold px-2 py-0.5 rounded border ${semver.className}`}>
-                    {semver.label}
-                  </span>
-                  <div className={`inline-flex items-center gap-1.5 font-mono text-[10px] font-semibold px-2.5 py-0.5 rounded-full border ${risk.className}`}>
-                    <span className={`size-1.5 rounded-full ${risk.dotClass}`} />
-                    <span>{risk.label}</span>
+                  {/* Rolling Version Number Odometer */}
+                  <div className="overflow-hidden h-9 flex items-center">
+                    <AnimatePresence mode="popLayout" custom={direction} initial={false}>
+                      <motion.span
+                        key={`ver-${tool.slug}-${tool.version}`}
+                        custom={direction}
+                        initial={{ y: direction > 0 ? 18 : -18, opacity: 0 }}
+                        animate={{ y: 0, opacity: 1 }}
+                        exit={{ y: direction > 0 ? -18 : 18, opacity: 0 }}
+                        transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+                        className="font-mono text-2xl sm:text-3xl font-light text-white inline-block select-all"
+                      >
+                        {tool.version}
+                      </motion.span>
+                    </AnimatePresence>
+                  </div>
+
+                  {/* Rolling SemVer Badge */}
+                  <div className="overflow-hidden inline-flex">
+                    <AnimatePresence mode="popLayout" custom={direction} initial={false}>
+                      <motion.span
+                        key={`semver-${tool.slug}`}
+                        initial={{ y: direction > 0 ? 12 : -12, opacity: 0 }}
+                        animate={{ y: 0, opacity: 1 }}
+                        exit={{ y: direction > 0 ? -12 : 12, opacity: 0 }}
+                        transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+                        className={`font-mono text-[10px] font-bold px-2 py-0.5 rounded border ${semver.className} inline-block`}
+                      >
+                        {semver.label}
+                      </motion.span>
+                    </AnimatePresence>
+                  </div>
+
+                  {/* Rolling Risk Badge */}
+                  <div className="overflow-hidden inline-flex">
+                    <AnimatePresence mode="popLayout" custom={direction} initial={false}>
+                      <motion.div
+                        key={`risk-${tool.slug}`}
+                        initial={{ y: direction > 0 ? 12 : -12, opacity: 0 }}
+                        animate={{ y: 0, opacity: 1 }}
+                        exit={{ y: direction > 0 ? -12 : 12, opacity: 0 }}
+                        transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+                        className={`inline-flex items-center gap-1.5 font-mono text-[10px] font-semibold px-2.5 py-0.5 rounded-full border ${risk.className}`}
+                      >
+                        <span className={`size-1.5 rounded-full ${risk.dotClass}`} />
+                        <span>{risk.label}</span>
+                      </motion.div>
+                    </AnimatePresence>
                   </div>
                 </div>
 
