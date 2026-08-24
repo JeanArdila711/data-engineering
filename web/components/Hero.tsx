@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { motion, useMotionValue, useMotionTemplate } from 'framer-motion';
-import { ArrowRight, Terminal as TerminalIcon } from 'lucide-react';
+import { ArrowRight, Terminal as TerminalIcon, Globe } from 'lucide-react';
 import { RevealButton } from '@/components/ui/reveal-button';
 import ParticlesBackground from './ParticlesBackground';
 
@@ -162,6 +162,24 @@ function PipelineTerminal() {
 }
 
 export default function Hero() {
+  const [lang, setLang] = useState<'es' | 'en'>('es');
+
+  useEffect(() => {
+    const handleGlobalLangChange = (e: Event) => {
+      const customEvent = e as CustomEvent<{ lang: 'es' | 'en' }>;
+      if (customEvent.detail?.lang) {
+        setLang(customEvent.detail.lang);
+      }
+    };
+    window.addEventListener('change-language', handleGlobalLangChange);
+    return () => window.removeEventListener('change-language', handleGlobalLangChange);
+  }, []);
+
+  const handleLanguageChange = (newLang: 'es' | 'en') => {
+    setLang(newLang);
+    window.dispatchEvent(new CustomEvent('change-language', { detail: { lang: newLang } }));
+  };
+
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: {
@@ -180,18 +198,59 @@ export default function Hero() {
       
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-end gap-6 md:gap-8 relative z-10">
         <div className="flex flex-col gap-4 md:gap-5 max-w-3xl">
-          <motion.div 
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ ease: customEase, duration: 0.6 }}
-            className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-neutral-900/80 backdrop-blur-sm border border-neutral-800 text-[10px] md:text-xs font-medium text-emerald-400 w-fit"
-          >
-            <span className="relative flex h-1.5 w-1.5 md:h-2 md:w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-1.5 w-1.5 md:h-2 md:w-2 bg-emerald-500"></span>
-            </span>
-            Pipeline Sincronizado
-          </motion.div>
+          
+          {/* Eyebrow Top Row: Pipeline Status Badge + Bilingual Language Switcher */}
+          <div className="flex items-center gap-3 flex-wrap">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ ease: customEase, duration: 0.6 }}
+              className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-neutral-900/80 backdrop-blur-sm border border-neutral-800 text-[10px] md:text-xs font-medium text-emerald-400 w-fit"
+            >
+              <span className="relative flex h-1.5 w-1.5 md:h-2 md:w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-1.5 w-1.5 md:h-2 md:w-2 bg-emerald-500"></span>
+              </span>
+              Pipeline Sincronizado
+            </motion.div>
+
+            {/* Bilingual Switcher */}
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ ease: customEase, duration: 0.6, delay: 0.05 }}
+              className="flex items-center gap-1.5 bg-neutral-900/90 border border-neutral-800 px-2 py-0.5 rounded-full backdrop-blur-sm shadow-sm"
+            >
+              <Globe size={11} className="text-emerald-400" />
+              <div className="relative flex items-center">
+                <button
+                  onClick={() => handleLanguageChange('es')}
+                  className={`relative z-10 px-2.5 py-0.5 text-[11px] font-mono font-medium rounded-full transition-colors duration-200 cursor-pointer ${
+                    lang === 'es' ? 'text-black font-bold' : 'text-neutral-400 hover:text-white'
+                  }`}
+                >
+                  ES
+                </button>
+                <button
+                  onClick={() => handleLanguageChange('en')}
+                  className={`relative z-10 px-2.5 py-0.5 text-[11px] font-mono font-medium rounded-full transition-colors duration-200 cursor-pointer ${
+                    lang === 'en' ? 'text-black font-bold' : 'text-neutral-400 hover:text-white'
+                  }`}
+                >
+                  EN
+                </button>
+
+                {/* Animated active language pill */}
+                <motion.div
+                  layoutId="hero-active-lang-pill"
+                  transition={{ type: 'spring', stiffness: 450, damping: 30 }}
+                  className={`absolute top-0 bottom-0 rounded-full bg-white z-0 ${
+                    lang === 'es' ? 'left-0 w-1/2' : 'left-1/2 w-1/2'
+                  }`}
+                />
+              </div>
+            </motion.div>
+          </div>
           
           <motion.h1 
             initial={{ opacity: 0, y: 30 }}

@@ -336,6 +336,18 @@ export default function ArticlesSection({
   const [direction, setDirection] = useState(0);
   const ITEMS_PER_PAGE = 4;
 
+  // Listen to global language change from Hero
+  useEffect(() => {
+    const handleGlobalLang = (e: Event) => {
+      const customEvent = e as CustomEvent<{ lang: 'es' | 'en' }>;
+      if (customEvent.detail?.lang) {
+        setLang(customEvent.detail.lang);
+      }
+    };
+    window.addEventListener('change-language', handleGlobalLang);
+    return () => window.removeEventListener('change-language', handleGlobalLang);
+  }, []);
+
   // Reset page to 1 when filters or search query change
   useEffect(() => {
     setCurrentPage(1);
@@ -412,7 +424,7 @@ export default function ArticlesSection({
   return (
     <section id="articulos" className="w-full max-w-7xl mx-auto px-5 md:px-6 py-16 md:py-24 relative scroll-mt-28">
       
-      {/* 1. Header with Eyebrow, Title and Bilingual Switch */}
+      {/* 1. Header with Eyebrow and Title */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 mb-10 md:mb-12 border-b border-neutral-800/80 pb-8">
         <div className="flex flex-col gap-3 max-w-2xl">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-neutral-900 border border-neutral-800 text-[11px] font-mono text-emerald-400 w-fit">
@@ -432,40 +444,10 @@ export default function ArticlesSection({
           </p>
         </div>
 
-        {/* Bilingual Language Selector [ES | EN] */}
-        <div className="flex items-center gap-3 bg-neutral-900/90 border border-neutral-800 p-1.5 rounded-full backdrop-blur-sm self-start md:self-end">
-          <span className="text-xs font-mono text-neutral-400 pl-2.5 flex items-center gap-1.5">
-            <Globe size={13} className="text-emerald-400" />
-            <span>Idioma:</span>
-          </span>
-
-          <div className="relative flex items-center">
-            <button
-              onClick={() => setLang('es')}
-              className={`relative z-10 px-3.5 py-1 text-xs font-mono font-medium rounded-full transition-colors duration-200 cursor-pointer ${
-                lang === 'es' ? 'text-black font-semibold' : 'text-neutral-400 hover:text-white'
-              }`}
-            >
-              Español
-            </button>
-            <button
-              onClick={() => setLang('en')}
-              className={`relative z-10 px-3.5 py-1 text-xs font-mono font-medium rounded-full transition-colors duration-200 cursor-pointer ${
-                lang === 'en' ? 'text-black font-semibold' : 'text-neutral-400 hover:text-white'
-              }`}
-            >
-              English
-            </button>
-
-            {/* Smooth animated active language pill */}
-            <motion.div
-              layoutId="active-lang-pill"
-              transition={{ type: 'spring', stiffness: 450, damping: 30 }}
-              className={`absolute top-0 bottom-0 rounded-full bg-white z-0 ${
-                lang === 'es' ? 'left-0 w-1/2' : 'left-1/2 w-1/2'
-              }`}
-            />
-          </div>
+        {/* Language Indicator Badge (Synchronized with Hero) */}
+        <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-neutral-900/80 border border-neutral-800 text-xs font-mono text-neutral-400 self-start md:self-end">
+          <Globe size={13} className="text-emerald-400" />
+          <span>Resúmenes en: <strong className="text-white uppercase">{lang}</strong></span>
         </div>
       </div>
 
@@ -535,8 +517,12 @@ export default function ArticlesSection({
         </div>
       </div>
 
-      {/* 3. Articles Grid with Stable Direction-Aware Container */}
-      <div className="relative overflow-hidden min-h-[460px]">
+      {/* 3. Articles Grid with Layout Spring Stability (Fluid 4 to 2 items transition) */}
+      <motion.div 
+        layout="position"
+        transition={{ duration: 0.35, ease: smoothEase }}
+        className="relative overflow-hidden w-full min-h-[320px]"
+      >
         {filteredArticles.length > 0 ? (
           <>
             <AnimatePresence mode="wait" custom={direction} initial={false}>
@@ -547,7 +533,7 @@ export default function ArticlesSection({
                 initial="enter"
                 animate="center"
                 exit="exit"
-                className="grid grid-cols-1 md:grid-cols-2 gap-5 lg:gap-6"
+                className="grid grid-cols-1 md:grid-cols-2 gap-5 lg:gap-6 w-full"
               >
                 {paginatedArticles.map((article) => (
                   <ArticleCard 
@@ -559,10 +545,13 @@ export default function ArticlesSection({
               </motion.div>
             </AnimatePresence>
 
-            {/* 4. High-End Interactive Pagination Bar (agent-10 & agent-13) */}
+            {/* 4. High-End Interactive Pagination Bar with Layout Animation */}
             {totalPages > 1 && (
-              <div className="mt-10 pt-6 border-t border-neutral-800/80 flex flex-col sm:flex-row items-center justify-between gap-4">
-                
+              <motion.div 
+                layout
+                transition={{ duration: 0.35, ease: smoothEase }}
+                className="mt-10 pt-6 border-t border-neutral-800/80 flex flex-col sm:flex-row items-center justify-between gap-4"
+              >
                 {/* Telemetry Counter */}
                 <div className="text-xs font-mono text-neutral-500 flex items-center gap-2">
                   <span className="size-1.5 rounded-full bg-emerald-400 animate-pulse" />
@@ -573,7 +562,6 @@ export default function ArticlesSection({
 
                 {/* Pagination Controls */}
                 <div className="flex items-center gap-1.5 bg-neutral-900/90 border border-neutral-800 p-1 rounded-xl shadow-inner select-none">
-                  
                   {/* Previous Button */}
                   <motion.button
                     onClick={() => handlePageChange(currentPage - 1)}
@@ -639,7 +627,7 @@ export default function ArticlesSection({
                     <ChevronRight size={14} />
                   </motion.button>
                 </div>
-              </div>
+              </motion.div>
             )}
           </>
         ) : (
@@ -662,7 +650,7 @@ export default function ArticlesSection({
             </button>
           </motion.div>
         )}
-      </div>
+      </motion.div>
     </section>
   );
 }
