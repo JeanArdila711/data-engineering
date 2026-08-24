@@ -25,6 +25,30 @@ export type ArticleEntry = {
   summary_es: string | null
 }
 
+export type ReleaseHistoryItem = {
+  version: string
+  published_at: string
+  has_breaking: boolean
+  source_url: string
+}
+
+export type EcosystemStat = {
+  tool_slug: string
+  tool_name: string
+  category: string
+  vendor: string | null
+  repo: string | null
+  homepage: string | null
+  tracked_since: Date
+  release_count: number
+  breaking_release_count: number
+  last_version: string | null
+  last_published_at: Date | null
+  last_has_breaking: boolean | null
+  release_history: ReleaseHistoryItem[]
+  article_count: number
+}
+
 let sql: ReturnType<typeof postgres> | null = null
 
 function getSqlClient() {
@@ -77,6 +101,26 @@ export async function getArticles(limit = 30): Promise<ArticleEntry[]> {
     `
   } catch (error) {
     console.warn('Postgres connection unavailable for articles, falling back to static data:', error)
+    return []
+  }
+}
+
+export async function getEcosystemStats(): Promise<EcosystemStat[]> {
+  try {
+    const client = getSqlClient()
+    if (!client) {
+      return []
+    }
+    return await client<EcosystemStat[]>`
+      select tool_slug, tool_name, category, vendor, repo, homepage,
+             tracked_since, release_count, breaking_release_count,
+             last_version, last_published_at, last_has_breaking,
+             release_history, article_count
+      from mart_ecosystem
+      order by release_count desc
+    `
+  } catch (error) {
+    console.warn('Postgres connection unavailable for ecosystem stats, falling back to static data:', error)
     return []
   }
 }
