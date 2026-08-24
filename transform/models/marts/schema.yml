@@ -33,3 +33,12 @@ models:
         tests: [not_null]
       - name: article_count
         tests: [not_null]
+
+  - name: mart_digest
+    columns:
+      - name: tool_slug
+        tests: [unique, not_null]
+      - name: release_count_7d
+        tests: [not_null]
+      - name: article_count_7d
+        tests: [not_null]
