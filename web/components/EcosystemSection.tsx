@@ -22,10 +22,131 @@ import {
   Copy,
   Check,
   BookOpen,
+  Cpu,
   Terminal as TerminalIcon
 } from 'lucide-react';
 import { useToast } from '@/components/ui/toast';
 import { ChangelogEntry } from '@/lib/db';
+
+// Technical hardware & runtime specifications per tool
+const TOOL_METADATA: Record<string, { repo: string; license: string; runtime: string; layer: string }> = {
+  'airflow': { repo: 'apache/airflow', license: 'Apache-2.0', runtime: 'Python >=3.8, <3.13', layer: 'Orquestación de Pipelines' },
+  'apache-airflow': { repo: 'apache/airflow', license: 'Apache-2.0', runtime: 'Python >=3.8, <3.13', layer: 'Orquestación de Pipelines' },
+  'dbt-core': { repo: 'dbt-labs/dbt-core', license: 'Apache-2.0', runtime: 'Python >=3.9, <=3.12', layer: 'Transformación & Semántica' },
+  'dbt': { repo: 'dbt-labs/dbt-core', license: 'Apache-2.0', runtime: 'Python >=3.9, <=3.12', layer: 'Transformación & Semántica' },
+  'duckdb': { repo: 'duckdb/duckdb', license: 'MIT License', runtime: 'C++20 / In-Process / WASM', layer: 'Motor Analítico Embebido' },
+  'polars': { repo: 'pola-rs/polars', license: 'MIT License', runtime: 'Rust SIMD / Apache Arrow', layer: 'DataFrames de Alto Rendimiento' },
+  'iceberg': { repo: 'apache/iceberg', license: 'Apache-2.0', runtime: 'Java / Python / Rust', layer: 'Open Table Format / Lakehouse' },
+  'apache-iceberg': { repo: 'apache/iceberg', license: 'Apache-2.0', runtime: 'Java / Python / Rust', layer: 'Open Table Format / Lakehouse' },
+  'spark': { repo: 'apache/spark', license: 'Apache-2.0', runtime: 'Scala / JVM / Spark Connect', layer: 'Procesamiento Distribuido' },
+  'apache-spark': { repo: 'apache/spark', license: 'Apache-2.0', runtime: 'Scala / JVM / Spark Connect', layer: 'Procesamiento Distribuido' },
+  'dagster': { repo: 'dagster-io/dagster', license: 'Apache-2.0', runtime: 'Python >=3.9, <=3.12', layer: 'Orquestación Basada en Assets' },
+  'kafka': { repo: 'apache/kafka', license: 'Apache-2.0', runtime: 'Java 17+ / KRaft Quorum', layer: 'Event Streaming Distribuido' },
+  'apache-kafka': { repo: 'apache/kafka', license: 'Apache-2.0', runtime: 'Java 17+ / KRaft Quorum', layer: 'Event Streaming Distribuido' },
+  'flink': { repo: 'apache/flink', license: 'Apache-2.0', runtime: 'Java 11+ / Stateful Streams', layer: 'Streaming en Tiempo Real' },
+  'apache-flink': { repo: 'apache/flink', license: 'Apache-2.0', runtime: 'Java 11+ / Stateful Streams', layer: 'Streaming en Tiempo Real' },
+  'trino': { repo: 'trinodb/trino', license: 'Apache-2.0', runtime: 'Java 21+ / Distributed MPP', layer: 'Motor de Consulta Federado' },
+};
+
+// Verified deep-dives & technical articles per tool
+const TOOL_ARTICLES: Record<string, { title: string; url: string; author: string; summary: string }> = {
+  'dbt-core': {
+    title: 'dbt Core v1.12 en General Availability: Rendimiento de Compilación y Testing',
+    url: 'https://www.getdbt.com/blog/dbt-core-v1-12-is-ga',
+    author: 'dbt Labs Team',
+    summary: 'Testing unitario nativo y optimización de compilación de DAGs para proyectos a gran escala.',
+  },
+  'dbt': {
+    title: 'dbt Core v1.12 en General Availability: Rendimiento de Compilación y Testing',
+    url: 'https://www.getdbt.com/blog/dbt-core-v1-12-is-ga',
+    author: 'dbt Labs Team',
+    summary: 'Testing unitario nativo y optimización de compilación de DAGs para proyectos a gran escala.',
+  },
+  'duckdb': {
+    title: 'DuckDB: Resultados de Consultas por Chunks en el Driver JDBC/Java',
+    url: 'https://duckdb.org/2026/08/21/chunked-query-results-java-driver.html',
+    author: 'DuckDB Labs Team',
+    summary: 'Streaming de resultados por chunks para aplicaciones Java, reduciendo el consumo de memoria RAM.',
+  },
+  'polars': {
+    title: 'Estrategias de Migración de Pandas a Polars: Rendimiento y Semántica Lazy',
+    url: 'https://pola.rs/posts/pandas-to-polars-migration-strategies/',
+    author: 'Ritchie Vink',
+    summary: 'Patrones idiomáticos de migración hacia el motor lazy de Polars con optimización de consultas en Rust.',
+  },
+  'iceberg': {
+    title: 'Apache Iceberg: Especificación y Releases del Formato Abierto de Tablas',
+    url: 'https://iceberg.apache.org/releases/',
+    author: 'Apache Iceberg PMC',
+    summary: 'Tablas analíticas de petabytes con snapshot isolation, particionamiento oculto y commits atómicos.',
+  },
+  'apache-iceberg': {
+    title: 'Apache Iceberg: Especificación y Releases del Formato Abierto de Tablas',
+    url: 'https://iceberg.apache.org/releases/',
+    author: 'Apache Iceberg PMC',
+    summary: 'Tablas analíticas de petabytes con snapshot isolation, particionamiento oculto y commits atómicos.',
+  },
+  'airflow': {
+    title: 'Apache Airflow 3.3.0: Arquitectura de Orquestación y Datasets Dinámicos',
+    url: 'https://airflow.apache.org/blog/airflow-3.3.0/',
+    author: 'Apache Airflow PMC',
+    summary: 'Mapeo dinámico de tareas sobre múltiples parámetros y programación reactiva basada en datasets.',
+  },
+  'apache-airflow': {
+    title: 'Apache Airflow 3.3.0: Arquitectura de Orquestación y Datasets Dinámicos',
+    url: 'https://airflow.apache.org/blog/airflow-3.3.0/',
+    author: 'Apache Airflow PMC',
+    summary: 'Mapeo dinámico de tareas sobre múltiples parámetros y programación reactiva basada en datasets.',
+  },
+  'dagster': {
+    title: 'La Orquestación es más que Programación: Automatización Declarativa en Dagster',
+    url: 'https://dagster.io/blog/orchestration-is-more-than-scheduling-declarative-automation-in-dagster',
+    author: 'Sandy Ryza',
+    summary: 'Automatización declarativa con bucles de reconciliación basados en estado y SLAs de frescura.',
+  },
+  'kafka': {
+    title: 'Apache Kafka: Documentación Oficial de Arquitectura KRaft y Streaming',
+    url: 'https://kafka.apache.org/documentation/',
+    author: 'Apache Kafka PMC',
+    summary: 'Arquitectura de streaming de eventos, quorum de metadatos KRaft y almacenamiento en capas.',
+  },
+  'apache-kafka': {
+    title: 'Apache Kafka: Documentación Oficial de Arquitectura KRaft y Streaming',
+    url: 'https://kafka.apache.org/documentation/',
+    author: 'Apache Kafka PMC',
+    summary: 'Arquitectura de streaming de eventos, quorum de metadatos KRaft y almacenamiento en capas.',
+  },
+  'spark': {
+    title: 'Apache Spark: Novedades del Motor de Procesamiento y Spark Connect',
+    url: 'https://spark.apache.org/news/index.html',
+    author: 'Apache Spark PMC',
+    summary: 'Ejecución desacoplada con Spark Connect y optimizaciones en Adaptive Query Execution.',
+  },
+  'apache-spark': {
+    title: 'Apache Spark: Novedades del Motor de Procesamiento y Spark Connect',
+    url: 'https://spark.apache.org/news/index.html',
+    author: 'Apache Spark PMC',
+    summary: 'Ejecución desacoplada con Spark Connect y optimizaciones en Adaptive Query Execution.',
+  },
+  'flink': {
+    title: 'Apache Flink: Anuncio del FileSystem S3 Nativo para Streaming State Storage',
+    url: 'https://flink.apache.org/2026/06/26/announcing-native-s3-fs/',
+    author: 'Apache Flink Community',
+    summary: 'FileSystem S3 nativo que optimiza subidas multi-parte y reduce la latencia en checkpoints.',
+  },
+  'apache-flink': {
+    title: 'Apache Flink: Anuncio del FileSystem S3 Nativo para Streaming State Storage',
+    url: 'https://flink.apache.org/2026/06/26/announcing-native-s3-fs/',
+    author: 'Apache Flink Community',
+    summary: 'FileSystem S3 nativo que optimiza subidas multi-parte y reduce la latencia en checkpoints.',
+  },
+  'trino': {
+    title: 'Trino: Avances en Ejecución Tolerante a Fallos y Consultas Federadas',
+    url: 'https://trino.io/blog/2026/07/18/a-pivotal-summer.html',
+    author: 'Trino Community',
+    summary: 'Ejecución distribuida tolerante a fallos, spooling para cargas batch y analítica en data lakes.',
+  },
+};
 
 // Tool summaries based on official capabilities
 const TOOL_SUMMARIES: Record<string, string> = {
@@ -211,6 +332,7 @@ function ExpandedToolModal({
 }) {
   const [copied, setCopied] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [pkgManager, setPkgManager] = useState<'uv' | 'pip' | 'poetry'>('uv');
   const Icon = getToolIcon(tool.slug, tool.rawCategory);
   const semver = getSemverBadge(tool.version);
 
@@ -235,14 +357,32 @@ function ExpandedToolModal({
   }, [onClose]);
 
   const { showToast } = useToast();
-  const installCommand = `uv add ${tool.slug}==${tool.version.replace(/^v/, '')}`;
+
+  const getInstallCmd = (pm: 'uv' | 'pip' | 'poetry') => {
+    const cleanSlug = tool.slug.replace(/^apache-/, '');
+    const cleanVer = tool.version.replace(/^v/, '');
+    if (pm === 'uv') return `uv add ${cleanSlug}==${cleanVer}`;
+    if (pm === 'pip') return `pip install ${cleanSlug}==${cleanVer}`;
+    return `poetry add ${cleanSlug}@${cleanVer}`;
+  };
+
+  const installCommand = getInstallCmd(pkgManager);
 
   const copyToClipboard = () => {
     navigator.clipboard.writeText(installCommand);
     setCopied(true);
-    showToast('Comando copiado al portapapeles', installCommand);
+    showToast(`Comando copiado (${pkgManager})`, installCommand);
     setTimeout(() => setCopied(false), 2000);
   };
+
+  const meta = TOOL_METADATA[tool.slug] || TOOL_METADATA[tool.slug.replace(/^apache-/, '')] || {
+    repo: `${tool.slug}/${tool.slug}`,
+    license: 'Apache-2.0 / MIT (OSS)',
+    runtime: 'Python / Distributed Native',
+    layer: tool.category,
+  };
+
+  const relatedArticle = TOOL_ARTICLES[tool.slug] || TOOL_ARTICLES[tool.slug.replace(/^apache-/, '')];
 
   return (
     <div key={`modal-overlay-${tool.slug}`} className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-6 pointer-events-none">
@@ -273,13 +413,13 @@ function ExpandedToolModal({
             onClose();
           }
         }}
-        className="pointer-events-auto relative z-10 w-full max-w-2xl sm:max-w-3xl lg:max-w-4xl max-h-[92vh] sm:max-h-[90vh] bg-neutral-950 border border-neutral-800 rounded-t-[28px] sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col touch-pan-y"
+        className="pointer-events-auto relative z-10 w-full max-w-2xl sm:max-w-3xl lg:max-w-4xl max-h-[92vh] sm:max-h-[90vh] bg-neutral-950 border border-neutral-800 rounded-t-[28px] sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col touch-pan-y shadow-[inset_0_1px_0_0_rgba(255,255,255,0.1)]"
       >
         {/* Mobile Swipe Handle */}
         <div className="w-12 h-1.5 bg-neutral-700/80 rounded-full mx-auto mt-3 mb-1 sm:hidden shrink-0" />
 
         {/* Scrollable Content Container */}
-        <div className="p-6 sm:p-7 lg:p-8 overflow-y-auto flex flex-col gap-5 scrollbar-thin scrollbar-thumb-neutral-800">
+        <div className="p-6 sm:p-7 lg:p-8 overflow-y-auto flex flex-col gap-4 sm:gap-5 scrollbar-thin scrollbar-thumb-neutral-800">
           {/* Header Row: Morphing Icon + Title + Category + Close Button */}
           <div className="flex items-start justify-between gap-4">
             <div className="flex items-center gap-3.5 sm:gap-4">
@@ -358,18 +498,18 @@ function ExpandedToolModal({
               transition: { duration: 0.09, ease: [0.32, 0, 0.67, 0] as const } 
             }}
             transition={{ duration: 0.24, delay: 0.05, ease: [0.16, 1, 0.3, 1] as const }}
-            className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start"
+            className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-5 items-start"
           >
-            {/* Left Column: Breaking Changes + Command + Summary */}
-            <div className="lg:col-span-7 flex flex-col gap-4">
+            {/* Left Column: Breaking Changes + Command with PM switcher + Summary */}
+            <div className="lg:col-span-7 flex flex-col gap-3.5 sm:gap-4">
               {/* Breaking Changes */}
               {tool.hasBreaking ? (
-                <div className="p-4 rounded-2xl border border-red-500/30 bg-red-950/20 flex flex-col gap-2.5">
+                <div className="p-4 rounded-2xl border border-red-500/30 bg-red-950/20 flex flex-col gap-2">
                   <div className="flex items-center gap-2 text-red-400 font-semibold text-xs sm:text-sm">
                     <AlertTriangle size={15} />
                     <span>Breaking Changes Detectados ({tool.breakingChanges?.length || 1})</span>
                   </div>
-                  <ul className="space-y-1.5 text-xs text-neutral-300 leading-relaxed pl-1">
+                  <ul className="space-y-1 text-xs text-neutral-300 leading-relaxed pl-1">
                     {tool.breakingChanges && tool.breakingChanges.length > 0 ? (
                       tool.breakingChanges.map((change, i) => (
                         <li key={i} className="flex items-start gap-2">
@@ -388,32 +528,58 @@ function ExpandedToolModal({
               ) : (
                 <div className="p-3.5 rounded-2xl border border-emerald-500/20 bg-emerald-950/20 flex items-center gap-2.5 text-emerald-400 text-xs">
                   <span className="size-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)] shrink-0" />
-                  <span>Release estable verificado sin breaking changes reportados.</span>
+                  <span>Release estable verificado sin breaking changes reportados. Actualización recomendada.</span>
                 </div>
               )}
 
-              {/* Installation Command */}
+              {/* Installation Command with Package Manager Switcher */}
               <div className="flex flex-col gap-1.5">
                 <div className="flex items-center justify-between text-xs font-mono text-neutral-400">
-                  <span className="flex items-center gap-1.5 uppercase tracking-wider text-[11px]">
-                    <TerminalIcon size={12} />
-                    <span>Comando de Instalación</span>
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="flex items-center gap-1.5 uppercase tracking-wider text-[11px]">
+                      <TerminalIcon size={12} />
+                      <span>Comando de Instalación</span>
+                    </span>
+                  </div>
+
+                  {/* Package Manager Switcher Tabs */}
+                  <div className="flex items-center gap-1 bg-neutral-900/90 p-0.5 rounded-lg border border-neutral-800">
+                    {(['uv', 'pip', 'poetry'] as const).map((pm) => (
+                      <button
+                        key={pm}
+                        onClick={() => setPkgManager(pm)}
+                        className={`relative px-2 py-0.5 rounded-md text-[10px] font-mono transition-colors cursor-pointer ${
+                          pkgManager === pm ? 'text-white font-bold' : 'text-neutral-500 hover:text-neutral-300'
+                        }`}
+                      >
+                        {pkgManager === pm && (
+                          <motion.div
+                            layoutId={`active-pkg-pill-${tool.slug}`}
+                            className="absolute inset-0 bg-neutral-800 border border-neutral-700/60 rounded-md -z-0"
+                            transition={{ type: 'spring', stiffness: 450, damping: 30 }}
+                          />
+                        )}
+                        <span className="relative z-10">{pm}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="p-3 rounded-xl border border-neutral-800 bg-black font-mono text-xs flex items-center justify-between gap-2">
+                  <span className="text-emerald-400/90 select-all truncate">{installCommand}</span>
                   <button
                     onClick={copyToClipboard}
-                    className="flex items-center gap-1 text-emerald-400 hover:underline cursor-pointer text-[11px]"
+                    className="flex items-center gap-1 text-neutral-400 hover:text-emerald-400 transition-colors shrink-0 text-[11px] cursor-pointer"
+                    title="Copiar comando"
                   >
-                    {copied ? <Check size={12} /> : <Copy size={12} />}
+                    {copied ? <Check size={13} className="text-emerald-400" /> : <Copy size={13} />}
                     <span>{copied ? '¡Copiado!' : 'Copiar'}</span>
                   </button>
-                </div>
-                <div className="p-3 rounded-xl border border-neutral-800 bg-black font-mono text-xs text-neutral-300">
-                  <span className="text-emerald-400/90 select-all">{installCommand}</span>
                 </div>
               </div>
 
               {/* Summary */}
-              <div className="flex flex-col gap-1.5">
+              <div className="flex flex-col gap-1">
                 <h4 className="text-[11px] font-mono text-neutral-400 uppercase tracking-wider">Propósito en el Ecosistema</h4>
                 <p className="text-xs sm:text-sm text-neutral-300 leading-relaxed font-light">
                   {tool.summary}
@@ -421,40 +587,116 @@ function ExpandedToolModal({
               </div>
             </div>
 
-            {/* Right Column: Deep-Dives & Blogs + Official Release CTA */}
-            <div className="lg:col-span-5 flex flex-col gap-4 h-full justify-between">
-              {/* Related Articles & Deep-Dives Cross-link */}
-              <div className="p-4 rounded-2xl border border-neutral-800/80 bg-neutral-900/40 flex flex-col gap-2.5">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-mono text-neutral-200 uppercase tracking-wider flex items-center gap-1.5 font-semibold">
-                    <BookOpen size={13} className="text-emerald-400" />
-                    <span>Deep-Dives & Blogs</span>
-                  </span>
-                  <a 
-                    href="#articulos" 
-                    onClick={onClose}
-                    className="text-[11px] font-mono text-emerald-400 hover:underline flex items-center gap-1"
+            {/* Right Column: Deep-Dives Real + Architecture Specs + Shimmer CTA */}
+            <div className="lg:col-span-5 flex flex-col gap-3.5 sm:gap-4 h-full justify-between">
+              {/* Related Real Technical Article Card */}
+              {relatedArticle ? (
+                <div className="p-3.5 sm:p-4 rounded-2xl border border-neutral-800/80 bg-neutral-900/40 flex flex-col gap-2 relative overflow-hidden group">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-mono text-neutral-300 uppercase tracking-wider flex items-center gap-1.5 font-semibold">
+                      <BookOpen size={13} className="text-emerald-400" />
+                      <span>Deep-Dive Técnico</span>
+                    </span>
+                    <a 
+                      href={relatedArticle.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[11px] font-mono text-emerald-400 hover:underline flex items-center gap-0.5"
+                    >
+                      <span>Leer</span>
+                      <ArrowUpRight size={12} />
+                    </a>
+                  </div>
+                  <a
+                    href={relatedArticle.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs sm:text-sm font-semibold text-white group-hover:text-emerald-300 transition-colors leading-snug line-clamp-2"
                   >
-                    <span>Ver artículos</span>
-                    <span>→</span>
+                    {relatedArticle.title}
                   </a>
+                  <p className="text-[11px] text-neutral-400 font-light leading-relaxed line-clamp-2">
+                    {relatedArticle.summary}
+                  </p>
+                  <div className="flex items-center justify-between text-[10px] font-mono text-neutral-500 pt-1 border-t border-neutral-800/60">
+                    <span>{relatedArticle.author}</span>
+                    <a href="#articulos" onClick={onClose} className="hover:text-emerald-400 transition-colors">
+                      Ver artículos →
+                    </a>
+                  </div>
                 </div>
-                <p className="text-xs text-neutral-400 font-light leading-relaxed">
-                  Revisa los análisis de arquitectura y resúmenes validados por IA sobre {tool.name} en la sección de artículos.
-                </p>
+              ) : (
+                <div className="p-3.5 rounded-2xl border border-neutral-800/80 bg-neutral-900/40 flex flex-col gap-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-mono text-neutral-200 uppercase tracking-wider flex items-center gap-1.5 font-semibold">
+                      <BookOpen size={13} className="text-emerald-400" />
+                      <span>Deep-Dives & Blogs</span>
+                    </span>
+                    <a 
+                      href="#articulos" 
+                      onClick={onClose}
+                      className="text-[11px] font-mono text-emerald-400 hover:underline flex items-center gap-1"
+                    >
+                      <span>Ver artículos</span>
+                      <span>→</span>
+                    </a>
+                  </div>
+                  <p className="text-xs text-neutral-400 font-light leading-relaxed">
+                    Revisa los análisis de arquitectura y resúmenes validados por IA sobre {tool.name} en la sección de artículos.
+                  </p>
+                </div>
+              )}
+
+              {/* Architecture & Engineering Hardware Specs */}
+              <div className="p-3 sm:p-3.5 rounded-2xl border border-neutral-800/80 bg-neutral-900/30 flex flex-col gap-2">
+                <span className="text-[10px] font-mono text-neutral-400 uppercase tracking-widest font-semibold flex items-center gap-1.5">
+                  <Cpu size={12} className="text-emerald-400" />
+                  <span>Especificaciones de Ingeniería</span>
+                </span>
+                <div className="grid grid-cols-2 gap-2 text-xs font-mono">
+                  <div className="flex flex-col gap-0.5">
+                    <span className="text-[10px] text-neutral-500">Repo Oficial</span>
+                    <a 
+                      href={`https://github.com/${meta.repo}`} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-neutral-300 hover:text-emerald-400 truncate flex items-center gap-1 transition-colors"
+                      title={meta.repo}
+                    >
+                      <span className="truncate">{meta.repo}</span>
+                      <ArrowUpRight size={10} className="shrink-0 text-neutral-500" />
+                    </a>
+                  </div>
+                  <div className="flex flex-col gap-0.5">
+                    <span className="text-[10px] text-neutral-500">Licencia</span>
+                    <span className="text-neutral-300 truncate">{meta.license}</span>
+                  </div>
+                  <div className="flex flex-col gap-0.5">
+                    <span className="text-[10px] text-neutral-500">Runtime</span>
+                    <span className="text-neutral-300 truncate">{meta.runtime}</span>
+                  </div>
+                  <div className="flex flex-col gap-0.5">
+                    <span className="text-[10px] text-neutral-500">Capa del Stack</span>
+                    <span className="text-neutral-300 truncate">{meta.layer}</span>
+                  </div>
+                </div>
               </div>
 
-              {/* CTA Button */}
-              <div className="pt-2">
-                <a
-                  href={tool.sourceUrl || '#'}
+              {/* CTA Button with Metallic Shimmer & Tactile Elastic Press */}
+              <div className="pt-1">
+                <motion.a
+                  href={tool.sourceUrl || `https://github.com/${meta.repo}/releases`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="w-full flex items-center justify-center gap-2 bg-white text-black hover:bg-neutral-200 font-semibold py-3.5 px-5 rounded-xl text-xs sm:text-sm transition-all shadow-lg active:scale-95 cursor-pointer"
+                  whileHover={{ scale: 1.01 }}
+                  whileTap={{ scale: 0.96 }}
+                  className="group relative w-full flex items-center justify-center gap-2 bg-white text-black hover:bg-neutral-100 font-semibold py-3 px-5 rounded-xl text-xs sm:text-sm overflow-hidden shadow-lg transition-all active:scale-95 cursor-pointer"
                 >
-                  <span>Ver Release Oficial en GitHub</span>
-                  <ExternalLink size={14} />
-                </a>
+                  {/* Shimmer linear ray */}
+                  <div className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-700 bg-gradient-to-r from-transparent via-black/10 to-transparent pointer-events-none" />
+                  <span className="relative z-10">Ver Release Oficial en GitHub</span>
+                  <ExternalLink size={14} className="relative z-10 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+                </motion.a>
               </div>
             </div>
           </motion.div>
