@@ -25,6 +25,14 @@ Cada cita en "quotes" DEBE ser una copia exacta de un fragmento del documento �
 Documento:
 {document}"""
 
+_TRANSLATE_PROMPT = """Traducí el siguiente texto al español. Mantené el sentido exacto, sin agregar ni quitar información.
+No comentes la traducción, no expliques nada, no evalúes si el texto ya está en español — solo traducí.
+
+Devolvé JSON: {{"translation": "texto traducido"}}
+
+Texto:
+{text}"""
+
 
 class GeminiClient:
     def __init__(self, api_key: str, summary_model: str, judge_model: str):
@@ -53,6 +61,14 @@ class GeminiClient:
         return response.text.strip().lower().startswith("si")
 
     def translate(self, text: str) -> str:
-        prompt = f"Traducí este resumen al español, manteniendo el sentido exacto, sin agregar información:\n\n{text}"
-        response = self._client.models.generate_content(model=self._summary_model, contents=prompt)
-        return response.text.strip()
+        # Sin response_mime_type, el modelo a veces respondía con meta-comentario
+        # sobre la traducción ("el texto ya está en español...") en vez de
+        # traducir — forzar JSON elimina esa clase de respuesta estructuralmente,
+        # igual que en draft_summary.
+        response = self._client.models.generate_content(
+            model=self._summary_model,
+            contents=_TRANSLATE_PROMPT.format(text=text),
+            config=types.GenerateContentConfig(response_mime_type="application/json"),
+        )
+        payload = json.loads(response.text)
+        return payload["translation"].strip()
