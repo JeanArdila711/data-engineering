@@ -89,7 +89,7 @@ export default function DigestSection({ entries = [] }: { entries?: DigestEntry[
   const items = entries.length > 0 ? entries : SAMPLE_DIGEST;
 
   return (
-    <section id="digest" className="w-full max-w-7xl mx-auto px-5 sm:px-6 py-16 sm:py-20 lg:py-28 relative">
+    <section id="digest" className="w-full max-w-7xl mx-auto px-5 sm:px-6 py-16 sm:py-20 lg:py-28 relative scroll-mt-28">
       <div className="flex flex-col gap-3 mb-10">
         <p className="font-mono text-xs tracking-widest text-emerald-400 font-semibold uppercase">
           [04] // DIGEST SEMANAL

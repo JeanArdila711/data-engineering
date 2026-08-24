@@ -289,7 +289,7 @@ export default function Navbar() {
     mass: 0.4,
   });
 
-  const maxWidthRem = useTransform(compact, [0, 1], [72, 49]);
+  const maxWidthRem = useTransform(compact, [0, 1], [78, 64]);
   const maxWidth = useMotionTemplate`${maxWidthRem}rem`;
 
   const bgAlpha = useTransform(compact, [0, 1], [0.4, 0.94]);
@@ -302,7 +302,7 @@ export default function Navbar() {
   const boxShadow = useMotionTemplate`0 12px 40px rgba(${INK_RGB}, ${shadowAlpha})`;
   const backdropFilter = useMotionTemplate`blur(${blur}px)`;
 
-  const isLowerPage = active === 'ecosystem' || active === 'articulos';
+  const isLowerPage = active === 'ecosystem' || active === 'articulos' || active === 'digest';
 
   return (
     <>
@@ -317,7 +317,7 @@ export default function Navbar() {
           animate="visible"
           onMouseMove={handleDesktopMouseMove}
           style={{ maxWidth }}
-          className="group pointer-events-auto relative mx-auto flex items-center justify-between gap-4 lg:gap-6 rounded-full py-2 pl-5 pr-2"
+          className="group pointer-events-auto relative mx-auto flex items-center justify-between gap-3 lg:gap-5 rounded-full py-2 px-3 sm:px-4"
         >
           {/* Interpolated dynamic backdrop and border */}
           <motion.div
@@ -344,20 +344,20 @@ export default function Navbar() {
           {/* Brand / Logo with Live Telemetry Beacon Popover */}
           <motion.div 
             variants={ITEM_VARIANTS} 
-            className="relative z-20 flex items-center"
+            className="relative z-20 flex items-center shrink-0"
             onMouseEnter={() => setShowTelemetry(true)}
             onMouseLeave={() => setShowTelemetry(false)}
           >
             <a
               href="#radar"
               onClick={(e) => handleNavClick(e, '#radar')}
-              className="flex items-center gap-2 font-mono text-xs font-bold uppercase tracking-[0.25em] text-white hover:text-neutral-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2 focus-visible:ring-offset-black rounded-sm transition-colors cursor-pointer select-none py-1"
+              className="flex items-center gap-2 font-mono text-xs font-bold uppercase tracking-[0.2em] text-white hover:text-neutral-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2 focus-visible:ring-offset-black rounded-sm transition-colors cursor-pointer select-none py-1 pl-1 pr-2 shrink-0 whitespace-nowrap"
             >
-              <span className="relative flex size-2">
+              <span className="relative flex size-2 shrink-0">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
                 <span className="relative inline-flex rounded-full size-2 bg-emerald-500 shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
               </span>
-              <span>DE RADAR</span>
+              <span className="whitespace-nowrap font-bold tracking-[0.2em]">DE RADAR</span>
             </a>
 
             {/* Live Telemetry Floating Holographic Popover */}
@@ -408,13 +408,13 @@ export default function Navbar() {
           <motion.ul
             variants={LIST_VARIANTS}
             onMouseLeave={handleLeave}
-            className="relative z-10 flex items-center gap-1"
+            className="relative z-10 flex items-center gap-0.5 lg:gap-1 shrink-0"
           >
             {LINKS.map((link) => {
               const isTarget = target === link.id;
 
               return (
-                <li key={link.id} className="relative">
+                <li key={link.id} className="relative shrink-0">
                   {isTarget && (
                     <motion.span
                       layoutId="nav-pill"
@@ -431,11 +431,11 @@ export default function Navbar() {
                     onMouseEnter={() => handleEnter(link.id)}
                     onFocus={() => handleEnter(link.id)}
                     onBlur={handleLeave}
-                    className={`relative z-10 block rounded-full px-3 py-1.5 text-xs font-mono tracking-wider uppercase focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2 focus-visible:ring-offset-black transition-colors duration-150 cursor-pointer ${
+                    className={`relative z-10 block rounded-full px-2.5 lg:px-3 py-1.5 text-xs font-mono tracking-wider uppercase whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2 focus-visible:ring-offset-black transition-colors duration-150 cursor-pointer ${
                       isTarget ? 'text-white font-medium' : 'text-neutral-400 hover:text-neutral-200'
                     }`}
                   >
-                    <span className="block">
+                    <span className="block whitespace-nowrap">
                       {link.label}
                     </span>
                   </a>
@@ -445,23 +445,23 @@ export default function Navbar() {
           </motion.ul>
 
           {/* Right Actions: Quick Search ⌘K + Smart Morphing Action Button */}
-          <div className="relative z-10 flex items-center gap-2">
+          <div className="relative z-10 flex items-center gap-2 lg:gap-2.5 shrink-0">
             {/* Quick Search Button */}
             <button
               onClick={handleOpenSearch}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border border-neutral-800 bg-neutral-950/80 hover:bg-neutral-900 text-neutral-400 hover:text-white text-xs font-mono transition-all cursor-pointer shadow-inner active:scale-95 group"
+              className="flex items-center gap-1.5 px-2.5 lg:px-3 py-1.5 rounded-full border border-neutral-800 bg-neutral-950/80 hover:bg-neutral-900 text-neutral-400 hover:text-white text-xs font-mono transition-all cursor-pointer shadow-inner active:scale-95 group shrink-0 whitespace-nowrap"
               title="Buscar herramienta (⌘K)"
             >
-              <Search size={12} className="text-neutral-500 group-hover:text-emerald-400 transition-colors" />
-              <span className="hidden xl:inline text-[11px]">Buscar</span>
-              <kbd className="flex items-center gap-0.5 text-[9px] font-mono text-neutral-500 bg-neutral-900 border border-neutral-800 px-1 py-0.5 rounded">
+              <Search size={12} className="text-neutral-500 group-hover:text-emerald-400 transition-colors shrink-0" />
+              <span className="text-[11px] whitespace-nowrap">Buscar</span>
+              <kbd className="flex items-center gap-0.5 text-[9px] font-mono text-neutral-500 bg-neutral-900 border border-neutral-800 px-1 py-0.5 rounded shrink-0">
                 <Command size={9} />
                 <span>K</span>
               </kbd>
             </button>
 
             {/* Smart Morphing Action CTA (Explorar Stack ➔ Volver arriba) */}
-            <div className="overflow-hidden">
+            <div className="overflow-hidden shrink-0">
               <AnimatePresence mode="popLayout" initial={false}>
                 {isLowerPage ? (
                   <motion.button
@@ -471,9 +471,9 @@ export default function Navbar() {
                     exit={{ opacity: 0, y: -10, scale: 0.95 }}
                     transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
                     onClick={(e) => handleNavClick(e as any, '#radar')}
-                    className="group relative inline-flex items-center justify-center gap-1.5 rounded-full bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-3.5 py-1.5 font-mono text-xs font-semibold tracking-wide transition-all duration-200 active:scale-95 cursor-pointer shadow-[0_0_12px_rgba(52,211,153,0.15)]"
+                    className="group relative inline-flex items-center justify-center gap-1.5 rounded-full bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-3.5 py-1.5 font-mono text-xs font-semibold tracking-wide transition-all duration-200 active:scale-95 cursor-pointer shadow-[0_0_12px_rgba(52,211,153,0.15)] whitespace-nowrap shrink-0"
                   >
-                    <ArrowUp size={12} className="transition-transform group-hover:-translate-y-0.5" />
+                    <ArrowUp size={12} className="transition-transform group-hover:-translate-y-0.5 shrink-0" />
                     <span>Subir</span>
                   </motion.button>
                 ) : (
@@ -483,6 +483,7 @@ export default function Navbar() {
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: -10, scale: 0.95 }}
                     transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+                    className="shrink-0"
                   >
                     <RevealButton href="#ecosystem">
                       Explorar Stack

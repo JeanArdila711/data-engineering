@@ -122,6 +122,11 @@ export default function Footer() {
                   <span className="text-neutral-600 font-bold">04</span> Blogs & Deep-Dives
                 </a>
               </li>
+              <li>
+                <a href="#digest" className="hover:text-emerald-400 transition-colors flex items-center gap-1.5">
+                  <span className="text-neutral-600 font-bold">05</span> Digest Semanal
+                </a>
+              </li>
             </ul>
           </div>
 
