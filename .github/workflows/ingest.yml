@@ -25,6 +25,14 @@ jobs:
           GH_API_TOKEN: ${{ secrets.GH_API_TOKEN }}
         run: uv run python -m pipeline.run
 
+      - name: Ingestar artículos
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_MODEL_SUMMARY: ${{ vars.GEMINI_MODEL_SUMMARY }}
+          GEMINI_MODEL_JUDGE: ${{ vars.GEMINI_MODEL_JUDGE }}
+        run: uv run python -m pipeline.run_articles
+
       - name: Transformar con dbt
         working-directory: transform
         env:
