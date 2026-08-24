@@ -5,6 +5,7 @@ import EcosystemSection from '@/components/EcosystemSection'
 import ArticlesSection from '@/components/ArticlesSection'
 import DigestSection from '@/components/DigestSection'
 import ParticlesBackground from '@/components/ParticlesBackground'
+import CommandPalette from '@/components/CommandPalette'
 import Navbar from '@/components/layout/Navbar'
 import Footer from '@/components/layout/Footer'
 
@@ -31,6 +32,9 @@ export default async function Home() {
 
   return (
     <main className="w-full flex flex-col items-center min-h-screen bg-black text-white relative">
+      {/* Global Universal Command Palette (⌘K) */}
+      <CommandPalette entries={entries} articles={articles} />
+
       {/* Dynamic Unified Navbar (Desktop Magnetic Pill + Mobile Auto-hide Overlay) */}
       <Navbar />
 

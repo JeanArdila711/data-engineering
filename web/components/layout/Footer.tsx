@@ -137,7 +137,7 @@ export default function Footer() {
             </h4>
             <div className="flex flex-col gap-2.5 text-xs font-mono">
               <div className="flex items-center justify-between p-2 rounded-lg bg-neutral-900/60 border border-neutral-800">
-                <span className="text-neutral-400">Buscar en Ecosistema</span>
+                <span className="text-neutral-400">Command Palette Global</span>
                 <kbd className="px-2 py-0.5 rounded bg-neutral-800 border border-neutral-700 text-[10px] text-neutral-200">
                   ⌘K / Ctrl+K
                 </kbd>

@@ -1103,18 +1103,6 @@ export default function EcosystemSection({ entries = [], ecosystemStats = [] }: 
   const [selectedTool, setSelectedTool] = useState<ToolDisplay | null>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
-  // Keyboard shortcut: Cmd+K or Ctrl+K to focus search input
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
-        event.preventDefault();
-        searchInputRef.current?.focus();
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
-
   // Format real database entries or provide standard tools if DB is empty
   const allTools: ToolDisplay[] = useMemo(() => {
     if (entries && entries.length > 0) {
@@ -1167,6 +1155,22 @@ export default function EcosystemSection({ entries = [], ecosystemStats = [] }: 
     ];
   }, [entries, ecosystemStats]);
 
+  // Open tool modal via global Command Palette event
+  useEffect(() => {
+    const handleOpenTool = (e: Event) => {
+      const customEvent = e as CustomEvent<{ slug: string }>;
+      if (customEvent.detail?.slug) {
+        const targetTool = allTools.find((t) => t.slug === customEvent.detail.slug);
+        if (targetTool) {
+          setSelectedTool(targetTool);
+        }
+      }
+    };
+
+    window.addEventListener('open-tool-modal', handleOpenTool);
+    return () => window.removeEventListener('open-tool-modal', handleOpenTool);
+  }, [allTools]);
+
   // Filtering logic
   const filteredTools = useMemo(() => {
     const activeFilterDef = CATEGORY_FILTERS.find((f) => f.label === activeTab);
@@ -1214,20 +1218,16 @@ export default function EcosystemSection({ entries = [], ecosystemStats = [] }: 
             </p>
           </div>
 
-          {/* Search Input Bar with Cmd+K */}
+          {/* Search Input Bar */}
           <div className="relative w-full lg:max-w-xs">
             <Search size={17} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-500" />
             <input 
               ref={searchInputRef}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Buscar herramienta..."
-              className="h-11 w-full rounded-xl border border-neutral-800 bg-neutral-950/90 pl-10 pr-12 text-sm text-neutral-200 placeholder:text-neutral-600 focus:border-neutral-600 focus:outline-none transition-colors"
+              placeholder="Filtrar en esta sección..."
+              className="h-11 w-full rounded-xl border border-neutral-800 bg-neutral-950/90 pl-10 pr-4 text-sm text-neutral-200 placeholder:text-neutral-600 focus:border-neutral-600 focus:outline-none transition-colors"
             />
-            <kbd className="absolute right-3 top-1/2 -translate-y-1/2 rounded border border-neutral-800 bg-neutral-900/80 px-2 py-0.5 font-mono text-[10px] text-neutral-500 flex items-center gap-0.5">
-              <Command size={10} />
-              <span>K</span>
-            </kbd>
           </div>
         </div>
       </div>

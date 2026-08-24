@@ -207,45 +207,11 @@ export default function Navbar() {
     }
   };
 
-  // Quick Search Focus Trigger
+  // Quick Search Command Palette Trigger
   const handleOpenSearch = (e?: React.MouseEvent) => {
     if (e) e.preventDefault();
-    const el = document.getElementById('ecosystem');
-    if (el) {
-      const navbarHeight = 80;
-      const elementPosition = el.getBoundingClientRect().top + window.scrollY;
-      const offsetPosition = Math.max(0, elementPosition - navbarHeight);
-
-      window.scrollTo({
-        top: offsetPosition,
-        behavior: 'smooth',
-      });
-
-      // Focus the input inside ecosystem section with pulse feedback
-      setTimeout(() => {
-        const searchInput = document.querySelector('input[placeholder*="Buscar herramienta"]') as HTMLInputElement;
-        if (searchInput) {
-          searchInput.focus();
-          searchInput.classList.add('ring-2', 'ring-emerald-400', 'border-emerald-500');
-          setTimeout(() => {
-            searchInput.classList.remove('ring-2', 'ring-emerald-400', 'border-emerald-500');
-          }, 1500);
-        }
-      }, 450);
-    }
+    window.dispatchEvent(new CustomEvent('open-command-palette'));
   };
-
-  // Global ⌘K / Ctrl+K keyboard shortcut
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
-        e.preventDefault();
-        handleOpenSearch();
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
 
   // Mobile scroll behavior: auto-hide on scroll down, reveal on scroll up
   useEffect(() => {
