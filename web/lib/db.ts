@@ -12,6 +12,19 @@ export type ChangelogEntry = {
   breaking_changes: string[]
 }
 
+export type ArticleEntry = {
+  article_id: number
+  url: string
+  title: string
+  author: string | null
+  published_at: Date
+  relevance_score: number
+  tool_names: string[]
+  tool_slugs: string[]
+  summary_en: string | null
+  summary_es: string | null
+}
+
 let sql: ReturnType<typeof postgres> | null = null
 
 function getSqlClient() {
@@ -43,6 +56,27 @@ export async function getChangelog(limit = 100): Promise<ChangelogEntry[]> {
     `
   } catch (error) {
     console.warn('Postgres connection unavailable, falling back to static data:', error)
+    return []
+  }
+}
+
+export async function getArticles(limit = 30): Promise<ArticleEntry[]> {
+  try {
+    const client = getSqlClient()
+    if (!client) {
+      return []
+    }
+    return await client<ArticleEntry[]>`
+      select article_id, url, title, author, published_at,
+             relevance_score, tool_names, tool_slugs,
+             summary_en, summary_es
+      from mart_articles
+      where summary_en is not null
+      order by published_at desc, relevance_score desc
+      limit ${limit}
+    `
+  } catch (error) {
+    console.warn('Postgres connection unavailable for articles, falling back to static data:', error)
     return []
   }
 }
