@@ -6,6 +6,9 @@ tools:
     repo: apache/airflow
     homepage: https://airflow.apache.org
     aliases: [apache airflow]
+    feeds:
+      - kind: rss
+        url: https://airflow.apache.org/blog/index.xml
 
   - slug: dbt-core
     name: dbt Core
@@ -14,6 +17,9 @@ tools:
     repo: dbt-labs/dbt-core
     homepage: https://www.getdbt.com
     aliases: [dbt, data build tool]
+    feeds:
+      - kind: rss
+        url: https://www.getdbt.com/blog/rss.xml
 
   - slug: duckdb
     name: DuckDB
@@ -21,6 +27,9 @@ tools:
     repo: duckdb/duckdb
     homepage: https://duckdb.org
     aliases: [duck db]
+    feeds:
+      - kind: rss
+        url: https://duckdb.org/feed.xml
 
   - slug: spark
     name: Apache Spark
@@ -37,6 +46,9 @@ tools:
     repo: apache/iceberg
     homepage: https://iceberg.apache.org
     aliases: [apache iceberg]
+    feeds:
+      - kind: rss
+        url: https://iceberg.apache.org/feed_rss_created.xml
 
   - slug: polars
     name: Polars
@@ -44,6 +56,9 @@ tools:
     repo: pola-rs/polars
     homepage: https://pola.rs
     aliases: []
+    feeds:
+      - kind: rss
+        url: https://pola.rs/rss.xml
 
   - slug: dagster
     name: Dagster
@@ -52,6 +67,9 @@ tools:
     repo: dagster-io/dagster
     homepage: https://dagster.io
     aliases: []
+    feeds:
+      - kind: rss
+        url: https://dagster.io/blog/rss.xml
 
   - slug: kafka
     name: Apache Kafka
@@ -60,6 +78,9 @@ tools:
     repo: apache/kafka
     homepage: https://kafka.apache.org
     aliases: [apache kafka]
+    feeds:
+      - kind: rss
+        url: https://kafka.apache.org/blog/index.xml
 
   - slug: flink
     name: Apache Flink
@@ -68,6 +89,9 @@ tools:
     repo: apache/flink
     homepage: https://flink.apache.org
     aliases: [apache flink]
+    feeds:
+      - kind: rss
+        url: https://flink.apache.org/posts/index.xml
 
   - slug: trino
     name: Trino
@@ -75,3 +99,6 @@ tools:
     repo: trinodb/trino
     homepage: https://trino.io
     aliases: [presto sql]
+    feeds:
+      - kind: rss
+        url: https://trino.io/blog/feed.xml

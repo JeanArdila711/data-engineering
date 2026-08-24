@@ -6,9 +6,15 @@ y ningún otro módulo del pipeline conoce herramientas concretas.
 
 from collections import Counter
 from pathlib import Path
+from typing import Literal
 
 import yaml
 from pydantic import BaseModel, Field
+
+
+class FeedConfig(BaseModel):
+    kind: Literal["rss"]
+    url: str
 
 
 class Tool(BaseModel):
@@ -19,6 +25,7 @@ class Tool(BaseModel):
     repo: str | None = None
     homepage: str | None = None
     aliases: list[str] = Field(default_factory=list)
+    feeds: list[FeedConfig] = Field(default_factory=list)
 
 
 class Catalog(BaseModel):

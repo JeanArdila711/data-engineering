@@ -50,3 +50,25 @@ def test_real_catalog_is_valid():
     catalog = load_catalog(Path("catalog/tools.yaml"))
     assert len(catalog.tools) >= 10
     assert all(t.repo for t in catalog.tools), "toda herramienta de Fase 1 necesita repo"
+
+
+def test_tool_defaults_to_no_feeds():
+    tool = Tool(slug="x", name="X", category="test")
+    assert tool.feeds == []
+
+
+def test_tool_parses_feeds(tmp_path: Path):
+    (tmp_path / "catalog.yaml").write_text(
+        """
+        tools:
+          - slug: duckdb
+            name: DuckDB
+            category: query-engine
+            feeds:
+              - kind: rss
+                url: https://duckdb.org/feed.xml
+        """
+    )
+    catalog = load_catalog(tmp_path / "catalog.yaml")
+    assert catalog.tools[0].feeds[0].url == "https://duckdb.org/feed.xml"
+    assert catalog.tools[0].feeds[0].kind == "rss"
