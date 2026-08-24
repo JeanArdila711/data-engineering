@@ -1,7 +1,7 @@
 'use client';
 
-import React from 'react';
-import { motion } from 'framer-motion';
+import React, { useRef } from 'react';
+import { motion, useMotionValue, useSpring, useMotionTemplate } from 'framer-motion';
 import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
 
@@ -20,6 +20,42 @@ export function RevealButton({
   className = '',
   size = 'sm',
 }: RevealButtonProps) {
+  const containerRef = useRef<HTMLSpanElement>(null);
+
+  // 1. Magnetic Physics (agent-13 & agent-15): Smooth 2-3px displacement towards cursor
+  const rawX = useMotionValue(0);
+  const rawY = useMotionValue(0);
+
+  const springConfig = { stiffness: 400, damping: 28, mass: 0.5 };
+  const magneticX = useSpring(rawX, springConfig);
+  const magneticY = useSpring(rawY, springConfig);
+
+  // 2. Local mouse tracking for Border Spotlight (agent-10)
+  const localMouseX = useMotionValue(0);
+
+  function handleMouseMove(e: React.MouseEvent<HTMLSpanElement>) {
+    if (!containerRef.current) return;
+    const rect = containerRef.current.getBoundingClientRect();
+    const centerX = rect.left + rect.width / 2;
+    const centerY = rect.top + rect.height / 2;
+
+    // Subtle magnetic pull (max 3px in each axis)
+    const deltaX = (e.clientX - centerX) * 0.14;
+    const deltaY = (e.clientY - centerY) * 0.14;
+
+    rawX.set(Math.max(-3.5, Math.min(3.5, deltaX)));
+    rawY.set(Math.max(-3.5, Math.min(3.5, deltaY)));
+
+    localMouseX.set(e.clientX - rect.left);
+  }
+
+  function handleMouseLeave() {
+    rawX.set(0);
+    rawY.set(0);
+  }
+
+  const spotlightGlow = useMotionTemplate`radial-gradient(90px circle at ${localMouseX}px 0%, rgba(52, 211, 153, 0.4), rgba(255, 255, 255, 0.6), transparent 80%)`;
+
   const sizeClasses = size === 'sm' 
     ? 'px-4 py-2 text-xs gap-1.5' 
     : size === 'lg' 
@@ -30,28 +66,52 @@ export function RevealButton({
 
   const content = (
     <motion.span
-      whileHover="hover"
+      ref={containerRef}
+      onMouseMove={handleMouseMove}
+      onMouseLeave={handleMouseLeave}
+      style={{
+        x: magneticX,
+        y: magneticY,
+      }}
       whileTap={{ scale: 0.94 }}
-      transition={{ type: 'spring', stiffness: 450, damping: 25 }}
-      className={`group relative inline-flex items-center justify-center rounded-full font-semibold overflow-hidden bg-white text-neutral-950 border border-white/60 shadow-[0_0_20px_rgba(255,255,255,0.16),inset_0_1px_0_0_rgba(255,255,255,1)] hover:shadow-[0_0_32px_rgba(255,255,255,0.3),inset_0_1px_0_0_rgba(255,255,255,1)] transition-shadow duration-300 cursor-pointer select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2 focus-visible:ring-offset-black ${sizeClasses} ${className}`}
+      transition={{ type: 'spring', stiffness: 500, damping: 25 }}
+      className={`group relative inline-flex items-center justify-center rounded-full font-semibold overflow-hidden bg-white text-neutral-950 border border-white/60 shadow-[0_0_20px_rgba(255,255,255,0.16),inset_0_1px_0_0_rgba(255,255,255,1)] hover:shadow-[0_0_32px_rgba(255,255,255,0.32),inset_0_1px_0_0_rgba(255,255,255,1)] transition-shadow duration-300 cursor-pointer select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2 focus-visible:ring-offset-black ${sizeClasses} ${className}`}
     >
-      {/* 1. Metallic Shimmer Light Shard (Slides across on hover) */}
+      {/* Dynamic Top Border Spotlight Tracker (agent-10) */}
+      <motion.span
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-x-0 top-0 h-[2px] opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10"
+        style={{
+          background: spotlightGlow,
+        }}
+      />
+
+      {/* Metallic Shimmer Shard Beam (Slides across on hover) */}
       <span 
         aria-hidden="true" 
         className="pointer-events-none absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-700 ease-[cubic-bezier(0.16,1,0.3,1)] bg-gradient-to-r from-transparent via-white/80 to-transparent skew-x-[-20deg] z-10" 
       />
 
-      {/* 2. Stable High-Contrast Text */}
+      {/* High-Contrast Stable Text */}
       <span className="relative z-20 font-medium tracking-tight">
         {children}
       </span>
 
-      {/* 3. Micro Arrow with Smooth Glide */}
-      <ArrowRight 
-        size={iconSize}
-        strokeWidth={2}
-        className="relative z-20 transition-transform duration-200 ease-out group-hover:translate-x-1" 
-      />
+      {/* Infinite Arrow Loop Reveal (Stripe / Vercel pattern) */}
+      <span className="relative z-20 overflow-hidden flex items-center justify-center size-3.5">
+        {/* Primary Arrow: Exits to the right */}
+        <ArrowRight 
+          size={iconSize}
+          strokeWidth={2}
+          className="absolute inset-0 transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)] group-hover:translate-x-full group-hover:opacity-0" 
+        />
+        {/* Secondary Arrow: Enters seamlessly from the left */}
+        <ArrowRight 
+          size={iconSize}
+          strokeWidth={2}
+          className="absolute inset-0 -translate-x-full opacity-0 transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)] group-hover:translate-x-0 group-hover:opacity-100 text-neutral-950" 
+        />
+      </span>
     </motion.span>
   );
 
