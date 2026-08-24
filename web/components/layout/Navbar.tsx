@@ -28,6 +28,7 @@ const LINKS = [
   { label: 'Manifiesto', id: 'manifiesto', href: '#manifiesto' },
   { label: 'Ecosistema', id: 'ecosystem', href: '#ecosystem' },
   { label: 'Artículos', id: 'articulos', href: '#articulos' },
+  { label: 'Digest', id: 'digest', href: '#digest' },
 ];
 
 // Dark engineering theme RGB tokens for dynamic scroll alpha interpolation
