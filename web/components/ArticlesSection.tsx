@@ -181,14 +181,17 @@ function ArticleCard({
 
   return (
     <motion.div
-      layout
+      layout="position"
       ref={cardRef}
       onMouseMove={handleMouseMove}
-      initial={{ opacity: 0, scale: 0.96 }}
-      animate={{ opacity: 1, scale: 1 }}
-      exit={{ opacity: 0, scale: 0.96 }}
-      transition={{ duration: 0.28, ease: customEase }}
-      className="group relative rounded-2xl p-[1px] bg-neutral-900/70 transition-all duration-300 hover:bg-neutral-800/90 flex flex-col justify-between"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ 
+        opacity: { duration: 0.2, ease: "easeInOut" },
+        layout: { duration: 0.38, ease: [0.25, 1, 0.5, 1] }
+      }}
+      className="group relative rounded-2xl p-[1px] bg-neutral-900/70 transition-colors duration-300 hover:bg-neutral-800/90 flex flex-col justify-between"
     >
       {/* 1. GPU Spotlight Glow */}
       <motion.div
@@ -476,14 +479,11 @@ export default function ArticlesSection({
         </div>
       </div>
 
-      {/* 3. Articles Grid with Smooth Layout Reflow & PopLayout Transitions */}
-      <motion.div layout className="min-h-[300px]">
-        <AnimatePresence mode="popLayout">
-          {filteredArticles.length > 0 ? (
-            <motion.div 
-              layout 
-              className="grid grid-cols-1 md:grid-cols-2 gap-5 lg:gap-6"
-            >
+      {/* 3. Articles Grid with Stable Container */}
+      <div className="min-h-[300px]">
+        {filteredArticles.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5 lg:gap-6">
+            <AnimatePresence mode="popLayout" initial={false}>
               {filteredArticles.map((article) => (
                 <ArticleCard 
                   key={article.article_id} 
@@ -491,29 +491,29 @@ export default function ArticlesSection({
                   lang={lang} 
                 />
               ))}
-            </motion.div>
-          ) : (
-            <motion.div
-              layout
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="w-full py-16 text-center rounded-2xl border border-neutral-800/80 bg-neutral-950/50 p-8"
+            </AnimatePresence>
+          </div>
+        ) : (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.25 }}
+            className="w-full py-16 text-center rounded-2xl border border-neutral-800/80 bg-neutral-950/50 p-8"
+          >
+            <Filter size={24} className="mx-auto text-neutral-600 mb-3" />
+            <p className="text-neutral-400 text-sm font-mono">
+              No se encontraron artículos con los filtros seleccionados.
+            </p>
+            <button
+              onClick={() => { setSelectedTool('all'); setSearchQuery(''); }}
+              className="mt-4 px-4 py-1.5 rounded-full text-xs font-mono text-emerald-400 bg-emerald-950/40 border border-emerald-800/50 hover:bg-emerald-900/40 transition-colors cursor-pointer"
             >
-              <Filter size={24} className="mx-auto text-neutral-600 mb-3" />
-              <p className="text-neutral-400 text-sm font-mono">
-                No se encontraron artículos con los filtros seleccionados.
-              </p>
-              <button
-                onClick={() => { setSelectedTool('all'); setSearchQuery(''); }}
-                className="mt-4 px-4 py-1.5 rounded-full text-xs font-mono text-emerald-400 bg-emerald-950/40 border border-emerald-800/50 hover:bg-emerald-900/40 transition-colors cursor-pointer"
-              >
-                Limpiar filtros
-              </button>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </motion.div>
+              Limpiar filtros
+            </button>
+          </motion.div>
+        )}
+      </div>
     </section>
   );
 }
