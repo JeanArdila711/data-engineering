@@ -82,7 +82,7 @@ def sync_sources(conn: psycopg.Connection, catalog: Catalog) -> dict[str, int]:
                 continue
             cur.execute(
                 "INSERT INTO sources (tool_slug, kind, url) VALUES (%s, 'github_releases', %s) "
-                "ON CONFLICT (tool_slug, kind) DO UPDATE SET url = EXCLUDED.url "
+                "ON CONFLICT (tool_slug, kind, url) DO UPDATE SET url = EXCLUDED.url "
                 "RETURNING id",
                 (tool.slug, f"https://api.github.com/repos/{tool.repo}/releases"),
             )
