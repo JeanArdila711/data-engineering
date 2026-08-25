@@ -8,7 +8,6 @@ import ParticlesBackground from '@/components/ParticlesBackground'
 import CommandPalette from '@/components/CommandPalette'
 import Navbar from '@/components/layout/Navbar'
 import Footer from '@/components/layout/Footer'
-import { CardCurtainRevealDemo } from '@/components/CardCurtainRevealDemo'
 
 export default async function Home() {
   let entries: ChangelogEntry[] = []
@@ -59,15 +58,6 @@ export default async function Home() {
 
       {/* 5. Weekly Digest — Releases & Articles from the Last 7 Days (Fase 3) */}
       <DigestSection entries={digest} />
-
-      {/* DEMO: Card Curtain Reveal (Requested by User) */}
-      <div className="w-full relative z-20 py-20 bg-neutral-950 flex flex-col items-center border-t border-neutral-900">
-        <div className="text-center mb-8">
-          <h2 className="text-2xl font-bold font-mono text-white mb-2">Curtain Reveal Demo</h2>
-          <p className="text-neutral-500 font-mono text-sm">Prueba de concepto desde 21st.dev</p>
-        </div>
-        <CardCurtainRevealDemo />
-      </div>
 
       {/* 6. Engineering Telemetry Footer & Systems Status */}
       <Footer />

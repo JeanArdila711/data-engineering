@@ -78,8 +78,8 @@ function ArticleCard({
     : (article.summary_en || article.summary_es);
 
   const fallbackText = lang === 'es'
-    ? 'Análisis técnico y deep-dive disponible en la documentación y blog oficial de la herramienta.'
-    : 'Technical deep-dive and analysis available in the official documentation and release notes.';
+    ? `Explora la documentación técnica, guías de arquitectura y notas de versión detalladas sobre ${article.tool_names?.[0] || 'esta herramienta'} en la publicación oficial.`
+    : `Explore technical documentation, architecture guides, and detailed release notes for ${article.tool_names?.[0] || 'this tool'} in the official publication.`;
 
   const summaryText = rawSummary ? cleanSummary(rawSummary) : fallbackText;
   const heroSlug = article.tool_slugs?.[0]; // Pick first tool for the footer logo
