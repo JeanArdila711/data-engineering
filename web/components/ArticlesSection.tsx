@@ -103,13 +103,16 @@ function ArticleCard({
                 alt="Logo"
               />
             )}
-            {article.tool_names && article.tool_names.length > 0 && (
-              <span className="text-[11px] font-mono tracking-wider text-neutral-400">
-                {article.tool_names[0].toUpperCase()}
-              </span>
-            )}
+            <span className="text-[11px] font-mono tracking-wider text-neutral-400">
+              {article.tool_names && article.tool_names.length > 0 
+                ? article.tool_names[0].toUpperCase()
+                : 'ECOSISTEMA'}
+            </span>
           </div>
           <div className="flex items-center gap-2.5 text-[10px] font-mono text-neutral-500">
+            {article.relevance_score > 85 && (
+              <Sparkles size={11} className="text-emerald-500/80" />
+            )}
             {article.author && <span className="truncate max-w-[100px]">{article.author}</span>}
             <span className="tabular-nums">{formatDate(article.published_at)}</span>
           </div>
