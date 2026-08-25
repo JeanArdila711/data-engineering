@@ -161,7 +161,7 @@ function PipelineTerminal() {
   );
 }
 
-export default function Hero() {
+export default function Hero({ toolCount, releaseCount }: { toolCount?: number; releaseCount?: number }) {
   const [lang, setLang] = useState<'es' | 'en'>('es');
 
   useEffect(() => {
@@ -315,7 +315,7 @@ export default function Hero() {
                   <span className="w-3 md:w-4 h-[1px] bg-neutral-700"></span> Core
                 </span>
                 <span className="text-4xl sm:text-5xl lg:text-6xl font-light tracking-tighter text-white font-mono flex items-baseline gap-1">
-                  <ScrambleText text="10" delay={0.5} duration={1} />
+                  <ScrambleText text={String(toolCount ?? 0)} delay={0.5} duration={1} />
                 </span>
                 <span className="text-neutral-500 text-xs md:text-sm mt-2 md:mt-3 font-light block">Herramientas traqueadas.</span>
               </div>
@@ -329,7 +329,7 @@ export default function Hero() {
                   <span className="w-3 md:w-4 h-[1px] bg-neutral-700"></span> Registros
                 </span>
                 <span className="text-4xl sm:text-5xl lg:text-6xl font-light tracking-tighter text-white font-mono flex items-baseline gap-1">
-                  <ScrambleText text="180" delay={0.65} duration={1.2} />
+                  <ScrambleText text={String(releaseCount ?? 0)} delay={0.65} duration={1.2} />
                   <span className="text-emerald-500 text-3xl md:text-4xl font-normal">+</span>
                 </span>
                 <span className="text-neutral-500 text-xs md:text-sm mt-2 md:mt-3 font-light block">Releases en base de datos.</span>

@@ -89,37 +89,20 @@ export default function CommandPalette({ entries = [], articles = [] }: CommandP
     }
   }, [open]);
 
-  // Default tools if entries are empty
-  const defaultTools = [
-    { name: 'DuckDB', slug: 'duckdb', category: 'Motor de Consulta', version: 'v1.0.0', hasBreaking: false },
-    { name: 'Polars', slug: 'polars', category: 'Dataframe', version: 'v0.20.15', hasBreaking: false },
-    { name: 'Apache Airflow', slug: 'airflow', category: 'Orquestación', version: 'v2.9.0', hasBreaking: false },
-    { name: 'dbt Core', slug: 'dbt-core', category: 'Transformación', version: 'v1.8.4', hasBreaking: true },
-    { name: 'Apache Iceberg', slug: 'iceberg', category: 'Table Format', version: 'v1.5.2', hasBreaking: false },
-    { name: 'Apache Kafka', slug: 'kafka', category: 'Streaming', version: 'v3.7.0', hasBreaking: false },
-    { name: 'Apache Spark', slug: 'spark', category: 'Procesamiento', version: 'v3.5.1', hasBreaking: false },
-    { name: 'Dagster', slug: 'dagster', category: 'Orquestación', version: 'v1.7.8', hasBreaking: false },
-    { name: 'Trino', slug: 'trino', category: 'Motor de Consulta', version: 'v440', hasBreaking: false },
-    { name: 'Great Expectations', slug: 'great-expectations', category: 'Calidad de Datos', version: 'v0.18.12', hasBreaking: false },
-  ];
-
   const toolsList = useMemo(() => {
-    if (entries && entries.length > 0) {
-      const map = new Map<string, { name: string; slug: string; category: string; version: string; hasBreaking: boolean }>();
-      for (const e of entries) {
-        if (!map.has(e.tool_slug)) {
-          map.set(e.tool_slug, {
-            name: e.tool_name,
-            slug: e.tool_slug,
-            category: e.category || 'General',
-            version: e.version,
-            hasBreaking: e.has_breaking,
-          });
-        }
+    const map = new Map<string, { name: string; slug: string; category: string; version: string; hasBreaking: boolean }>();
+    for (const e of entries) {
+      if (!map.has(e.tool_slug)) {
+        map.set(e.tool_slug, {
+          name: e.tool_name,
+          slug: e.tool_slug,
+          category: e.category || 'General',
+          version: e.version,
+          hasBreaking: e.has_breaking,
+        });
       }
-      return Array.from(map.values());
     }
-    return defaultTools;
+    return Array.from(map.values());
   }, [entries]);
 
   const scrollToSection = (id: string) => {

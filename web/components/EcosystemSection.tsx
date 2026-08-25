@@ -30,7 +30,7 @@ import {
   History
 } from 'lucide-react';
 import { useToast } from '@/components/ui/toast';
-import { ChangelogEntry, EcosystemStat, ReleaseHistoryItem } from '@/lib/db';
+import { ArticleEntry, ChangelogEntry, EcosystemStat, ReleaseHistoryItem } from '@/lib/db';
 
 // Technical hardware & runtime specifications per tool
 const TOOL_METADATA: Record<string, { repo: string; license: string; runtime: string; layer: string }> = {
@@ -52,105 +52,27 @@ const TOOL_METADATA: Record<string, { repo: string; license: string; runtime: st
   'trino': { repo: 'trinodb/trino', license: 'Apache-2.0', runtime: 'Java 21+ / Distributed MPP', layer: 'Motor de Consulta Federado' },
 };
 
-// Verified deep-dives & technical articles per tool
-const TOOL_ARTICLES: Record<string, { title: string; url: string; author: string; summary: string }> = {
-  'dbt-core': {
-    title: 'dbt Core v1.12 en General Availability: Rendimiento de Compilación y Testing',
-    url: 'https://www.getdbt.com/blog/dbt-core-v1-12-is-ga',
-    author: 'dbt Labs Team',
-    summary: 'Testing unitario nativo y optimización de compilación de DAGs para proyectos a gran escala.',
-  },
-  'dbt': {
-    title: 'dbt Core v1.12 en General Availability: Rendimiento de Compilación y Testing',
-    url: 'https://www.getdbt.com/blog/dbt-core-v1-12-is-ga',
-    author: 'dbt Labs Team',
-    summary: 'Testing unitario nativo y optimización de compilación de DAGs para proyectos a gran escala.',
-  },
-  'duckdb': {
-    title: 'DuckDB: Resultados de Consultas por Chunks en el Driver JDBC/Java',
-    url: 'https://duckdb.org/2026/08/21/chunked-query-results-java-driver.html',
-    author: 'DuckDB Labs Team',
-    summary: 'Streaming de resultados por chunks para aplicaciones Java, reduciendo el consumo de memoria RAM.',
-  },
-  'polars': {
-    title: 'Estrategias de Migración de Pandas a Polars: Rendimiento y Semántica Lazy',
-    url: 'https://pola.rs/posts/pandas-to-polars-migration-strategies/',
-    author: 'Ritchie Vink',
-    summary: 'Patrones idiomáticos de migración hacia el motor lazy de Polars con optimización de consultas en Rust.',
-  },
-  'iceberg': {
-    title: 'Apache Iceberg: Especificación y Releases del Formato Abierto de Tablas',
-    url: 'https://iceberg.apache.org/releases/',
-    author: 'Apache Iceberg PMC',
-    summary: 'Tablas analíticas de petabytes con snapshot isolation, particionamiento oculto y commits atómicos.',
-  },
-  'apache-iceberg': {
-    title: 'Apache Iceberg: Especificación y Releases del Formato Abierto de Tablas',
-    url: 'https://iceberg.apache.org/releases/',
-    author: 'Apache Iceberg PMC',
-    summary: 'Tablas analíticas de petabytes con snapshot isolation, particionamiento oculto y commits atómicos.',
-  },
-  'airflow': {
-    title: 'Apache Airflow 3.3.0: Arquitectura de Orquestación y Datasets Dinámicos',
-    url: 'https://airflow.apache.org/blog/airflow-3.3.0/',
-    author: 'Apache Airflow PMC',
-    summary: 'Mapeo dinámico de tareas sobre múltiples parámetros y programación reactiva basada en datasets.',
-  },
-  'apache-airflow': {
-    title: 'Apache Airflow 3.3.0: Arquitectura de Orquestación y Datasets Dinámicos',
-    url: 'https://airflow.apache.org/blog/airflow-3.3.0/',
-    author: 'Apache Airflow PMC',
-    summary: 'Mapeo dinámico de tareas sobre múltiples parámetros y programación reactiva basada en datasets.',
-  },
-  'dagster': {
-    title: 'La Orquestación es más que Programación: Automatización Declarativa en Dagster',
-    url: 'https://dagster.io/blog/orchestration-is-more-than-scheduling-declarative-automation-in-dagster',
-    author: 'Sandy Ryza',
-    summary: 'Automatización declarativa con bucles de reconciliación basados en estado y SLAs de frescura.',
-  },
-  'kafka': {
-    title: 'Apache Kafka: Documentación Oficial de Arquitectura KRaft y Streaming',
-    url: 'https://kafka.apache.org/documentation/',
-    author: 'Apache Kafka PMC',
-    summary: 'Arquitectura de streaming de eventos, quorum de metadatos KRaft y almacenamiento en capas.',
-  },
-  'apache-kafka': {
-    title: 'Apache Kafka: Documentación Oficial de Arquitectura KRaft y Streaming',
-    url: 'https://kafka.apache.org/documentation/',
-    author: 'Apache Kafka PMC',
-    summary: 'Arquitectura de streaming de eventos, quorum de metadatos KRaft y almacenamiento en capas.',
-  },
-  'spark': {
-    title: 'Apache Spark: Novedades del Motor de Procesamiento y Spark Connect',
-    url: 'https://spark.apache.org/news/index.html',
-    author: 'Apache Spark PMC',
-    summary: 'Ejecución desacoplada con Spark Connect y optimizaciones en Adaptive Query Execution.',
-  },
-  'apache-spark': {
-    title: 'Apache Spark: Novedades del Motor de Procesamiento y Spark Connect',
-    url: 'https://spark.apache.org/news/index.html',
-    author: 'Apache Spark PMC',
-    summary: 'Ejecución desacoplada con Spark Connect y optimizaciones en Adaptive Query Execution.',
-  },
-  'flink': {
-    title: 'Apache Flink: Anuncio del FileSystem S3 Nativo para Streaming State Storage',
-    url: 'https://flink.apache.org/2026/06/26/announcing-native-s3-fs/',
-    author: 'Apache Flink Community',
-    summary: 'FileSystem S3 nativo que optimiza subidas multi-parte y reduce la latencia en checkpoints.',
-  },
-  'apache-flink': {
-    title: 'Apache Flink: Anuncio del FileSystem S3 Nativo para Streaming State Storage',
-    url: 'https://flink.apache.org/2026/06/26/announcing-native-s3-fs/',
-    author: 'Apache Flink Community',
-    summary: 'FileSystem S3 nativo que optimiza subidas multi-parte y reduce la latencia en checkpoints.',
-  },
-  'trino': {
-    title: 'Trino: Avances en Ejecución Tolerante a Fallos y Consultas Federadas',
-    url: 'https://trino.io/blog/2026/07/18/a-pivotal-summer.html',
-    author: 'Trino Community',
-    summary: 'Ejecución distribuida tolerante a fallos, spooling para cargas batch y analítica en data lakes.',
-  },
-};
+// Same sanitizer used in ArticlesSection/DigestSection — strips LLM
+// conversational boilerplate ("Aquí tienes la traducción exacta:", etc.)
+function cleanSummary(text: string | null): string {
+  if (!text) return '';
+  return text
+    .replace(/^(aquí tienes (la traducción|el resumen|un resumen)[^:\n]*:?\s*|here is the (translation|summary)[^:\n]*:?\s*)/i, '')
+    .replace(/\*?\s*\(?Nota:[\s\S]*?\)?\*?$/i, '')
+    .replace(/^["'>\s]+|["'\s]+$/g, '')
+    .trim();
+}
+
+// Resolve the best real article covering a tool from the live articles feed
+// (mart_articles) — replaces a prior hardcoded per-tool article map.
+function findRelatedArticle(articles: ArticleEntry[], slug: string): ArticleEntry | undefined {
+  const cleanSlug = slug.replace(/^apache-/, '');
+  const matches = articles.filter((a) =>
+    a.tool_slugs?.some((s) => s === slug || s.replace(/^apache-/, '') === cleanSlug)
+  );
+  if (matches.length === 0) return undefined;
+  return matches.sort((a, b) => b.relevance_score - a.relevance_score)[0];
+}
 
 // Tool summaries based on official capabilities
 const TOOL_SUMMARIES: Record<string, string> = {
@@ -358,13 +280,15 @@ function ReleaseHistoryList({ history }: { history: ReleaseHistoryItem[] }) {
 
 // Fullscreen & Mobile-Optimized Morphing Modal with Directional Silky Navigation
 function ExpandedToolModal({
-  tool, 
+  tool,
   toolsList = [],
+  articles = [],
   onSelectTool,
-  onClose 
-}: { 
-  tool: ToolDisplay; 
+  onClose
+}: {
+  tool: ToolDisplay;
   toolsList?: ToolDisplay[];
+  articles?: ArticleEntry[];
   onSelectTool?: (tool: ToolDisplay) => void;
   onClose: () => void;
 }) {
@@ -482,7 +406,10 @@ function ExpandedToolModal({
     showToast('Resumen para Slack copiado', 'Listo para pegar en tu canal de ingeniería');
   };
 
-  const relatedArticle = TOOL_ARTICLES[tool.slug] || TOOL_ARTICLES[tool.slug.replace(/^apache-/, '')];
+  const relatedArticle = findRelatedArticle(articles, tool.slug);
+  const relatedArticleSummary = relatedArticle
+    ? cleanSummary(relatedArticle.summary_es || relatedArticle.summary_en)
+    : null;
 
   return (
     <div key="active-tool-modal-overlay" className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-6 pointer-events-none">
@@ -535,8 +462,19 @@ function ExpandedToolModal({
           {/* Header Row: Icon + Title with Rolling Header + Navigation + Close Button */}
           <div className="flex items-start justify-between gap-4">
             <div className="flex items-center gap-3.5 sm:gap-4 min-w-0">
-              <div className="size-12 sm:size-14 rounded-2xl border border-neutral-800 bg-neutral-900 flex items-center justify-center text-emerald-400 shadow-inner shrink-0">
-                <Icon size={24} strokeWidth={1.75} />
+              <div className="size-12 sm:size-14 overflow-hidden rounded-2xl border border-neutral-800 bg-neutral-900 flex items-center justify-center text-emerald-400 shadow-inner shrink-0">
+                <img 
+                  src={`/logos/${tool.slug}.svg`} 
+                  alt={`${tool.name} logo`}
+                  className="size-6 sm:size-7 opacity-95 object-contain drop-shadow-lg"
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none';
+                    e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                  }}
+                />
+                <div className="hidden">
+                  <Icon size={24} strokeWidth={1.75} />
+                </div>
               </div>
               <div className="min-w-0">
                 <div className="overflow-hidden h-8 sm:h-9 flex items-center">
@@ -831,11 +769,13 @@ function ExpandedToolModal({
                       >
                         {relatedArticle.title}
                       </a>
-                      <p className="text-[11px] text-neutral-400 font-light leading-relaxed line-clamp-2">
-                        {relatedArticle.summary}
-                      </p>
+                      {relatedArticleSummary && (
+                        <p className="text-[11px] text-neutral-400 font-light leading-relaxed line-clamp-2">
+                          {relatedArticleSummary}
+                        </p>
+                      )}
                       <div className="flex items-center justify-between text-[10px] font-mono text-neutral-500 pt-1 border-t border-neutral-800/60">
-                        <span>{relatedArticle.author}</span>
+                        <span>{relatedArticle.author || 'Fuente oficial'}</span>
                         <a href="#articulos" onClick={onClose} className="hover:text-emerald-400 transition-colors">
                           Ver artículos →
                         </a>
@@ -1001,9 +941,20 @@ function ToolCard({
               <motion.div 
                 layoutId={`tool-icon-${tool.slug}`}
                 transition={springTransition}
-                className="flex size-11 shrink-0 items-center justify-center rounded-xl border border-neutral-800/90 bg-neutral-900/90 text-neutral-300 group-hover:text-emerald-400 group-hover:border-neutral-700/80 group-hover:-translate-y-0.5 transition-all duration-200 shadow-inner"
+                className="flex size-11 shrink-0 overflow-hidden items-center justify-center rounded-xl border border-neutral-800/90 bg-neutral-900/90 text-neutral-300 group-hover:text-emerald-400 group-hover:border-neutral-700/80 group-hover:-translate-y-0.5 transition-all duration-200 shadow-inner"
               >
-                <Icon size={20} strokeWidth={1.5} />
+                <img 
+                  src={`/logos/${tool.slug}.svg`} 
+                  alt={`${tool.name} logo`}
+                  className="size-5 opacity-90 transition-opacity duration-300 group-hover:opacity-100 object-contain drop-shadow-md"
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none';
+                    e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                  }}
+                />
+                <div className="hidden">
+                  <Icon size={20} strokeWidth={1.5} />
+                </div>
               </motion.div>
               <div>
                 <motion.h3 
@@ -1097,62 +1048,49 @@ function ToolCard({
   );
 }
 
-export default function EcosystemSection({ entries = [], ecosystemStats = [] }: { entries?: ChangelogEntry[]; ecosystemStats?: EcosystemStat[] }) {
+export default function EcosystemSection({ entries = [], ecosystemStats = [], articles = [] }: { entries?: ChangelogEntry[]; ecosystemStats?: EcosystemStat[]; articles?: ArticleEntry[] }) {
   const [activeTab, setActiveTab] = useState(CATEGORY_FILTERS[0].label);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTool, setSelectedTool] = useState<ToolDisplay | null>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
-  // Format real database entries or provide standard tools if DB is empty
+  // Format real database entries. No fallback: an empty result means the
+  // ecosystem section renders its empty state, never fabricated tools.
   const allTools: ToolDisplay[] = useMemo(() => {
-    if (entries && entries.length > 0) {
-      const toolMap = new Map<string, ToolDisplay>();
-      
-      for (const entry of entries) {
-        if (!toolMap.has(entry.tool_slug)) {
-          const rawCat = (entry.category || '').toLowerCase();
-          const displayCat = CATEGORY_DISPLAY_NAMES[rawCat] || entry.category || 'General';
-          
-          toolMap.set(entry.tool_slug, {
-            id: entry.release_id,
-            name: entry.tool_name,
-            slug: entry.tool_slug,
-            rawCategory: rawCat,
-            category: displayCat,
-            version: entry.version,
-            date: formatRelativeDate(entry.published_at),
-            hasBreaking: entry.has_breaking,
-            breakingChanges: entry.breaking_changes || [],
-            summary: TOOL_SUMMARIES[entry.tool_slug] || `Última versión ${entry.version} disponible en el ecosistema.`,
-            sourceUrl: entry.source_url,
-          });
-        }
-      }
+    const toolMap = new Map<string, ToolDisplay>();
 
-      const statsBySlug = new Map(ecosystemStats.map((s) => [s.tool_slug, s]));
-      for (const tool of toolMap.values()) {
-        const stat = statsBySlug.get(tool.slug);
-        if (stat) {
-          tool.releaseCount = stat.release_count;
-          tool.breakingReleaseCount = stat.breaking_release_count;
-          tool.articleCount = stat.article_count;
-          tool.releaseHistory = stat.release_history;
-        }
+    for (const entry of entries) {
+      if (!toolMap.has(entry.tool_slug)) {
+        const rawCat = (entry.category || '').toLowerCase();
+        const displayCat = CATEGORY_DISPLAY_NAMES[rawCat] || entry.category || 'General';
+
+        toolMap.set(entry.tool_slug, {
+          id: entry.release_id,
+          name: entry.tool_name,
+          slug: entry.tool_slug,
+          rawCategory: rawCat,
+          category: displayCat,
+          version: entry.version,
+          date: formatRelativeDate(entry.published_at),
+          hasBreaking: entry.has_breaking,
+          breakingChanges: entry.breaking_changes || [],
+          summary: TOOL_SUMMARIES[entry.tool_slug] || `Última versión ${entry.version} disponible en el ecosistema.`,
+          sourceUrl: entry.source_url,
+        });
       }
-      return Array.from(toolMap.values());
     }
 
-    // Default fallback tools
-    return [
-      { id: '1', name: 'Apache Airflow', slug: 'airflow', rawCategory: 'orchestration', category: 'Orquestación', version: 'v2.9.0', date: 'hace 2 días', hasBreaking: false, breakingChanges: [], summary: TOOL_SUMMARIES['airflow'], sourceUrl: 'https://github.com/apache/airflow/releases' },
-      { id: '2', name: 'dbt Core', slug: 'dbt-core', rawCategory: 'transformation', category: 'Transformación', version: 'v1.8.4', date: 'hace 5 días', hasBreaking: true, breakingChanges: ['Eliminación de adapters deprecated para Postgres < 14', 'Cambio en el formato de schema.yml para semantic models'], summary: TOOL_SUMMARIES['dbt-core'], sourceUrl: 'https://github.com/dbt-labs/dbt-core/releases' },
-      { id: '3', name: 'Apache Iceberg', slug: 'iceberg', rawCategory: 'table-format', category: 'Table Format / Lakehouse', version: 'v1.5.2', date: 'hace 1 semana', hasBreaking: false, breakingChanges: [], summary: TOOL_SUMMARIES['iceberg'], sourceUrl: 'https://github.com/apache/iceberg/releases' },
-      { id: '4', name: 'Apache Spark', slug: 'spark', rawCategory: 'processing', category: 'Procesamiento', version: 'v3.5.1', date: 'hace 2 semanas', hasBreaking: false, breakingChanges: [], summary: TOOL_SUMMARIES['spark'], sourceUrl: 'https://github.com/apache/spark/releases' },
-      { id: '5', name: 'Polars', slug: 'polars', rawCategory: 'dataframe', category: 'Dataframe', version: 'v0.20.15', date: 'hace 3 días', hasBreaking: false, breakingChanges: [], summary: TOOL_SUMMARIES['polars'], sourceUrl: 'https://github.com/pola-rs/polars/releases' },
-      { id: '6', name: 'Dagster', slug: 'dagster', rawCategory: 'orchestration', category: 'Orquestación', version: 'v1.7.8', date: 'hace 6 días', hasBreaking: false, breakingChanges: [], summary: TOOL_SUMMARIES['dagster'], sourceUrl: 'https://github.com/dagster-io/dagster/releases' },
-      { id: '7', name: 'DuckDB', slug: 'duckdb', rawCategory: 'query-engine', category: 'Motor de Consulta', version: 'v1.0.0', date: 'hace 1 día', hasBreaking: false, breakingChanges: [], summary: TOOL_SUMMARIES['duckdb'], sourceUrl: 'https://github.com/duckdb/duckdb/releases' },
-      { id: '8', name: 'Trino', slug: 'trino', rawCategory: 'query-engine', category: 'Motor de Consulta', version: 'v440', date: 'hace 1 mes', hasBreaking: false, breakingChanges: [], summary: TOOL_SUMMARIES['trino'], sourceUrl: 'https://github.com/trinodb/trino/releases' },
-    ];
+    const statsBySlug = new Map(ecosystemStats.map((s) => [s.tool_slug, s]));
+    for (const tool of toolMap.values()) {
+      const stat = statsBySlug.get(tool.slug);
+      if (stat) {
+        tool.releaseCount = stat.release_count;
+        tool.breakingReleaseCount = stat.breaking_release_count;
+        tool.articleCount = stat.article_count;
+        tool.releaseHistory = stat.release_history;
+      }
+    }
+    return Array.from(toolMap.values());
   }, [entries, ecosystemStats]);
 
   // Open tool modal via global Command Palette event
@@ -1299,14 +1237,18 @@ export default function EcosystemSection({ entries = [], ecosystemStats = [] }: 
               className="py-20 text-center flex flex-col items-center justify-center border border-dashed border-neutral-800/80 rounded-2xl bg-neutral-950/40"
             >
               <p className="text-neutral-400 font-mono text-sm">
-                No se encontraron herramientas en la categoría seleccionada
+                {allTools.length === 0
+                  ? 'Aún no hay herramientas registradas en la base de datos.'
+                  : 'No se encontraron herramientas en la categoría seleccionada'}
               </p>
-              <button 
-                onClick={() => { setSearchQuery(''); setActiveTab('Todas'); }}
-                className="mt-4 text-xs font-mono text-emerald-400 hover:underline cursor-pointer"
-              >
-                Restablecer todos los filtros
-              </button>
+              {allTools.length > 0 && (
+                <button
+                  onClick={() => { setSearchQuery(''); setActiveTab('Todas'); }}
+                  className="mt-4 text-xs font-mono text-emerald-400 hover:underline cursor-pointer"
+                >
+                  Restablecer todos los filtros
+                </button>
+              )}
             </motion.div>
           )}
         </AnimatePresence>
@@ -1315,11 +1257,12 @@ export default function EcosystemSection({ entries = [], ecosystemStats = [] }: 
       {/* Morphing Expandable Modal Dialog (Smooth Shared Layout & Navigation) */}
       <AnimatePresence>
         {selectedTool && (
-          <ExpandedToolModal 
-            tool={selectedTool} 
+          <ExpandedToolModal
+            tool={selectedTool}
             toolsList={filteredTools.length > 0 ? filteredTools : allTools}
+            articles={articles}
             onSelectTool={(t) => setSelectedTool(t)}
-            onClose={() => setSelectedTool(null)} 
+            onClose={() => setSelectedTool(null)}
           />
         )}
       </AnimatePresence>

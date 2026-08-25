@@ -9,3 +9,4 @@ logs/
 .user.yml
 node_modules/
 .next/
+graphify-out/

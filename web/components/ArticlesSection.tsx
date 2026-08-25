@@ -1,149 +1,35 @@
 'use client';
 
-import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { motion, AnimatePresence, useMotionValue, useMotionTemplate } from 'framer-motion';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
+import { motion, AnimatePresence, useMotionValue, useMotionTemplate, useInView } from 'framer-motion';
 import { ArticleEntry } from '@/lib/db';
-import { 
-  ExternalLink, 
-  Sparkles, 
-  Calendar, 
-  User, 
-  Search, 
-  Globe, 
-  BookOpen, 
+import {
+  CardCurtainReveal,
+  CardCurtainRevealBody,
+  CardCurtainRevealDescription,
+  CardCurtainRevealFooter,
+  CardCurtainRevealTitle,
+  CardCurtain 
+} from "@/components/ui/card-curtain-reveal"
+import { Button } from "@/components/ui/button"
+import {
+  ExternalLink,
+  Sparkles,
+  Calendar,
+  User,
+  Search,
+  Globe,
+  BookOpen,
   Filter,
   CheckCircle2,
-  Tag,
+  Quote,
   ChevronLeft,
+  ArrowUpRight,
   ChevronRight
 } from 'lucide-react';
 
 const customEase = [0.4, 0, 0.2, 1] as const;
 const smoothEase = [0.16, 1, 0.3, 1] as const;
-
-// 10 Core Tools curated technical articles with 100% verified, active official URLs
-const SAMPLE_ARTICLES: ArticleEntry[] = [
-  {
-    article_id: 1,
-    url: 'https://duckdb.org/2026/08/21/chunked-query-results-java-driver.html',
-    title: 'DuckDB: Resultados de Consultas por Chunks en el Driver JDBC/Java',
-    author: 'DuckDB Labs Team',
-    published_at: new Date('2024-08-21T12:00:00Z'),
-    relevance_score: 0.98,
-    tool_names: ['DuckDB'],
-    tool_slugs: ['duckdb'],
-    summary_en: 'DuckDB introduces chunked query result streaming for Java and JDBC applications, dramatically lowering client-side memory footprint and eliminating heap exhaustion on multi-gigabyte analytical result sets.',
-    summary_es: 'DuckDB introduce el streaming de resultados por chunks para aplicaciones Java y JDBC, reduciendo drásticamente el consumo de memoria del cliente y eliminando el agotamiento del heap en consultas analíticas de varios gigabytes.'
-  },
-  {
-    article_id: 2,
-    url: 'https://www.getdbt.com/blog/dbt-core-v1-12-is-ga',
-    title: 'dbt Core v1.12 en General Availability: Rendimiento de Compilación y Testing',
-    author: 'dbt Labs Engineering',
-    published_at: new Date('2024-07-28T14:30:00Z'),
-    relevance_score: 0.96,
-    tool_names: ['dbt Core'],
-    tool_slugs: ['dbt-core'],
-    summary_en: 'dbt Core v1.12 delivers optimized DAG compilation times, native unit testing support enhancements, and formalized project configuration standards for large-scale enterprise analytics engineering.',
-    summary_es: 'dbt Core v1.12 ofrece tiempos optimizados de compilación de DAGs, mejoras en pruebas unitarias nativas y estándares formales de configuración de proyectos para analítica a gran escala.'
-  },
-  {
-    article_id: 3,
-    url: 'https://pola.rs/posts/pandas-to-polars-migration-strategies/',
-    title: 'Estrategias de Migración de Pandas a Polars: Rendimiento y Semántica Lazy',
-    author: 'Ritchie Vink',
-    published_at: new Date('2024-08-01T09:00:00Z'),
-    relevance_score: 0.99,
-    tool_names: ['Polars'],
-    tool_slugs: ['polars'],
-    summary_en: 'A comprehensive guide detailing idiomatic migration patterns from Pandas eager evaluation to Polars lazy execution engine, utilizing query optimization plans and zero-copy Apache Arrow buffers.',
-    summary_es: 'Una guía exhaustiva que detalla los patrones idiomáticos de migración desde la evaluación ansiosa de Pandas hacia el motor de ejecución diferida (lazy) de Polars con optimización de consultas.'
-  },
-  {
-    article_id: 4,
-    url: 'https://iceberg.apache.org/releases/',
-    title: 'Apache Iceberg: Especificación y Releases del Formato Abierto de Tablas',
-    author: 'Apache Iceberg PMC',
-    published_at: new Date('2024-07-18T16:00:00Z'),
-    relevance_score: 0.95,
-    tool_names: ['Apache Iceberg'],
-    tool_slugs: ['iceberg'],
-    summary_en: 'Apache Iceberg manages petabyte-scale analytical tables with snapshot isolation, hidden partitioning, schema evolution without rewriting data, and multi-engine commit coordination.',
-    summary_es: 'Apache Iceberg gestiona tablas analíticas de petabytes con aislamiento por snapshots, particionamiento oculto, evolución de esquemas sin reescribir datos y coordinación multi-motor.'
-  },
-  {
-    article_id: 5,
-    url: 'https://airflow.apache.org/blog/airflow-3.3.0/',
-    title: 'Apache Airflow 3.3.0: Arquitectura de Orquestación y Datasets Dinámicos',
-    author: 'Apache Airflow PMC',
-    published_at: new Date('2024-06-15T11:00:00Z'),
-    relevance_score: 0.97,
-    tool_names: ['Apache Airflow'],
-    tool_slugs: ['airflow'],
-    summary_en: 'Airflow announces core orchestrator enhancements, refined Dynamic Task Mapping over multi-parameter sets, and reactive DAG scheduling based on upstream data asset boundaries.',
-    summary_es: 'Airflow anuncia mejoras en el orquestador principal, mapeo dinámico de tareas refinado sobre conjuntos multi-parámetro y programación reactiva de DAGs basada en límites de datos.'
-  },
-  {
-    article_id: 6,
-    url: 'https://dagster.io/blog/orchestration-is-more-than-scheduling-declarative-automation-in-dagster',
-    title: 'La Orquestación es más que Programación: Automatización Declarativa en Dagster',
-    author: 'Sandy Ryza',
-    published_at: new Date('2024-07-25T10:00:00Z'),
-    relevance_score: 0.94,
-    tool_names: ['Dagster'],
-    tool_slugs: ['dagster'],
-    summary_en: 'Declarative asset automation replaces brittle cron schedules with state-aware reconciliation loops, allowing data teams to maintain freshness SLAs across heterogeneous data warehouses.',
-    summary_es: 'La automatización declarativa de activos reemplaza los cron schedules frágiles con bucles de reconciliación basados en estado, permitiendo cumplir SLAs de frescura de datos.'
-  },
-  {
-    article_id: 7,
-    url: 'https://kafka.apache.org/documentation/',
-    title: 'Apache Kafka: Documentación Oficial de Arquitectura KRaft y Streaming',
-    author: 'Apache Kafka PMC',
-    published_at: new Date('2024-07-22T15:00:00Z'),
-    relevance_score: 0.95,
-    tool_names: ['Apache Kafka'],
-    tool_slugs: ['kafka'],
-    summary_en: 'Comprehensive reference on Kafka event streaming architecture, KRaft consensus metadata quorum, Tiered Storage partitions, and sub-millisecond produce/consume benchmarks.',
-    summary_es: 'Referencia completa sobre la arquitectura de streaming de eventos de Kafka, quorum de metadatos con consenso KRaft, almacenamiento en capas (Tiered Storage) y latencias mínimas.'
-  },
-  {
-    article_id: 8,
-    url: 'https://spark.apache.org/news/index.html',
-    title: 'Apache Spark: Novedades del Motor de Procesamiento y Spark Connect',
-    author: 'Apache Spark PMC',
-    published_at: new Date('2024-06-12T13:00:00Z'),
-    relevance_score: 0.93,
-    tool_names: ['Apache Spark'],
-    tool_slugs: ['spark'],
-    summary_en: 'Official releases and architectural updates covering Spark Connect decoupled client execution, Adaptive Query Execution partition tuning, and vectorized columnar evaluation.',
-    summary_es: 'Releases oficiales y actualizaciones de arquitectura sobre ejecución desacoplada con Spark Connect, optimización dinámica con Adaptive Query Execution y evaluación columnar vectorizada.'
-  },
-  {
-    article_id: 9,
-    url: 'https://flink.apache.org/2026/06/26/announcing-native-s3-fs/',
-    title: 'Apache Flink: Anuncio del FileSystem S3 Nativo para Streaming State Storage',
-    author: 'Apache Flink Community',
-    published_at: new Date('2024-06-26T08:30:00Z'),
-    relevance_score: 0.92,
-    tool_names: ['Apache Flink'],
-    tool_slugs: ['flink'],
-    summary_en: 'Flink introduces a native S3 file system implementation optimizing multi-part commit uploads and lowering checkpoint serialization latency for high-throughput streaming jobs.',
-    summary_es: 'Flink introduce una implementación nativa del sistema de archivos S3 que optimiza las subidas multi-parte y reduce la latencia de serialización de checkpoints en streaming.'
-  },
-  {
-    article_id: 10,
-    url: 'https://trino.io/blog/2026/07/18/a-pivotal-summer.html',
-    title: 'Trino: Avances en Ejecución Tolerante a Fallos y Consultas Federadas',
-    author: 'Trino Community',
-    published_at: new Date('2024-07-18T17:00:00Z'),
-    relevance_score: 0.94,
-    tool_names: ['Trino'],
-    tool_slugs: ['trino'],
-    summary_en: 'Overview of Trino architectural evolutions in distributed fault-tolerant execution, buffer spooling mechanics for batch workloads, and high-concurrency lakehouse analytics.',
-    summary_es: 'Resumen de las evoluciones arquitectónicas de Trino en ejecución distribuida tolerante a fallos, mecanismos de spooling para cargas batch y analítica sobre Lakehouses.'
-  }
-];
 
 function cleanSummary(text: string | null): string {
   if (!text) return '';
@@ -166,28 +52,27 @@ function formatDate(dateInput: Date | string) {
   });
 }
 
-function ArticleCard({ 
-  article, 
-  lang 
-}: { 
-  article: ArticleEntry; 
+function ArticleCard({
+  article,
+  lang
+}: {
+  article: ArticleEntry;
   lang: 'es' | 'en';
 }) {
+  const [isMobile, setIsMobile] = useState(false);
+  
   const cardRef = useRef<HTMLDivElement>(null);
-  const mouseX = useMotionValue(0);
-  const mouseY = useMotionValue(0);
+  const isInView = useInView(cardRef, { margin: "-20% 0px -20% 0px" });
 
-  function handleMouseMove(e: React.MouseEvent<HTMLDivElement>) {
-    if (!cardRef.current) return;
-    const rect = cardRef.current.getBoundingClientRect();
-    mouseX.set(e.clientX - rect.left);
-    mouseY.set(e.clientY - rect.top);
-  }
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.matchMedia('(max-width: 768px)').matches);
+    checkMobile(); // Check on mount
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
-  // 120fps GPU Spotlight border
-  const spotlightBackground = useMotionTemplate`radial-gradient(260px circle at ${mouseX}px ${mouseY}px, rgba(52, 211, 153, 0.22), transparent 80%)`;
+  const isOpen = isMobile ? isInView : undefined;
 
-  // Language fallback logic with clean summary sanitization
   const rawSummary = lang === 'es' 
     ? (article.summary_es || article.summary_en)
     : (article.summary_en || article.summary_es);
@@ -197,135 +82,80 @@ function ArticleCard({
     : 'Technical deep-dive and analysis available in the official documentation and release notes.';
 
   const summaryText = rawSummary ? cleanSummary(rawSummary) : fallbackText;
-
-  const isTranslated = lang === 'es' && !article.summary_es && article.summary_en;
+  const heroSlug = article.tool_slugs?.[0]; // Pick first tool for the footer logo
 
   return (
-    <motion.div
-      layout="position"
+    <CardCurtainReveal 
       ref={cardRef}
-      onMouseMove={handleMouseMove}
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      transition={{ 
-        opacity: { duration: 0.2, ease: "easeInOut" },
-        layout: { duration: 0.38, ease: [0.25, 1, 0.5, 1] }
-      }}
-      className="group relative rounded-2xl p-[1px] bg-neutral-900/70 transition-colors duration-300 hover:bg-neutral-800/90 flex flex-col justify-between"
+      forceOpen={isOpen}
+      className="h-[420px] md:h-[480px] w-full border border-neutral-800 bg-neutral-950 text-neutral-50 shadow-xl rounded-2xl cursor-default transition-colors hover:border-neutral-700"
     >
-      {/* 1. GPU Spotlight Glow */}
-      <motion.div
-        className="pointer-events-none absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-0"
-        style={{ background: spotlightBackground }}
-      />
-
-      {/* 2. Inner Card Surface */}
-      <div className="relative z-10 w-full h-full rounded-[15px] bg-neutral-950/90 p-6 md:p-7 flex flex-col justify-between backdrop-blur-sm border border-neutral-800/80 group-hover:border-neutral-700/80 transition-colors duration-300">
+      <CardCurtainRevealBody className="relative z-20 flex flex-col p-6 md:p-8 h-full">
         
-        {/* Top Header Row: Tools & Quality Badge */}
-        <div className="flex flex-col gap-4">
-          <div className="flex items-center justify-between gap-3 flex-wrap">
-            <div className="flex items-center gap-1.5 flex-wrap">
-              {article.tool_names && article.tool_names.length > 0 ? (
-                article.tool_names.map((tool, idx) => (
-                  <span
-                    key={idx}
-                    className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-mono font-medium bg-neutral-900 border border-neutral-700/70 text-neutral-200"
-                  >
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-                    {tool}
-                  </span>
-                ))
-              ) : (
-                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-mono text-neutral-400 bg-neutral-900 border border-neutral-800">
-                  Ecosistema
-                </span>
-              )}
-            </div>
-
-            {/* Verification / Relevance Pill */}
-            <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-mono text-emerald-400/90 bg-emerald-950/30 border border-emerald-800/40">
-              <CheckCircle2 size={11} className="text-emerald-400" />
-              <span>Anclado IA</span>
-            </div>
-          </div>
-
-          {/* Title with Link */}
-          <a
-            href={article.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="group/title block focus-visible:outline-none"
-          >
-            <h3 className="text-lg md:text-xl font-semibold text-white tracking-tight leading-snug group-hover/title:text-emerald-300 transition-colors duration-200 flex items-start gap-2">
-              <span>{article.title}</span>
-              <ExternalLink 
-                size={16} 
-                className="shrink-0 mt-1 text-neutral-500 group-hover/title:text-emerald-400 group-hover/title:translate-x-0.5 group-hover/title:-translate-y-0.5 transition-all duration-200" 
+        {/* Minimal Tool Tag & Meta (Top) */}
+        <div className="flex items-center justify-between gap-4 mb-auto opacity-70">
+          <div className="flex items-center gap-2">
+            {heroSlug && (
+              <img 
+                src={`/logos/${heroSlug}.svg`} 
+                className="size-4 opacity-80" 
+                onError={(e) => e.currentTarget.style.display='none'} 
+                alt="Logo"
               />
-            </h3>
-          </a>
-
-          {/* Author & Meta */}
-          <div className="flex items-center gap-4 text-xs text-neutral-500 font-mono">
-            {article.author && (
-              <span className="flex items-center gap-1.5 truncate max-w-[220px]">
-                <User size={12} className="text-neutral-600 shrink-0" />
-                <span className="text-neutral-400 truncate">{article.author}</span>
+            )}
+            {article.tool_names && article.tool_names.length > 0 && (
+              <span className="text-[11px] font-mono tracking-wider text-neutral-400">
+                {article.tool_names[0].toUpperCase()}
               </span>
             )}
-            <span className="flex items-center gap-1.5 shrink-0">
-              <Calendar size={12} className="text-neutral-600" />
-              <span>{formatDate(article.published_at)}</span>
-            </span>
           </div>
-
-          {/* Anchored AI Summary with Smooth Language Crossfade (Decisión 16) */}
-          <div className="mt-2 rounded-xl p-4 bg-neutral-900/50 border border-neutral-800/70 relative overflow-hidden min-h-[100px] flex flex-col justify-between">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-[10px] font-mono uppercase tracking-wider text-neutral-400 flex items-center gap-1.5">
-                <Sparkles size={11} className="text-emerald-400" />
-                <span>Resumen Técnico Verificado</span>
-              </span>
-              <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-neutral-800 border border-neutral-700/50 text-neutral-300">
-                {lang === 'es' ? (isTranslated ? 'EN' : 'ES') : 'EN'}
-              </span>
-            </div>
-
-            <AnimatePresence mode="wait">
-              <motion.p
-                key={`${article.article_id}-${lang}`}
-                initial={{ opacity: 0, y: 3 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -3 }}
-                transition={{ duration: 0.18, ease: 'easeOut' }}
-                className="text-neutral-300 text-xs md:text-sm leading-relaxed font-light line-clamp-4"
-              >
-                {summaryText}
-              </motion.p>
-            </AnimatePresence>
+          <div className="flex items-center gap-2.5 text-[10px] font-mono text-neutral-500">
+            {article.author && <span className="truncate max-w-[100px]">{article.author}</span>}
+            <span className="tabular-nums">{formatDate(article.published_at)}</span>
           </div>
         </div>
 
-        {/* Card Footer: CTA to Read Original */}
-        <div className="pt-5 mt-4 border-t border-neutral-800/60 flex items-center justify-between">
-          <span className="text-[11px] font-mono text-neutral-500">
-            Fuente oficial verificada
-          </span>
+        {/* Massive Animated Title */}
+        <CardCurtainRevealTitle className="text-2xl md:text-3xl font-medium tracking-tight text-balance leading-snug">
+          {article.title}
+        </CardCurtainRevealTitle>
 
-          <a
-            href={article.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-white bg-neutral-900 hover:bg-neutral-800 border border-neutral-700/70 hover:border-neutral-600 transition-all duration-200 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400"
+        {/* Summary Description */}
+        <CardCurtainRevealDescription className="my-6 text-neutral-400 text-sm md:text-[15px] leading-relaxed line-clamp-4">
+          <p>{summaryText}</p>
+        </CardCurtainRevealDescription>
+
+        {/* CTA Button */}
+        <a 
+          href={article.url} 
+          target="_blank" 
+          rel="noopener noreferrer" 
+          className="mt-auto block w-max focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 rounded-full"
+        >
+          <Button
+            variant="secondary"
+            size="icon"
+            className="aspect-square rounded-full bg-neutral-100 text-neutral-950 hover:bg-white"
           >
-            <span>Leer original</span>
-            <ExternalLink size={12} className="text-neutral-400" />
-          </a>
-        </div>
-      </div>
-    </motion.div>
+            <ArrowUpRight className="size-4" />
+          </Button>
+        </a>
+
+        {/* The Curtain Background (Mix-blend Difference inversion) */}
+        <CardCurtain className="bg-neutral-100" />
+      </CardCurtainRevealBody>
+
+      {/* Footer Logo Reveal (Mesh Gradient Effect) */}
+      <CardCurtainRevealFooter className="absolute bottom-0 right-0 w-full h-1/2 pointer-events-none flex items-end justify-end p-8 overflow-hidden z-10">
+        {heroSlug && (
+          <img 
+            alt="Hero Logo"
+            src={`/logos/${heroSlug}.svg`} 
+            className="w-56 h-56 opacity-40 blur-[40px] translate-x-12 translate-y-12"
+          />
+        )}
+      </CardCurtainRevealFooter>
+    </CardCurtainReveal>
   );
 }
 
@@ -334,8 +164,7 @@ export default function ArticlesSection({
 }: { 
   articles?: ArticleEntry[] 
 }) {
-  // Use DB articles if available, otherwise rich 10-tool sample catalog
-  const items = articles.length > 0 ? articles : SAMPLE_ARTICLES;
+  const items = articles;
 
   const [lang, setLang] = useState<'es' | 'en'>('es');
   const [selectedTool, setSelectedTool] = useState<string>('all');
@@ -551,7 +380,7 @@ export default function ArticlesSection({
                 initial="enter"
                 animate="center"
                 exit="exit"
-                className="grid grid-cols-1 md:grid-cols-2 gap-5 lg:gap-6 w-full"
+                className="grid grid-cols-1 md:grid-cols-2 gap-5 lg:gap-6 w-full group/grid"
               >
                 {paginatedArticles.map((article) => (
                   <ArticleCard 
@@ -598,34 +427,51 @@ export default function ArticlesSection({
                   </motion.button>
 
                   {/* Page Pills */}
-                  <div className="flex items-center gap-1 px-1">
-                    {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => {
-                      const isCurrent = currentPage === pageNum;
+                  <div className="flex items-center gap-0.5 sm:gap-1 px-1">
+                    {(() => {
+                      const getVisiblePages = () => {
+                        if (totalPages <= 5) return Array.from({ length: totalPages }, (_, i) => i + 1);
+                        if (currentPage <= 3) return [1, 2, 3, 4, "...", totalPages];
+                        if (currentPage >= totalPages - 2) return [1, "...", totalPages - 3, totalPages - 2, totalPages - 1, totalPages];
+                        return [1, "...", currentPage - 1, currentPage, currentPage + 1, "...", totalPages];
+                      };
 
-                      return (
-                        <motion.button
-                          key={pageNum}
-                          onClick={() => handlePageChange(pageNum)}
-                          whileHover={{ scale: 1.08 }}
-                          whileTap={{ scale: 0.92 }}
-                          aria-label={`Ir a página ${pageNum}`}
-                          className={`relative size-8 rounded-lg text-xs font-mono font-medium flex items-center justify-center transition-colors cursor-pointer ${
-                            isCurrent
-                              ? 'text-emerald-300 font-bold'
-                              : 'text-neutral-400 hover:text-white hover:bg-neutral-800/80'
-                          }`}
-                        >
-                          {isCurrent && (
-                            <motion.div
-                              layoutId="active-article-page-pill"
-                              transition={{ type: 'spring', stiffness: 450, damping: 32 }}
-                              className="absolute inset-0 rounded-lg bg-emerald-950/80 border border-emerald-500/60 shadow-[0_0_14px_rgba(52,211,153,0.22)] z-0"
-                            />
-                          )}
-                          <span className="relative z-10">{pageNum}</span>
-                        </motion.button>
-                      );
-                    })}
+                      return getVisiblePages().map((pageNum, idx) => {
+                        if (pageNum === "...") {
+                          return (
+                            <div key={`ellipsis-${idx}`} className="w-6 sm:w-8 flex justify-center items-center text-neutral-500 font-serif">
+                              &hellip;
+                            </div>
+                          );
+                        }
+
+                        const isCurrent = currentPage === pageNum;
+
+                        return (
+                          <motion.button
+                            key={pageNum}
+                            onClick={() => handlePageChange(pageNum as number)}
+                            whileHover={{ scale: 1.08 }}
+                            whileTap={{ scale: 0.92 }}
+                            aria-label={`Ir a página ${pageNum}`}
+                            className={`relative size-7 sm:size-8 rounded-lg text-xs font-mono font-medium flex items-center justify-center transition-colors cursor-pointer ${
+                              isCurrent
+                                ? 'text-emerald-300 font-bold'
+                                : 'text-neutral-400 hover:text-white hover:bg-neutral-800/80'
+                            }`}
+                          >
+                            {isCurrent && (
+                              <motion.div
+                                layoutId="active-article-page-pill"
+                                transition={{ type: 'spring', stiffness: 450, damping: 32 }}
+                                className="absolute inset-0 rounded-lg bg-emerald-950/80 border border-emerald-500/60 shadow-[0_0_14px_rgba(52,211,153,0.22)] z-0"
+                              />
+                            )}
+                            <span className="relative z-10">{pageNum}</span>
+                          </motion.button>
+                        );
+                      });
+                    })()}
                   </div>
 
                   {/* Next Button */}
@@ -658,14 +504,18 @@ export default function ArticlesSection({
           >
             <Filter size={24} className="mx-auto text-neutral-600 mb-3" />
             <p className="text-neutral-400 text-sm font-mono">
-              No se encontraron artículos con los filtros seleccionados.
+              {items.length === 0
+                ? 'Aún no hay artículos ingeridos en la base de datos.'
+                : 'No se encontraron artículos con los filtros seleccionados.'}
             </p>
-            <button
-              onClick={() => { setSelectedTool('all'); setSearchQuery(''); }}
-              className="mt-4 px-4 py-1.5 rounded-full text-xs font-mono text-emerald-400 bg-emerald-950/40 border border-emerald-800/50 hover:bg-emerald-900/40 transition-colors cursor-pointer"
-            >
-              Limpiar filtros
-            </button>
+            {items.length > 0 && (
+              <button
+                onClick={() => { setSelectedTool('all'); setSearchQuery(''); }}
+                className="mt-4 px-4 py-1.5 rounded-full text-xs font-mono text-emerald-400 bg-emerald-950/40 border border-emerald-800/50 hover:bg-emerald-900/40 transition-colors cursor-pointer"
+              >
+                Limpiar filtros
+              </button>
+            )}
           </motion.div>
         )}
       </motion.div>

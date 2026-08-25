@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { motion, useMotionValue, useMotionTemplate, AnimatePresence } from 'framer-motion';
+import React, { useState, useEffect, useMemo } from 'react';
+import { motion, AnimatePresence, animate, useMotionValue, useMotionTemplate } from 'framer-motion';
 import { DigestEntry } from '@/lib/db';
 import { 
   GitCommitHorizontal, 
@@ -63,93 +63,6 @@ const CATEGORY_THEME: Record<string, { label: string; badgeClass: string; dotCla
   },
 };
 
-const SAMPLE_DIGEST: DigestEntry[] = [
-  {
-    tool_slug: 'duckdb',
-    tool_name: 'DuckDB',
-    category: 'query-engine',
-    release_count_7d: 1,
-    breaking_count_7d: 0,
-    releases_7d: [{
-      version: 'v1.5.0',
-      published_at: new Date(Date.now() - 1000 * 60 * 60 * 48).toISOString(),
-      has_breaking: false,
-      source_url: 'https://github.com/duckdb/duckdb/releases',
-    }],
-    article_count_7d: 1,
-    top_articles_7d: [{
-      article_id: 1,
-      title: 'Resultados de Consultas por Chunks en el Driver JDBC/Java',
-      url: 'https://duckdb.org/2026/08/21/chunked-query-results-java-driver.html',
-      summary_en: 'DuckDB introduces chunked query result streaming for Java and JDBC applications, drastically reducing client memory overhead.',
-      summary_es: 'DuckDB introduce streaming de resultados por chunks para Java y JDBC, reduciendo drásticamente el consumo de memoria del cliente.',
-    }],
-  },
-  {
-    tool_slug: 'polars',
-    tool_name: 'Polars',
-    category: 'dataframes',
-    release_count_7d: 1,
-    breaking_count_7d: 1,
-    releases_7d: [{
-      version: 'v1.38.0',
-      published_at: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(),
-      has_breaking: true,
-      source_url: 'https://github.com/pola-rs/polars/releases',
-    }],
-    article_count_7d: 1,
-    top_articles_7d: [{
-      article_id: 2,
-      title: 'Polars Streaming Engine v2: Arquitectura y Benchmarks de Alto Throughput',
-      url: 'https://pola.rs/posts/streaming2-benchmarks',
-      summary_en: 'In-depth performance breakdown of the new Streaming Engine 2.0 with out-of-core query execution.',
-      summary_es: 'Desglose detallado del nuevo motor de streaming 2.0 con ejecución out-of-core optimizada en memoria.',
-    }],
-  },
-  {
-    tool_slug: 'iceberg',
-    tool_name: 'Apache Iceberg',
-    category: 'storage-lakehouse',
-    release_count_7d: 1,
-    breaking_count_7d: 0,
-    releases_7d: [{
-      version: 'v1.9.0',
-      published_at: new Date(Date.now() - 1000 * 60 * 60 * 72).toISOString(),
-      has_breaking: false,
-      source_url: 'https://github.com/apache/iceberg/releases',
-    }],
-    article_count_7d: 1,
-    top_articles_7d: [{
-      article_id: 3,
-      title: 'Evolución de Particiones y Tablas de Vistas en Apache Iceberg 1.9',
-      url: 'https://iceberg.apache.org/blogs/iceberg-1.9-features',
-      summary_en: 'New spec updates enabling partition evolution and multi-engine view metadata standardization.',
-      summary_es: 'Nuevas especificaciones que permiten evolución de particiones y vistas estandarizadas multi-motor.',
-    }],
-  },
-  {
-    tool_slug: 'dbt-core',
-    tool_name: 'dbt Core',
-    category: 'transformation',
-    release_count_7d: 1,
-    breaking_count_7d: 0,
-    releases_7d: [{
-      version: 'v1.12.0',
-      published_at: new Date(Date.now() - 1000 * 60 * 60 * 96).toISOString(),
-      has_breaking: false,
-      source_url: 'https://github.com/dbt-labs/dbt-core/releases',
-    }],
-    article_count_7d: 1,
-    top_articles_7d: [{
-      article_id: 4,
-      title: 'dbt Core v1.12 en General Availability: Rendimiento de Compilación y Testing',
-      url: 'https://www.getdbt.com/blog/dbt-core-v1-12-is-ga',
-      summary_en: 'dbt Core 1.12 delivers 3x faster manifest parsing and native unit testing improvements.',
-      summary_es: 'dbt Core 1.12 ofrece parseo de manifiestos 3x más rápido y mejoras nativas de pruebas unitarias.',
-    }],
-  },
-];
-
 function cleanSummary(text: string | null): string {
   if (!text) return '';
   return text
@@ -176,30 +89,39 @@ function formatRelativeTime(dateString: string): string {
   }
 }
 
-// High-End Cybernetic Radar Capsule Digest Card (agent-10 & agent-13)
+// High-End Cybernetic Radar Capsule Digest Card — "Telemetry Wake-Up" hover
 function DigestCard({ entry, lang }: { entry: DigestEntry; lang: 'es' | 'en' }) {
-  const cardRef = useRef<HTMLDivElement>(null);
-  const mouseX = useMotionValue(0);
-  const mouseY = useMotionValue(0);
-
-  function handleMouseMove(e: React.MouseEvent<HTMLDivElement>) {
-    if (!cardRef.current) return;
-    const rect = cardRef.current.getBoundingClientRect();
-    mouseX.set(e.clientX - rect.left);
-    mouseY.set(e.clientY - rect.top);
-  }
-
+  const [isHovered, setIsHovered] = useState(false);
   const hasBreaking = entry.breaking_count_7d > 0;
   const totalActivity = entry.release_count_7d + entry.article_count_7d;
-  const theme = CATEGORY_THEME[entry.category] || { 
-    label: entry.category, 
+  const theme = CATEGORY_THEME[entry.category] || {
+    label: entry.category,
     badgeClass: 'text-neutral-300 bg-neutral-900 border-neutral-700',
-    dotClass: 'bg-neutral-400' 
+    dotClass: 'bg-neutral-400'
   };
 
-  // GPU dynamic spotlight glow: Amber/Crimson if breaking changes, emerald otherwise
-  const glowColor = hasBreaking ? 'rgba(239, 68, 68, 0.22)' : 'rgba(52, 211, 153, 0.2)';
-  const spotlightBackground = useMotionTemplate`radial-gradient(280px circle at ${mouseX}px ${mouseY}px, ${glowColor}, transparent 80%)`;
+  // ── Capa 0: Border trace — conic gradient that sweeps 360° once on hover ──
+  const accentRgb = hasBreaking ? '239,68,68' : '52,211,153';
+  const borderAngle = useMotionValue(0);
+  const borderOpacity = useMotionValue(0);
+  const borderBackground = useMotionTemplate`conic-gradient(from ${borderAngle}deg at 50% 50%, transparent 0%, rgba(${accentRgb},0.7) 6%, transparent 14%, transparent 100%)`;
+
+  const handleHoverStart = () => {
+    setIsHovered(true);
+    // Reset and fire the border trace sweep
+    borderAngle.set(0);
+    animate(borderOpacity, 1, { duration: 0.15, ease: 'easeOut' });
+    animate(borderAngle, 360, {
+      duration: 0.6,
+      ease: [0.4, 0, 0.2, 1],
+    });
+  };
+
+  const handleHoverEnd = () => {
+    setIsHovered(false);
+    // Fade out the trace overlay (don't reverse — just disappear)
+    animate(borderOpacity, 0, { duration: 0.3, ease: 'easeIn' });
+  };
 
   const handleOpenToolModal = () => {
     // Dispatch global event to open tool modal in EcosystemSection
@@ -218,44 +140,75 @@ function DigestCard({ entry, lang }: { entry: DigestEntry; lang: 'es' | 'en' }) 
 
   return (
     <motion.div
-      ref={cardRef}
-      onMouseMove={handleMouseMove}
       initial={{ opacity: 0, y: 16 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: '-40px' }}
-      whileHover={{ y: -4 }}
+      onHoverStart={handleHoverStart}
+      onHoverEnd={handleHoverEnd}
       transition={{ duration: 0.35, ease: customEase }}
-      className={`group relative rounded-2xl p-[1px] transition-all duration-300 flex flex-col justify-between ${
-        hasBreaking 
-          ? 'bg-gradient-to-b from-red-500/30 via-neutral-900/60 to-neutral-950/80 hover:from-red-500/50' 
-          : 'bg-gradient-to-b from-neutral-800/80 via-neutral-900/50 to-neutral-950/80 hover:from-emerald-500/40'
+      className={`group relative rounded-2xl p-[1px] flex flex-col justify-between ${
+        hasBreaking
+          ? 'bg-gradient-to-b from-red-500/30 via-neutral-900/60 to-neutral-950/80'
+          : 'bg-gradient-to-b from-neutral-800/80 via-neutral-900/50 to-neutral-950/80'
       }`}
     >
-      {/* 1. GPU Spotlight Glow Layer */}
+      {/* ── Capa 0: Animated border trace overlay ── */}
       <motion.div
-        className="pointer-events-none absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-0"
-        style={{ background: spotlightBackground }}
+        aria-hidden
+        className="absolute inset-0 rounded-2xl pointer-events-none"
+        style={{
+          background: borderBackground,
+          opacity: borderOpacity,
+        }}
       />
 
-      {/* 2. Inner Surface Container */}
-      <div className="relative z-10 w-full h-full rounded-[15px] bg-neutral-950/95 p-6 md:p-7 flex flex-col justify-between backdrop-blur-md border border-neutral-850/80 group-hover:border-neutral-700/80 transition-colors">
-        
-        <div className="flex flex-col gap-5">
+      {/* Inner Surface Container — brightness lift on hover, no spotlight */}
+      <div
+        className={`relative z-10 w-full h-full rounded-[15px] bg-neutral-950/95 p-6 md:p-7 flex flex-col justify-between backdrop-blur-md border overflow-hidden
+          transition-[background-color,border-color] duration-[250ms] ease-out
+          motion-reduce:transition-none
+          ${hasBreaking
+            ? 'border-neutral-850/80 group-hover:bg-neutral-950/88 group-hover:border-red-800/40'
+            : 'border-neutral-850/80 group-hover:bg-neutral-950/88 group-hover:border-neutral-700/50'
+          }`}
+      >
+        {/* ── Capa 5: Breaking-change scanline — NOW driven by isHovered state ──
+             Bug fix: was using whileHover on a pointer-events:none div (never fired) */}
+        {hasBreaking && (
+          <motion.div
+            aria-hidden
+            initial={{ x: '-120%' }}
+            animate={isHovered ? { x: '220%' } : { x: '-120%' }}
+            transition={isHovered
+              ? { duration: 0.65, ease: 'easeInOut' }
+              : { duration: 0 }
+            }
+            className="pointer-events-none absolute inset-y-0 w-1/3 -skew-x-12 bg-gradient-to-r from-transparent via-red-500/20 to-transparent z-0"
+          />
+        )}
+
+        <div className="relative z-10 flex flex-col gap-5">
           
           {/* Header Row: Tool Identity & 7D Velocity */}
           <div className="flex items-start justify-between gap-3">
             <div className="flex items-center gap-3">
-              {/* Tool Monogram Badge */}
-              <div className={`size-10 rounded-xl flex items-center justify-center font-mono font-bold text-sm border shadow-inner ${
-                hasBreaking 
-                  ? 'bg-red-950/60 border-red-800/60 text-red-300' 
-                  : 'bg-neutral-900 border-neutral-800 text-emerald-400'
-              }`}>
-                {entry.tool_name.slice(0, 2).toUpperCase()}
+              {/* ── Capa 2: Tool Logo Badge — LED pulse glow on hover ── */}
+              <div className={`size-10 rounded-xl flex items-center justify-center font-mono font-bold text-sm border shadow-inner
+                transition-shadow duration-[400ms] ease-out motion-reduce:transition-none overflow-hidden
+                ${hasBreaking 
+                  ? 'bg-red-950/60 border-red-800/60 text-red-300 group-hover:shadow-[0_0_10px_rgba(239,68,68,0.25)]' 
+                  : 'bg-neutral-900 border-neutral-800 text-emerald-400 group-hover:shadow-[0_0_10px_rgba(52,211,153,0.25)]'
+                }`}>
+                <img 
+                  src={`/logos/${entry.tool_slug}.svg`} 
+                  alt={`${entry.tool_name} logo`}
+                  className="size-5 opacity-90 transition-opacity duration-300 group-hover:opacity-100 object-contain"
+                />
               </div>
 
               <div className="flex flex-col">
-                <h3 className="text-lg font-bold text-white tracking-tight group-hover:text-emerald-300 transition-colors">
+                {/* ── Capa 7: Title — NO color change on hover, subtle text-shadow only ── */}
+                <h3 className="text-lg font-bold text-white tracking-tight transition-[text-shadow] duration-300 ease-out group-hover:[text-shadow:0_0_20px_rgba(255,255,255,0.06)]">
                   {entry.tool_name}
                 </h3>
                 <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono border w-fit mt-0.5 ${theme.badgeClass}`}>
@@ -265,16 +218,26 @@ function DigestCard({ entry, lang }: { entry: DigestEntry; lang: 'es' | 'en' }) 
               </div>
             </div>
 
-            {/* Velocity Pulse Badge */}
+            {/* ── Capa 4: Velocity Pulse Badge — single heartbeat blip on card hover ── */}
             <div className="flex flex-col items-end gap-1">
-              <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-mono font-semibold border ${
-                hasBreaking 
-                  ? 'bg-red-950/60 border-red-800/60 text-red-300 shadow-[0_0_10px_rgba(239,68,68,0.2)]' 
-                  : 'bg-emerald-950/60 border-emerald-800/60 text-emerald-300 shadow-[0_0_10px_rgba(52,211,153,0.15)]'
-              }`}>
+              <motion.span
+                animate={isHovered
+                  ? { scale: [1, 1.06, 1] }
+                  : { scale: 1 }
+                }
+                transition={isHovered
+                  ? { duration: 0.45, times: [0, 0.35, 1], ease: 'easeOut' }
+                  : { duration: 0.2 }
+                }
+                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-mono font-semibold border ${
+                  hasBreaking
+                    ? 'bg-red-950/60 border-red-800/60 text-red-300 shadow-[0_0_10px_rgba(239,68,68,0.2)]'
+                    : 'bg-emerald-950/60 border-emerald-800/60 text-emerald-300 shadow-[0_0_10px_rgba(52,211,153,0.15)]'
+                }`}
+              >
                 <span className={`size-1.5 rounded-full animate-pulse ${hasBreaking ? 'bg-red-400' : 'bg-emerald-400'}`} />
                 <span>{totalActivity} EVENTO{totalActivity !== 1 ? 'S' : ''} 7D</span>
-              </span>
+              </motion.span>
             </div>
           </div>
 
@@ -286,11 +249,19 @@ function DigestCard({ entry, lang }: { entry: DigestEntry; lang: 'es' | 'en' }) 
             </div>
           )}
 
-          {/* Dual Telemetry Track Bento Body */}
+          {/* ── Capa 3: Dual Telemetry Track Bento Body — staggered left-border activation ── */}
           <div className="flex flex-col gap-3">
             
-            {/* Track 1: Releases Feed */}
-            <div className="rounded-xl p-3.5 bg-neutral-900/50 border border-neutral-800/80 flex flex-col gap-2">
+            {/* Track 1: Releases Feed (activates at 0ms) */}
+            <div className={`rounded-xl p-3.5 flex flex-col gap-2
+              bg-neutral-900/50 border border-neutral-800/80
+              border-l-2 border-l-transparent
+              transition-[border-color,background-color] duration-200 ease-out
+              motion-reduce:transition-none
+              ${hasBreaking
+                ? 'group-hover:border-l-red-500/50 group-hover:bg-neutral-900/60'
+                : 'group-hover:border-l-emerald-500/50 group-hover:bg-neutral-900/60'
+              }`}>
               <div className="flex items-center justify-between text-[11px] font-mono text-neutral-400">
                 <span className="flex items-center gap-1.5">
                   <GitCommitHorizontal size={13} className="text-emerald-400" />
@@ -343,8 +314,19 @@ function DigestCard({ entry, lang }: { entry: DigestEntry; lang: 'es' | 'en' }) 
               )}
             </div>
 
-            {/* Track 2: Curated Deep-Dives Feed */}
-            <div className="rounded-xl p-3.5 bg-neutral-900/50 border border-neutral-800/80 flex flex-col gap-2">
+            {/* Track 2: Curated Deep-Dives Feed (activates at +40ms stagger) */}
+            <div
+              className={`rounded-xl p-3.5 flex flex-col gap-2
+                bg-neutral-900/50 border border-neutral-800/80
+                border-l-2 border-l-transparent
+                transition-[border-color,background-color] duration-200 ease-out
+                motion-reduce:transition-none
+                ${hasBreaking
+                  ? 'group-hover:border-l-red-500/50 group-hover:bg-neutral-900/60'
+                  : 'group-hover:border-l-emerald-500/50 group-hover:bg-neutral-900/60'
+                }`}
+              style={{ transitionDelay: '40ms' }}
+            >
               <div className="flex items-center justify-between text-[11px] font-mono text-neutral-400">
                 <span className="flex items-center gap-1.5">
                   <Newspaper size={13} className="text-cyan-400" />
@@ -393,8 +375,8 @@ function DigestCard({ entry, lang }: { entry: DigestEntry; lang: 'es' | 'en' }) 
           </div>
         </div>
 
-        {/* 3. Card Footer Action Bar */}
-        <div className="pt-4 mt-4 border-t border-neutral-800/70 flex items-center justify-between gap-3">
+        {/* ── Capa 6: Card Footer Action Bar — CTA ghost → semi-filled reveal ── */}
+        <div className="relative z-10 pt-4 mt-4 border-t border-neutral-800/70 flex items-center justify-between gap-3">
           <div className="flex items-center gap-1.5 text-[10px] font-mono text-neutral-500">
             <Clock size={11} className="text-neutral-600" />
             <span>Telemetry Sync · 7D</span>
@@ -402,7 +384,13 @@ function DigestCard({ entry, lang }: { entry: DigestEntry; lang: 'es' | 'en' }) 
 
           <button
             onClick={handleOpenToolModal}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono font-medium text-white bg-neutral-900 hover:bg-neutral-800 border border-neutral-750 hover:border-emerald-500/50 hover:text-emerald-300 transition-all duration-200 cursor-pointer active:scale-95 shadow-sm"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono font-medium
+              text-white bg-neutral-900 border border-neutral-750
+              transition-all duration-[250ms] ease-out cursor-pointer active:scale-95 shadow-sm
+              motion-reduce:transition-none
+              group-hover:bg-neutral-800/60 group-hover:border-emerald-500/40 group-hover:text-emerald-200
+              group-hover:shadow-[0_0_12px_rgba(52,211,153,0.08)]"
+            style={{ transitionDelay: '80ms' }}
           >
             <span>Ver en Radar</span>
             <ArrowUpRight size={13} className="text-neutral-400 group-hover:text-emerald-400 transition-colors" />
@@ -420,7 +408,7 @@ export default function DigestSection({ entries = [] }: { entries?: DigestEntry[
   const [direction, setDirection] = useState(0);
   const ITEMS_PER_PAGE = 3;
 
-  const items = entries.length > 0 ? entries : SAMPLE_DIGEST;
+  const items = entries;
 
   // Reset page to 1 when entries change
   useEffect(() => {
