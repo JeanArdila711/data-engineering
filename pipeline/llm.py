@@ -33,6 +33,17 @@ Devolvé JSON: {{"translation": "texto traducido"}}
 Texto:
 {text}"""
 
+_DISCOVERY_PROMPT = """Leé este artículo de ingeniería de datos. Identificá nombres de herramientas, \
+frameworks o productos de datos mencionados que NO estén en esta lista conocida: {known}.
+
+Ignorá nombres genéricos ("the platform", "our tool") y cualquier variante de los nombres conocidos \
+(mayúsculas, alias, abreviaciones). Si no encontrás ninguno, devolvé una lista vacía.
+
+Devolvé JSON: {{"candidates": ["nombre1", "nombre2"]}}
+
+Artículo:
+{document}"""
+
 
 class GeminiClient:
     def __init__(self, api_key: str, summary_model: str, judge_model: str):
@@ -72,3 +83,12 @@ class GeminiClient:
         )
         payload = json.loads(response.text)
         return payload["translation"].strip()
+
+    def extract_candidates(self, document: str, known_names: list[str]) -> list[str]:
+        response = self._client.models.generate_content(
+            model=self._summary_model,
+            contents=_DISCOVERY_PROMPT.format(known=", ".join(known_names), document=document),
+            config=types.GenerateContentConfig(response_mime_type="application/json"),
+        )
+        payload = json.loads(response.text)
+        return payload.get("candidates", [])
