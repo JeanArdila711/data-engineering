@@ -22,12 +22,16 @@ from pipeline.db import (
     connect,
     find_duplicate_article,
     quarantine,
+    record_source_failure,
+    record_source_success,
     save_raw_fetch,
     sync_feed_sources,
     upsert_article,
+    upsert_candidate,
     upsert_mentions,
 )
 from pipeline.dedup import content_fingerprint, normalize_url
+from pipeline.discovery import extract_candidate_names
 from pipeline.entailment import compute_error_rate, sampling_rate_for, select_sample
 from pipeline.llm import GeminiClient
 from pipeline.mentions import detect_mentions
@@ -87,6 +91,7 @@ def run(
     quarantine_fn = partial(quarantine, conn)
 
     scored_today: list[tuple[float, int]] = []
+    known_names = [n for t in catalog.tools for n in (t.name, *t.aliases)]
 
     for tool_slug, source_id, url in feed_refs:
         summary.feeds_processed += 1
@@ -95,14 +100,23 @@ def run(
         except Exception as error:
             logger.error("fetch de feed falló | fuente=%s url=%s", tool_slug, url, exc_info=True)
             quarantine(conn, f"{tool_slug}:rss", "fetch", f"{type(error).__name__}: {error}\n{traceback.format_exc()}")
+            record_source_failure(conn, source_id)
             summary.failures += 1
             continue
 
         save_raw_fetch(conn, source_id, ds, payload)
+        record_source_success(conn, source_id, now)
 
         for record in records:
-            mentions = detect_mentions(f"{record.title} {record.summary_text}", catalog)
+            text = f"{record.title} {record.summary_text}"
+            mentions = detect_mentions(text, catalog)
             if not mentions:
+                if llm_client is not None:
+                    try:
+                        for name in extract_candidate_names(text, known_names, llm_client):
+                            upsert_candidate(conn, name, record.url, now)
+                    except Exception:
+                        logger.error("extracción de candidatos falló | url=%s", record.url, exc_info=True)
                 continue
 
             url_norm = normalize_url(record.url)

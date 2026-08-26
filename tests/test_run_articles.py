@@ -118,3 +118,55 @@ def test_run_survives_llm_exception_during_summarize(db_conn):
     with db_conn.cursor() as cur:
         cur.execute("SELECT source_ref, stage FROM quarantine")
         assert cur.fetchone() == ("article:1", "summarize")
+
+
+def test_run_records_source_failure_on_feed_error(db_conn):
+    from pipeline.run_articles import run
+
+    catalog = Catalog(tools=[Tool(
+        slug="duckdb", name="DuckDB", category="test",
+        feeds=[{"kind": "rss", "url": "https://x"}],
+    )])
+
+    def failing_fetcher(url, **kwargs):
+        raise ValueError("feed roto")
+
+    run(db_conn, catalog, llm_client=None, ds=DS, now=NOW, fetcher=failing_fetcher)
+
+    with db_conn.cursor() as cur:
+        cur.execute("SELECT consecutive_failures FROM sources WHERE tool_slug = 'duckdb' AND kind = 'rss'")
+        assert cur.fetchone()[0] == 1
+
+
+def test_run_mines_candidates_from_unmatched_articles(db_conn):
+    from pipeline.run_articles import run
+
+    catalog = Catalog(tools=[Tool(
+        slug="duckdb", name="DuckDB", category="test",
+        feeds=[{"kind": "rss", "url": "https://x"}],
+    )])
+
+    record = ArticleRecord(
+        url="https://a.example/1",
+        title="Sin menciones conocidas",
+        author=None,
+        published_at=NOW,
+        summary_text="Este artículo habla de Fooflow, una herramienta nueva.",
+    )
+
+    class _FakeDiscoveryLLM:
+        def extract_candidates(self, document, known_names):
+            return ["Fooflow"]
+
+    run(db_conn, catalog, llm_client=_FakeDiscoveryLLM(), ds=DS, now=NOW,
+        fetcher=lambda url, **kwargs: ("{}", [record]))
+
+    with db_conn.cursor() as cur:
+        cur.execute(
+            "SELECT tc.display_name, count(tcm.id) FROM tool_candidates tc "
+            "JOIN tool_candidate_mentions tcm ON tcm.candidate_id = tc.id "
+            "WHERE tc.normalized_name = 'fooflow' GROUP BY tc.display_name"
+        )
+        display_name, mention_count = cur.fetchone()
+    assert display_name == "Fooflow"
+    assert mention_count == 1
