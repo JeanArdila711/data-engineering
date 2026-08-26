@@ -259,3 +259,72 @@ def record_source_success(conn: psycopg.Connection, source_id: int, now: datetim
             "last_success_at = %s, alerted_at = NULL WHERE id = %s",
             (now, source_id),
         )
+
+
+CANDIDATE_THRESHOLD = 2
+
+
+def upsert_candidate(conn: psycopg.Connection, name: str, article_url: str, now: datetime) -> None:
+    """Registra la mención de un candidato. Idempotente: el mismo (candidato, artículo)
+    nunca cuenta dos veces, sin importar cuántas veces se reprocese el artículo.
+    Congelado si el candidato ya fue propuesto o descartado.
+    """
+    normalized = name.strip().casefold()
+    with conn.cursor() as cur:
+        cur.execute(
+            "INSERT INTO tool_candidates (normalized_name, display_name, first_seen_at, last_seen_at) "
+            "VALUES (%s, %s, %s, %s) "
+            "ON CONFLICT (normalized_name) DO UPDATE SET last_seen_at = EXCLUDED.last_seen_at "
+            "WHERE tool_candidates.status = 'pending' "
+            "RETURNING id",
+            (normalized, name.strip(), now, now),
+        )
+        row = cur.fetchone()
+        if row is None:
+            # Ya existe y no está en 'pending' (proposed/dismissed): no se registra la mención.
+            return
+        candidate_id = row[0]
+
+        cur.execute(
+            "INSERT INTO tool_candidate_mentions (candidate_id, article_url) VALUES (%s, %s) "
+            "ON CONFLICT (candidate_id, article_url) DO NOTHING",
+            (candidate_id, article_url),
+        )
+
+
+def pending_candidates_over_threshold(
+    conn: psycopg.Connection, threshold: int = CANDIDATE_THRESHOLD
+) -> list[tuple[int, str, int, str]]:
+    """Devuelve (id, display_name, mention_count, example_article_url) listos para alertar.
+    mention_count y example_article_url se calculan por join, nunca se guardan como
+    columna propia — evita que un contador desincronizado mienta sobre el conteo real.
+    """
+    with conn.cursor() as cur:
+        cur.execute(
+            "SELECT tc.id, tc.display_name, count(tcm.id), "
+            "(array_agg(tcm.article_url ORDER BY tcm.id DESC))[1] "
+            "FROM tool_candidates tc "
+            "JOIN tool_candidate_mentions tcm ON tcm.candidate_id = tc.id "
+            "WHERE tc.status = 'pending' "
+            "GROUP BY tc.id, tc.display_name "
+            "HAVING count(tcm.id) >= %s",
+            (threshold,),
+        )
+        return cur.fetchall()
+
+
+def mark_candidate_proposed(conn: psycopg.Connection, candidate_id: int) -> None:
+    with conn.cursor() as cur:
+        cur.execute("UPDATE tool_candidates SET status = 'proposed' WHERE id = %s", (candidate_id,))
+
+
+def degraded_sources_needing_alert(conn: psycopg.Connection) -> list[tuple[int, str, str]]:
+    """Devuelve (id, tool_slug, kind) de fuentes degradadas sin alertar todavía."""
+    with conn.cursor() as cur:
+        cur.execute("SELECT id, tool_slug, kind FROM sources WHERE is_degraded AND alerted_at IS NULL")
+        return cur.fetchall()
+
+
+def mark_source_alerted(conn: psycopg.Connection, source_id: int, now: datetime) -> None:
+    with conn.cursor() as cur:
+        cur.execute("UPDATE sources SET alerted_at = %s WHERE id = %s", (now, source_id))

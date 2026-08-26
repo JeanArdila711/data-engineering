@@ -429,3 +429,87 @@ def test_migration_003_adds_alerted_at_and_tool_candidates(db_conn):
         )
         columns = {row[0] for row in cur.fetchall()}
         assert columns == {"article_url", "candidate_id", "id"}
+
+
+def test_upsert_candidate_is_idempotent_per_article(db_conn):
+    from datetime import datetime, timezone
+    from pipeline.db import upsert_candidate
+
+    now = datetime(2026, 8, 26, tzinfo=timezone.utc)
+    upsert_candidate(db_conn, "Fooflow", "https://a.example/1", now)
+    upsert_candidate(db_conn, "fooflow", "https://a.example/1", now)  # mismo artículo, reintento
+
+    with db_conn.cursor() as cur:
+        cur.execute(
+            "SELECT count(*) FROM tool_candidate_mentions tcm "
+            "JOIN tool_candidates tc ON tc.id = tcm.candidate_id "
+            "WHERE tc.normalized_name = 'fooflow'"
+        )
+        assert cur.fetchone()[0] == 1  # no se duplica la mención del mismo artículo
+
+    upsert_candidate(db_conn, "Fooflow", "https://a.example/2", now)  # artículo distinto, sí cuenta
+    with db_conn.cursor() as cur:
+        cur.execute(
+            "SELECT count(*) FROM tool_candidate_mentions tcm "
+            "JOIN tool_candidates tc ON tc.id = tcm.candidate_id "
+            "WHERE tc.normalized_name = 'fooflow'"
+        )
+        assert cur.fetchone()[0] == 2
+
+
+def test_pending_candidates_over_threshold_respects_status(db_conn):
+    from datetime import datetime, timezone
+    from pipeline.db import pending_candidates_over_threshold, upsert_candidate
+
+    now = datetime(2026, 8, 26, tzinfo=timezone.utc)
+    upsert_candidate(db_conn, "Belowbar", "https://a.example/1", now)
+    upsert_candidate(db_conn, "Overbar", "https://a.example/1", now)
+    upsert_candidate(db_conn, "Overbar", "https://a.example/2", now)
+
+    results = pending_candidates_over_threshold(db_conn, threshold=2)
+    names = {row[1] for row in results}
+    assert names == {"Overbar"}
+
+    overbar_row = next(row for row in results if row[1] == "Overbar")
+    assert overbar_row[2] == 2  # mention_count
+    assert overbar_row[3] == "https://a.example/2"  # example_article_url: la mención más reciente
+
+
+def test_mark_candidate_proposed_stops_it_from_reappearing(db_conn):
+    from datetime import datetime, timezone
+    from pipeline.db import mark_candidate_proposed, pending_candidates_over_threshold, upsert_candidate
+
+    now = datetime(2026, 8, 26, tzinfo=timezone.utc)
+    upsert_candidate(db_conn, "Bazstore", "https://a.example/1", now)
+    upsert_candidate(db_conn, "Bazstore", "https://a.example/2", now)
+    with db_conn.cursor() as cur:
+        cur.execute("SELECT id FROM tool_candidates WHERE normalized_name = 'bazstore'")
+        candidate_id = cur.fetchone()[0]
+
+    mark_candidate_proposed(db_conn, candidate_id)
+    upsert_candidate(db_conn, "Bazstore", "https://a.example/3", now)  # ya no debe sumar
+
+    assert pending_candidates_over_threshold(db_conn, threshold=1) == []
+    with db_conn.cursor() as cur:
+        cur.execute("SELECT count(*) FROM tool_candidate_mentions WHERE candidate_id = %s", (candidate_id,))
+        assert cur.fetchone()[0] == 2  # la tercera mención no se insertó, status ya no es 'pending'
+
+
+def test_degraded_sources_needing_alert_and_mark_alerted(db_conn):
+    from datetime import datetime, timezone
+    from pipeline.db import degraded_sources_needing_alert, mark_source_alerted, record_source_failure
+
+    with db_conn.cursor() as cur:
+        cur.execute(
+            "INSERT INTO sources (tool_slug, kind, url) VALUES ('duckdb', 'rss', 'https://x') RETURNING id"
+        )
+        source_id = cur.fetchone()[0]
+
+    for _ in range(3):
+        record_source_failure(db_conn, source_id)
+
+    pending = degraded_sources_needing_alert(db_conn)
+    assert [row[0] for row in pending] == [source_id]
+
+    mark_source_alerted(db_conn, source_id, datetime(2026, 8, 26, tzinfo=timezone.utc))
+    assert degraded_sources_needing_alert(db_conn) == []
