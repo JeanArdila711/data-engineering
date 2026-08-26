@@ -170,3 +170,71 @@ def test_run_mines_candidates_from_unmatched_articles(db_conn):
         display_name, mention_count = cur.fetchone()
     assert display_name == "Fooflow"
     assert mention_count == 1
+
+
+def test_run_normalizes_url_before_recording_candidate_mention(db_conn):
+    from pipeline.run_articles import run
+
+    catalog = Catalog(tools=[Tool(
+        slug="duckdb", name="DuckDB", category="test",
+        feeds=[{"kind": "rss", "url": "https://x"}],
+    )])
+
+    record_a = ArticleRecord(
+        url="https://a.example/post?utm_source=feed",
+        title="Sin menciones conocidas",
+        author=None,
+        published_at=NOW,
+        summary_text="Este artículo habla de Fooflow, una herramienta nueva.",
+    )
+    record_b = ArticleRecord(
+        url="https://a.example/post",
+        title="Sin menciones conocidas",
+        author=None,
+        published_at=NOW,
+        summary_text="Este artículo habla de Fooflow, una herramienta nueva.",
+    )
+
+    class _FakeDiscoveryLLM:
+        def extract_candidates(self, document, known_names):
+            return ["Fooflow"]
+
+    run(db_conn, catalog, llm_client=_FakeDiscoveryLLM(), ds=DS, now=NOW,
+        fetcher=lambda url, **kwargs: ("{}", [record_a, record_b]))
+
+    with db_conn.cursor() as cur:
+        cur.execute(
+            "SELECT count(*) FROM tool_candidate_mentions tcm "
+            "JOIN tool_candidates tc ON tc.id = tcm.candidate_id "
+            "WHERE tc.normalized_name = 'fooflow'"
+        )
+        assert cur.fetchone()[0] == 1  # misma URL normalizada (con y sin utm_source), una sola mención
+
+
+def test_run_skips_candidate_mining_for_old_articles(db_conn):
+    from datetime import timedelta
+    from pipeline.run_articles import run
+
+    catalog = Catalog(tools=[Tool(
+        slug="duckdb", name="DuckDB", category="test",
+        feeds=[{"kind": "rss", "url": "https://x"}],
+    )])
+
+    old_record = ArticleRecord(
+        url="https://a.example/old",
+        title="Sin menciones conocidas",
+        author=None,
+        published_at=NOW - timedelta(days=10),
+        summary_text="Este artículo habla de Fooflow, una herramienta nueva.",
+    )
+
+    class _FakeDiscoveryLLM:
+        def extract_candidates(self, document, known_names):
+            return ["Fooflow"]
+
+    run(db_conn, catalog, llm_client=_FakeDiscoveryLLM(), ds=DS, now=NOW,
+        fetcher=lambda url, **kwargs: ("{}", [old_record]))
+
+    with db_conn.cursor() as cur:
+        cur.execute("SELECT count(*) FROM tool_candidates WHERE normalized_name = 'fooflow'")
+        assert cur.fetchone()[0] == 0

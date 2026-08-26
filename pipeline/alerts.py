@@ -16,6 +16,7 @@ import httpx
 from dotenv import load_dotenv
 
 from pipeline.db import (
+    DEGRADED_AFTER_FAILURES,
     connect,
     degraded_sources_needing_alert,
     mark_candidate_proposed,
@@ -54,7 +55,7 @@ def send_source_alerts(conn, repo: str, token: str, now: datetime, opener=_open_
         opener(
             repo, token,
             title=f"Fuente degradada: {tool_slug} ({kind})",
-            body=f"La fuente `{tool_slug}:{kind}` lleva 3 o más corridas fallando seguidas.",
+            body=f"La fuente `{tool_slug}:{kind}` lleva {DEGRADED_AFTER_FAILURES} o más corridas fallando seguidas.",
             labels=["source-health"],
         )
         mark_source_alerted(conn, source_id, now)
@@ -85,9 +86,9 @@ def main() -> int:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s", stream=sys.stdout)
 
     now = datetime.now(timezone.utc)
-    conn = connect(os.environ["DATABASE_URL"])
     repo = os.environ["GITHUB_REPOSITORY"]
     token = os.environ["GITHUB_TOKEN"]
+    conn = connect(os.environ["DATABASE_URL"])
     try:
         sources_alerted = send_source_alerts(conn, repo, token, now)
         candidates_alerted = send_candidate_alerts(conn, repo, token)

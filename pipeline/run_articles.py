@@ -9,7 +9,7 @@ import os
 import sys
 import traceback
 from dataclasses import dataclass
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from functools import partial
 from pathlib import Path
 
@@ -41,6 +41,7 @@ from pipeline.summarize import summarize_article
 from pipeline.translate import translate_summary
 
 TOP_N_FOR_SUMMARY = 15
+CANDIDATE_MINING_MAX_AGE_DAYS = 3
 
 logger = logging.getLogger("de_radar.articles")
 
@@ -111,10 +112,10 @@ def run(
             text = f"{record.title} {record.summary_text}"
             mentions = detect_mentions(text, catalog)
             if not mentions:
-                if llm_client is not None:
+                if llm_client is not None and (now - record.published_at) <= timedelta(days=CANDIDATE_MINING_MAX_AGE_DAYS):
                     try:
                         for name in extract_candidate_names(text, known_names, llm_client):
-                            upsert_candidate(conn, name, record.url, now)
+                            upsert_candidate(conn, name, normalize_url(record.url), now)
                     except Exception:
                         logger.error("extracción de candidatos falló | url=%s", record.url, exc_info=True)
                 continue
