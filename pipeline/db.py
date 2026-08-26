@@ -236,3 +236,26 @@ def quarantine(
             "INSERT INTO quarantine (source_ref, stage, error, payload) VALUES (%s, %s, %s, %s)",
             (source_ref, stage, error, payload),
         )
+
+
+DEGRADED_AFTER_FAILURES = 3
+
+
+def record_source_failure(conn: psycopg.Connection, source_id: int) -> None:
+    """Incrementa consecutive_failures y marca is_degraded al cruzar el umbral."""
+    with conn.cursor() as cur:
+        cur.execute(
+            "UPDATE sources SET consecutive_failures = consecutive_failures + 1, "
+            "is_degraded = (consecutive_failures + 1) >= %s WHERE id = %s",
+            (DEGRADED_AFTER_FAILURES, source_id),
+        )
+
+
+def record_source_success(conn: psycopg.Connection, source_id: int, now: datetime) -> None:
+    """Resetea el contador de fallos y limpia degradación/alerta al recuperarse."""
+    with conn.cursor() as cur:
+        cur.execute(
+            "UPDATE sources SET consecutive_failures = 0, is_degraded = FALSE, "
+            "last_success_at = %s, alerted_at = NULL WHERE id = %s",
+            (now, source_id),
+        )

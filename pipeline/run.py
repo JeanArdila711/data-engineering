@@ -20,14 +20,14 @@ from pipeline.db import (
     apply_migrations,
     connect,
     quarantine,
+    record_source_failure,
+    record_source_success,
     save_raw_fetch,
     sync_catalog,
     sync_sources,
     upsert_releases,
 )
 from pipeline.sources.github import fetch_releases
-
-DEGRADED_AFTER_FAILURES = 3
 
 logger = logging.getLogger("de_radar")
 
@@ -37,31 +37,6 @@ class RunSummary:
     tools_processed: int = 0
     releases_inserted: int = 0
     failures: int = 0
-
-
-def _record_failure(conn: psycopg.Connection, tool_slug: str, source_id: int, error: Exception) -> None:
-    quarantine(
-        conn,
-        source_ref=f"{tool_slug}:github_releases",
-        stage="fetch",
-        error=f"{type(error).__name__}: {error}\n{traceback.format_exc()}",
-        payload=None,
-    )
-    with conn.cursor() as cur:
-        cur.execute(
-            "UPDATE sources SET consecutive_failures = consecutive_failures + 1, "
-            "is_degraded = (consecutive_failures + 1) >= %s WHERE id = %s",
-            (DEGRADED_AFTER_FAILURES, source_id),
-        )
-
-
-def _record_success(conn: psycopg.Connection, source_id: int, now: datetime) -> None:
-    with conn.cursor() as cur:
-        cur.execute(
-            "UPDATE sources SET consecutive_failures = 0, is_degraded = FALSE, last_success_at = %s "
-            "WHERE id = %s",
-            (now, source_id),
-        )
 
 
 def run(
@@ -92,13 +67,19 @@ def run(
                 ds,
                 exc_info=True,
             )
-            _record_failure(conn, tool.slug, source_id, error)
+            quarantine(
+                conn,
+                source_ref=f"{tool.slug}:github_releases",
+                stage="fetch",
+                error=f"{type(error).__name__}: {error}\n{traceback.format_exc()}",
+            )
+            record_source_failure(conn, source_id)
             summary.failures += 1
             continue
 
         save_raw_fetch(conn, source_id, ds, payload)
         summary.releases_inserted += upsert_releases(conn, records)
-        _record_success(conn, source_id, now)
+        record_source_success(conn, source_id, now)
 
     return summary
 

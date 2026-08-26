@@ -350,6 +350,62 @@ def test_find_duplicate_article_matches_by_content_similarity(db_conn):
     assert duplicate is not None
 
 
+def test_record_source_failure_increments_and_degrades_after_threshold(db_conn):
+    from pipeline.db import record_source_failure
+
+    with db_conn.cursor() as cur:
+        cur.execute(
+            "INSERT INTO sources (tool_slug, kind, url) VALUES ('duckdb', 'rss', 'https://x') RETURNING id"
+        )
+        source_id = cur.fetchone()[0]
+
+    for _ in range(2):
+        record_source_failure(db_conn, source_id)
+    with db_conn.cursor() as cur:
+        cur.execute("SELECT consecutive_failures, is_degraded FROM sources WHERE id = %s", (source_id,))
+        failures, degraded = cur.fetchone()
+    assert failures == 2
+    assert degraded is False
+
+    record_source_failure(db_conn, source_id)
+    with db_conn.cursor() as cur:
+        cur.execute("SELECT consecutive_failures, is_degraded FROM sources WHERE id = %s", (source_id,))
+        failures, degraded = cur.fetchone()
+    assert failures == 3
+    assert degraded is True
+
+
+def test_record_source_success_resets_failure_state_and_alert(db_conn):
+    from datetime import datetime, timezone
+    from pipeline.db import record_source_failure, record_source_success
+
+    with db_conn.cursor() as cur:
+        cur.execute(
+            "INSERT INTO sources (tool_slug, kind, url) VALUES ('duckdb', 'rss', 'https://x') RETURNING id"
+        )
+        source_id = cur.fetchone()[0]
+
+    for _ in range(3):
+        record_source_failure(db_conn, source_id)
+    with db_conn.cursor() as cur:
+        cur.execute("UPDATE sources SET alerted_at = now() WHERE id = %s", (source_id,))
+
+    now = datetime(2026, 8, 26, tzinfo=timezone.utc)
+    record_source_success(db_conn, source_id, now)
+
+    with db_conn.cursor() as cur:
+        cur.execute(
+            "SELECT consecutive_failures, is_degraded, last_success_at, alerted_at "
+            "FROM sources WHERE id = %s",
+            (source_id,),
+        )
+        failures, degraded, last_success, alerted_at = cur.fetchone()
+    assert failures == 0
+    assert degraded is False
+    assert last_success == now
+    assert alerted_at is None
+
+
 def test_migration_003_adds_alerted_at_and_tool_candidates(db_conn):
     with db_conn.cursor() as cur:
         cur.execute(
