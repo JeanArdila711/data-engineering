@@ -348,3 +348,28 @@ def test_find_duplicate_article_matches_by_content_similarity(db_conn):
     duplicate = find_duplicate_article(db_conn, content_fingerprint(near_duplicate), near_duplicate)
 
     assert duplicate is not None
+
+
+def test_migration_003_adds_alerted_at_and_tool_candidates(db_conn):
+    with db_conn.cursor() as cur:
+        cur.execute(
+            "SELECT column_name FROM information_schema.columns "
+            "WHERE table_name = 'sources' AND column_name = 'alerted_at'"
+        )
+        assert cur.fetchone() is not None
+
+        cur.execute(
+            "SELECT column_name FROM information_schema.columns "
+            "WHERE table_name = 'tool_candidates' "
+            "ORDER BY column_name"
+        )
+        columns = {row[0] for row in cur.fetchall()}
+        assert columns == {"display_name", "first_seen_at", "id", "last_seen_at", "normalized_name", "status"}
+
+        cur.execute(
+            "SELECT column_name FROM information_schema.columns "
+            "WHERE table_name = 'tool_candidate_mentions' "
+            "ORDER BY column_name"
+        )
+        columns = {row[0] for row in cur.fetchall()}
+        assert columns == {"article_url", "candidate_id", "id"}
