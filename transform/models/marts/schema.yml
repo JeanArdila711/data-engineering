@@ -6,7 +6,12 @@ models:
       - name: release_id
         tests: [unique, not_null]
       - name: tool_slug
-        tests: [not_null]
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_tools')
+                field: tool_slug
       - name: tool_name
         tests: [not_null]
       - name: version
@@ -26,7 +31,13 @@ models:
   - name: mart_ecosystem
     columns:
       - name: tool_slug
-        tests: [unique, not_null]
+        tests:
+          - unique
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_tools')
+                field: tool_slug
       - name: tool_name
         tests: [not_null]
       - name: release_count
@@ -37,7 +48,13 @@ models:
   - name: mart_digest
     columns:
       - name: tool_slug
-        tests: [unique, not_null]
+        tests:
+          - unique
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_tools')
+                field: tool_slug
       - name: release_count_7d
         tests: [not_null]
       - name: article_count_7d

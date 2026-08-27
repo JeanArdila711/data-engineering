@@ -34,3 +34,23 @@ models:
         tests: [unique, not_null]
       - name: relevance_score
         tests: [not_null]
+
+  - name: stg_article_mentions
+    columns:
+      - name: article_id
+        tests: [not_null]
+      - name: tool_slug
+        tests: [not_null]
+
+  - name: stg_summaries
+    columns:
+      - name: article_id
+        tests: [not_null]
+      - name: idioma
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ["en", "es"]
+      - name: text
+        tests: [not_null]
