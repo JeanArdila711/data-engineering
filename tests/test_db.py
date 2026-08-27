@@ -16,6 +16,7 @@ from pipeline.sources.rss import ArticleRecord
 
 T0 = datetime(2026, 1, 1, tzinfo=timezone.utc)
 T1 = datetime(2026, 2, 1, tzinfo=timezone.utc)
+T2 = datetime(2026, 3, 1, tzinfo=timezone.utc)
 DS = date(2026, 8, 4)
 T_ARTICLE = datetime(2026, 8, 1, tzinfo=timezone.utc)
 
@@ -117,6 +118,43 @@ def test_sync_catalog_closes_old_row_when_attribute_changes(db_conn):
     assert old[4] is False
     assert new[1] == "olap-database"
     assert new[4] is True
+
+
+def test_sync_catalog_closes_row_when_tool_is_removed(db_conn):
+    sync_catalog(db_conn, _catalog(), T0)
+    sync_catalog(db_conn, Catalog(tools=[]), T1)
+
+    rows = _rows(db_conn)
+    assert len(rows) == 1
+    assert rows[0][3] == T1
+    assert rows[0][4] is False
+
+
+def test_sync_catalog_removal_does_not_touch_remaining_tools(db_conn):
+    two_tools = Catalog(
+        tools=[
+            Tool(slug="duckdb", name="DuckDB", category="query-engine", repo="duckdb/duckdb"),
+            Tool(slug="polars", name="Polars", category="dataframe", repo="pola-rs/polars"),
+        ]
+    )
+    sync_catalog(db_conn, two_tools, T0)
+    sync_catalog(db_conn, _catalog(), T1)
+
+    by_slug = {row[0]: row for row in _rows(db_conn)}
+    assert by_slug["duckdb"][4] is True
+    assert by_slug["duckdb"][3] is None
+    assert by_slug["polars"][4] is False
+    assert by_slug["polars"][3] == T1
+
+
+def test_sync_catalog_removal_is_idempotent(db_conn):
+    sync_catalog(db_conn, _catalog(), T0)
+    sync_catalog(db_conn, Catalog(tools=[]), T1)
+    sync_catalog(db_conn, Catalog(tools=[]), T2)
+
+    rows = _rows(db_conn)
+    assert len(rows) == 1
+    assert rows[0][3] == T1
 
 
 def test_sync_sources_returns_ids_and_is_idempotent(db_conn):

@@ -43,7 +43,9 @@ def sync_catalog(conn: psycopg.Connection, catalog: Catalog, now: datetime) -> N
     """Sincroniza el catálogo a dim_tool como SCD Tipo 2.
 
     Una fila nueva solo se crea cuando cambia un atributo rastreado; correrlo
-    con el catálogo sin cambios no altera la tabla.
+    con el catálogo sin cambios no altera la tabla. Una herramienta que sale
+    del catálogo cierra su fila vigente (is_current=FALSE) sin insertar
+    reemplazo — el catálogo sigue siendo la única fuente de qué existe.
     """
     with conn.cursor() as cur:
         for tool in catalog.tools:
@@ -71,6 +73,12 @@ def sync_catalog(conn: psycopg.Connection, catalog: Catalog, now: datetime) -> N
                 "VALUES (%s, %s, %s, %s, %s, %s, %s, TRUE)",
                 (tool.slug, *incoming, now),
             )
+
+        cur.execute(
+            "UPDATE dim_tool SET effective_to = %s, is_current = FALSE "
+            "WHERE is_current AND NOT (slug = ANY(%s))",
+            (now, [tool.slug for tool in catalog.tools]),
+        )
 
 
 def sync_sources(conn: psycopg.Connection, catalog: Catalog) -> dict[str, int]:
