@@ -5,6 +5,7 @@ no decide qué herramientas existen, no orquesta.
 """
 
 import json
+import logging
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 
@@ -13,7 +14,17 @@ from pipeline.config import Tool
 from pipeline.fetch import fetch
 from pipeline.versions import normalize_version
 
-API_TEMPLATE = "https://api.github.com/repos/{repo}/releases?per_page=30"
+logger = logging.getLogger("de_radar.github")
+
+API_TEMPLATE = "https://api.github.com/repos/{repo}/releases?per_page={per_page}&page={page}"
+
+# GitHub sí soporta paginar su histórico completo, a diferencia de un feed RSS
+# (decisión 11) — sin esto, una herramienta con más releases que una sola
+# página (Airflow, Kafka llevan años) se queda con el historial viejo sin
+# traer para siempre. El tope evita paginar sin límite si algún repo tiene
+# un historial anormalmente largo.
+_PER_PAGE = 100
+_MAX_PAGES = 10
 
 # Campos estables de un release: sin assets ni reactions, que cambian con cada
 # descarga o reacción real y romperían el particionamiento de raw_fetches por
@@ -67,6 +78,12 @@ def parse_releases(tool: Tool, payload: str) -> list[ReleaseRecord]:
         version = normalize_version(entry.get("tag_name") or "")
         published_at = _parse_timestamp(entry.get("published_at"))
         if version is None or published_at is None:
+            # Descarte silencioso = imposible distinguir "release rara sin
+            # tag" de "GitHub cambió el shape del JSON" sin mirar esto.
+            logger.warning(
+                "release descartado por campo ilegible | herramienta=%s tag_name=%r published_at=%r",
+                tool.slug, entry.get("tag_name"), entry.get("published_at"),
+            )
             continue
 
         body = entry.get("body") or ""
@@ -86,18 +103,30 @@ def parse_releases(tool: Tool, payload: str) -> list[ReleaseRecord]:
 
 
 def fetch_releases(tool: Tool, token: str, **kwargs) -> tuple[str, list[ReleaseRecord]]:
-    """Trae los releases de una herramienta y devuelve el payload crudo junto a los registros."""
+    """Trae los releases de una herramienta, paginando hasta agotar el
+    historial o llegar a _MAX_PAGES. Devuelve el payload combinado (todas las
+    páginas) junto a los registros parseados.
+    """
     if not tool.repo:
         raise ValueError(f"{tool.slug} no tiene repo configurado")
 
-    result = fetch(
-        API_TEMPLATE.format(repo=tool.repo),
-        headers={
-            "Accept": "application/vnd.github+json",
-            "Authorization": f"Bearer {token}",
-            "X-GitHub-Api-Version": "2022-11-28",
-        },
-        **kwargs,
-    )
+    headers = {
+        "Accept": "application/vnd.github+json",
+        "Authorization": f"Bearer {token}",
+        "X-GitHub-Api-Version": "2022-11-28",
+    }
 
-    return _normalize_payload(result.body), parse_releases(tool, result.body)
+    all_entries: list[dict] = []
+    for page in range(1, _MAX_PAGES + 1):
+        result = fetch(
+            API_TEMPLATE.format(repo=tool.repo, per_page=_PER_PAGE, page=page),
+            headers=headers,
+            **kwargs,
+        )
+        page_entries = json.loads(result.body)
+        all_entries.extend(page_entries)
+        if len(page_entries) < _PER_PAGE:
+            break
+
+    combined_payload = json.dumps(all_entries)
+    return _normalize_payload(combined_payload), parse_releases(tool, combined_payload)
