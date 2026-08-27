@@ -110,11 +110,17 @@ const CATEGORY_DISPLAY_NAMES: Record<string, string> = {
   'observability': 'Observabilidad',
 };
 
-// SemVer Badge Calculator (Major, Minor, Patch)
+// SemVer Badge Calculator (Major, Minor, Patch). No toda herramienta usa
+// semver (Trino tagea "483", un entero simple) — si la versión no trae al
+// menos un punto, no hay base real para clasificar severidad, así que se
+// muestra un badge neutral en vez de inventar un MAJOR falso.
 function getSemverBadge(version: string): { label: string; className: string } {
   const clean = version.replace(/^[vV]/, '').trim();
   const parts = clean.split('.');
-  
+
+  if (parts.length < 2) {
+    return { label: 'RELEASE', className: 'text-emerald-400 border-emerald-500/30 bg-emerald-950/30' };
+  }
   if (parts.length >= 3 && parts[1] === '0' && parts[2] === '0') {
     return { label: 'MAJOR', className: 'text-purple-400 border-purple-500/30 bg-purple-950/30' };
   }

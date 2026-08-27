@@ -27,6 +27,36 @@ def test_parse_releases_normalizes_versions():
         assert record.version.count(".") >= 2
 
 
+def test_parse_releases_keeps_raw_tag_for_bare_integer_versions():
+    """Trino etiqueta releases con un entero simple ("483"), no semver.
+
+    normalize_version lo rellena a "483.0.0" para la clave de dedup, pero
+    mostrarle eso al usuario es falso — raw_version guarda el tag tal cual.
+    """
+    payload = json.dumps(
+        [
+            {
+                "tag_name": "483",
+                "draft": False,
+                "published_at": "2026-01-01T00:00:00Z",
+                "html_url": "https://example.com/483",
+                "body": "",
+            }
+        ]
+    )
+
+    records = parse_releases(TOOL, payload)
+
+    assert records[0].version == "483.0.0"
+    assert records[0].raw_version == "483"
+
+
+def test_parse_releases_keeps_original_tag_as_raw_version():
+    records = parse_releases(TOOL, FIXTURE.read_text())
+    for record in records:
+        assert record.raw_version.startswith("v")
+
+
 def test_parse_releases_parses_published_at_as_utc():
     records = parse_releases(TOOL, FIXTURE.read_text())
     assert all(r.published_at.tzinfo == timezone.utc for r in records)

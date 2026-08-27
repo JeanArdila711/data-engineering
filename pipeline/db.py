@@ -123,13 +123,14 @@ def upsert_releases(conn: psycopg.Connection, records: list[ReleaseRecord]) -> i
         for record in records:
             cur.execute(
                 "INSERT INTO fct_release "
-                "(tool_slug, version, published_at, source_url, has_breaking, body) "
-                "VALUES (%s, %s, %s, %s, %s, %s) "
+                "(tool_slug, version, raw_version, published_at, source_url, has_breaking, body) "
+                "VALUES (%s, %s, %s, %s, %s, %s, %s) "
                 "ON CONFLICT (tool_slug, version) DO NOTHING "
                 "RETURNING id",
                 (
                     record.tool_slug,
                     record.version,
+                    record.raw_version,
                     record.published_at,
                     record.source_url,
                     record.has_breaking,

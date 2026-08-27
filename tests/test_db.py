@@ -165,10 +165,11 @@ def test_sync_sources_returns_ids_and_is_idempotent(db_conn):
     assert "duckdb" in first
 
 
-def _record(version: str = "1.0.0", has_breaking: bool = False) -> ReleaseRecord:
+def _record(version: str = "1.0.0", has_breaking: bool = False, raw_version: str | None = None) -> ReleaseRecord:
     return ReleaseRecord(
         tool_slug="duckdb",
         version=version,
+        raw_version=raw_version if raw_version is not None else version,
         published_at=T0,
         source_url="https://example.com/r",
         body="cuerpo",
@@ -232,6 +233,14 @@ def test_upsert_releases_is_idempotent(db_conn):
     with db_conn.cursor() as cur:
         cur.execute("SELECT count(*) FROM fct_release")
         assert cur.fetchone()[0] == 1
+
+
+def test_upsert_releases_stores_raw_version_distinct_from_normalized(db_conn):
+    upsert_releases(db_conn, [_record(version="483.0.0", raw_version="483")])
+
+    with db_conn.cursor() as cur:
+        cur.execute("SELECT version, raw_version FROM fct_release")
+        assert cur.fetchone() == ("483.0.0", "483")
 
 
 def test_upsert_releases_stores_changes_without_duplicating(db_conn):

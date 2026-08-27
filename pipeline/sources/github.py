@@ -52,7 +52,8 @@ def _normalize_payload(raw_body: str) -> str:
 @dataclass(frozen=True)
 class ReleaseRecord:
     tool_slug: str
-    version: str
+    version: str  # normalizado a MAJOR.MINOR.PATCH, solo para la clave de dedup
+    raw_version: str  # tag_name tal cual — para mostrar (Trino no usa semver)
     published_at: datetime
     source_url: str
     body: str
@@ -75,7 +76,8 @@ def parse_releases(tool: Tool, payload: str) -> list[ReleaseRecord]:
         if entry.get("draft"):
             continue
 
-        version = normalize_version(entry.get("tag_name") or "")
+        raw_tag = entry.get("tag_name") or ""
+        version = normalize_version(raw_tag)
         published_at = _parse_timestamp(entry.get("published_at"))
         if version is None or published_at is None:
             # Descarte silencioso = imposible distinguir "release rara sin
@@ -91,6 +93,7 @@ def parse_releases(tool: Tool, payload: str) -> list[ReleaseRecord]:
             ReleaseRecord(
                 tool_slug=tool.slug,
                 version=version,
+                raw_version=raw_tag,
                 published_at=published_at,
                 source_url=entry.get("html_url") or "",
                 body=body,
