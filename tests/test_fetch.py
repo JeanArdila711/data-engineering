@@ -44,9 +44,23 @@ def test_fetch_backoff_is_exponential():
     )
     slept: list[float] = []
 
-    fetch("https://example.com/feed", transport=transport, sleep=slept.append)
+    # jitter fijo en 0 para aislar la aserción de crecimiento exponencial
+    # de la aleatoriedad — el jitter en sí se prueba aparte.
+    fetch("https://example.com/feed", transport=transport, sleep=slept.append, jitter=lambda: 0)
 
     assert slept[1] > slept[0]
+
+
+def test_fetch_backoff_includes_jitter():
+    transport = _transport(
+        httpx.Response(503),
+        httpx.Response(200, text="ok"),
+    )
+    slept: list[float] = []
+
+    fetch("https://example.com/feed", transport=transport, sleep=slept.append, jitter=lambda: 0.5)
+
+    assert slept[0] == pytest.approx(1.0 + 0.5)
 
 
 def test_fetch_raises_transient_after_max_attempts():

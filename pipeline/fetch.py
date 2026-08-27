@@ -4,6 +4,7 @@ Distinguir transitorio de permanente es lo que permite reintentar lo que
 tiene sentido reintentar y marcar como rota la fuente que de verdad lo está.
 """
 
+import random
 import time
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -38,8 +39,15 @@ def fetch(
     max_attempts: int = 3,
     sleep: Callable[[float], None] = time.sleep,
     transport: httpx.BaseTransport | None = None,
+    jitter: Callable[[], float] = random.random,
 ) -> FetchResult:
-    """Trae una URL con reintentos y backoff exponencial."""
+    """Trae una URL con reintentos y backoff exponencial con jitter.
+
+    Sin jitter, varias fuentes fallando al mismo tiempo (ej. un hiccup de red
+    general) reintentan sincronizadas y le pegan a los orígenes todas juntas
+    otra vez. `jitter` es inyectable para que el test de crecimiento
+    exponencial siga siendo determinista.
+    """
     request_headers = {"User-Agent": USER_AGENT, **(headers or {})}
     last_error: Exception | None = None
 
@@ -57,6 +65,6 @@ def fetch(
                 last_error = TransientError(f"{url} devolvió {response.status_code}")
 
             if attempt < max_attempts - 1:
-                sleep(_BASE_BACKOFF_SECONDS * (2**attempt))
+                sleep(_BASE_BACKOFF_SECONDS * (2**attempt) + jitter())
 
     raise TransientError(f"{url} falló tras {max_attempts} intentos: {last_error}")
