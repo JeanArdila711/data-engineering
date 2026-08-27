@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo, useEffect, useRef } from 'react';
-import { motion, AnimatePresence, useScroll, useTransform, useMotionValue, useMotionTemplate, MotionValue } from 'framer-motion';
+import { motion, AnimatePresence, useScroll, useTransform, MotionValue } from 'framer-motion';
 import { 
   ArrowUpRight, 
   Command, 
@@ -907,38 +907,16 @@ function ToolCard({
   const Icon = getToolIcon(tool.slug, tool.rawCategory);
   const semver = getSemverBadge(tool.version);
 
-  // High-frequency GPU mouse tracking via useMotionValue (Zero React re-renders, 120fps)
-  const mouseX = useMotionValue(0);
-  const mouseY = useMotionValue(0);
-
-  function handleMouseMove({ currentTarget, clientX, clientY }: React.MouseEvent<HTMLDivElement>) {
-    const { left, top } = currentTarget.getBoundingClientRect();
-    mouseX.set(clientX - left);
-    mouseY.set(clientY - top);
-  }
-
-  // Spotlight radial gradient (subtle metallic white/emerald reflection)
-  const borderSpotlight = useMotionTemplate`radial-gradient(260px circle at ${mouseX}px ${mouseY}px, rgba(52, 211, 153, 0.12), transparent 80%)`;
-
   return (
     <motion.article
       layoutId={`tool-card-${tool.slug}`}
       transition={springTransition}
       style={{ willChange: 'transform' }}
-      onMouseMove={handleMouseMove}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       onClick={() => onSelect(tool)}
-      className="group relative overflow-hidden rounded-2xl bg-neutral-950/90 border border-neutral-800/80 hover:border-neutral-700 p-6 flex flex-col justify-between cursor-pointer shadow-[inset_0_1px_0_0_rgba(255,255,255,0.04)]"
+      className="group relative overflow-hidden rounded-2xl bg-neutral-950/90 border border-neutral-800/80 hover:border-neutral-700 p-6 flex flex-col justify-between cursor-pointer shadow-[inset_0_1px_0_0_rgba(255,255,255,0.04)] transition-shadow duration-300 hover:shadow-[0_0_28px_rgba(52,211,153,0.10)]"
     >
-      {/* Subtle GPU Spotlight Glow Overlay */}
-      <motion.div
-        className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none z-0"
-        style={{
-          background: borderSpotlight,
-        }}
-      />
-
       <div className="relative z-10 flex flex-col h-full justify-between">
         <div>
           {/* Header: Icon with micro-elevation + Title + Category + Plus action */}
