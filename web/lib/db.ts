@@ -1,4 +1,5 @@
 import postgres from 'postgres'
+import type { RoadmapNode } from './roadmap'
 
 export type ChangelogEntry = {
   release_id: number
@@ -75,7 +76,7 @@ function getSqlClient() {
     return null
   }
   if (!sql) {
-    sql = postgres(process.env.DATABASE_URL, { 
+    sql = postgres(process.env.DATABASE_URL, {
       ssl: 'require',
       connect_timeout: 5,
       max: 5,
@@ -181,6 +182,24 @@ export async function getDigest(): Promise<DigestEntry[]> {
     }))
   } catch (error) {
     console.warn('Postgres connection unavailable for digest, falling back to static data:', error)
+    return []
+  }
+}
+
+export async function getRoadmap(): Promise<RoadmapNode[]> {
+  try {
+    const client = getSqlClient()
+    if (!client) {
+      return []
+    }
+    return await client<RoadmapNode[]>`
+      select slug, tipo, nombre, resuelve, dominado_cuando, nivel, orden_sugerido,
+             experiencia_texto, experiencia_link, prerequisitos, implementaciones, fuentes
+      from mart_roadmap
+      order by nivel, orden_sugerido, slug
+    `
+  } catch (error) {
+    console.warn('Postgres connection unavailable, falling back to static data:', error)
     return []
   }
 }
