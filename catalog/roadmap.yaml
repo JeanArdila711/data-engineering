@@ -562,3 +562,369 @@ nodes:
       - nombre: dbt
         tool_slug: dbt-core
       - nombre: Great Expectations
+
+  # ---------- Nivel 6: orquestación ----------
+  - slug: orquestacion
+    tipo: concepto
+    nombre: Orquestación
+    nivel: 6
+    prerequisitos: [idempotencia]
+    resuelve: >
+      Decidir qué corre, cuándo, en qué orden y qué pasa cuando algo falla,
+      separado de la lógica que hace el trabajo. El código que transforma no
+      debería saber quién lo dispara ni con qué fecha.
+    dominado_cuando: >
+      Podés cambiar de orquestador sin tocar el código que transforma los
+      datos, y decir qué tarea corre después de un fallo y cuál no.
+    lo_vi_romperse:
+      texto: >
+        Evalué Airflow y no lo puse: para unas 25 fuentes diarias, el
+        orquestador cuesta más de operar que el pipeline entero. Lo que sí
+        conservé es la parte transferible —jobs paramétricos y deterministas,
+        reintentos con backoff, logs con contexto de fuente y paso—. El
+        detalle que terminó de decidirlo: el backfill, que es el argumento
+        estrella de Airflow, acá sirve a medias, porque un RSS solo devuelve
+        los últimos N ítems y el histórico de artículos no se puede
+        reconstruir por definición.
+      link: null
+    fuentes:
+      - url: https://airflow.apache.org/docs/apache-airflow/stable/index.html
+        por_que: el vocabulario estándar de DAG, tarea, schedule y reintento, que se usa hasta cuando no usás Airflow
+      - url: https://docs.dagster.io/
+        por_que: la alternativa que modela activos de datos en vez de tareas, útil para ver que el modelo de tareas es una elección
+    implementaciones:
+      - nombre: Airflow
+        tool_slug: airflow
+      - nombre: Dagster
+        tool_slug: dagster
+      - nombre: GitHub Actions
+
+  - slug: backfill-y-reprocesamiento
+    tipo: concepto
+    nombre: Backfill y reprocesamiento
+    nivel: 6
+    prerequisitos: [orquestacion, particionamiento]
+    resuelve: >
+      Volver a correr el pasado: para llenar un hueco de historia que nunca se
+      cargó, o para reprocesar con la lógica ya corregida. Solo es seguro si
+      la escritura es idempotente y está particionada.
+    dominado_cuando: >
+      Podés recorrer el histórico completo de una fuente y quedarte tranquilo
+      de que correrlo dos veces no duplica nada.
+    lo_vi_romperse:
+      texto: >
+        El backfill de releases traía 30 por herramienta y paraba ahí, porque
+        nadie estaba paginando la API de GitHub, que sí devuelve el historial
+        completo. No fallaba: devolvía menos y quedaba en verde. La primera
+        corrida con paginación trajo 913 releases nuevos en una sola pasada.
+        Un hueco de historia no levanta ninguna alerta; hay que ir a buscarlo.
+      link: https://github.com/JeanArdila711/data-engineering/commit/a8f3f85
+    fuentes:
+      - url: https://docs.github.com/en/rest/using-the-rest-api/using-pagination-in-the-rest-api
+        por_que: el caso concreto donde el default de la API es una página y el histórico está una llamada más allá
+      - url: https://airflow.apache.org/docs/apache-airflow/stable/core-concepts/dag-run.html
+        por_que: define el intervalo de datos de una corrida, que es lo que hace reproducible un reproceso
+
+  # ---------- Niveles 7-9: streaming y distribuido ----------
+  - slug: mensajeria-y-logs-de-eventos
+    tipo: concepto
+    nombre: Mensajería y logs de eventos
+    nivel: 7
+    prerequisitos: [batch-vs-streaming]
+    resuelve: >
+      Un log de eventos particionado y ordenado donde los consumidores leen a
+      su propio ritmo y guardan su posición. Desacopla a quien produce de
+      quien consume en el tiempo, no solo en el código.
+    dominado_cuando: >
+      Podés explicar por qué un consumidor lento no frena al productor, y qué
+      es exactamente lo que guarda un offset.
+    fuentes:
+      - url: https://kafka.apache.org/documentation/
+        por_que: la sección de diseño describe el log particionado y el offset como posición del consumidor
+    implementaciones:
+      - nombre: Kafka
+        tool_slug: kafka
+
+  - slug: garantias-de-entrega
+    tipo: concepto
+    nombre: Garantías de entrega
+    nivel: 8
+    prerequisitos: [mensajeria-y-logs-de-eventos, idempotencia]
+    resuelve: >
+      Al menos una vez, a lo sumo una vez, exactamente una vez: qué promete el
+      sistema cuando algo se cae en el medio. "Exactamente una vez" casi
+      siempre es "al menos una vez" más un consumidor idempotente.
+    dominado_cuando: >
+      Podés decir qué garantía da tu consumidor y qué se duplica o se pierde
+      si el proceso muere justo antes de confirmar.
+    fuentes:
+      - url: https://kafka.apache.org/documentation/
+        por_que: la sección de semántica de entrega es la explicación primaria de las tres garantías y de su costo
+      - url: https://nightlies.apache.org/flink/flink-docs-stable/
+        por_que: muestra el otro mecanismo, checkpoints de estado, para conseguir la garantía fuerte
+    implementaciones:
+      - nombre: Kafka
+        tool_slug: kafka
+      - nombre: Flink
+        tool_slug: flink
+
+  - slug: procesamiento-distribuido
+    tipo: concepto
+    nombre: Procesamiento distribuido
+    nivel: 9
+    prerequisitos: [particionamiento, python-para-datos]
+    resuelve: >
+      Repartir entre varias máquinas un cómputo que no entra en una. El costo
+      que aparece es el movimiento de datos entre nodos: casi todo lo que se
+      optimiza acá es evitar barajar filas de una máquina a otra.
+    dominado_cuando: >
+      Podés reconocer cuándo un trabajo NO necesita un clúster, y cuando sí lo
+      necesita, señalar en qué paso está el shuffle.
+    fuentes:
+      - url: https://spark.apache.org/docs/latest/
+        por_que: el motor de referencia y su modelo de ejecución por etapas separadas por shuffles
+      - url: https://trino.io/docs/current/
+        por_que: el mismo problema resuelto para consultas SQL interactivas sobre fuentes distintas
+    implementaciones:
+      - nombre: Spark
+        tool_slug: spark
+      - nombre: Trino
+        tool_slug: trino
+
+  # ---------- Nivel 10: capacidades cloud ----------
+  - slug: object-storage
+    tipo: capacidad-cloud
+    nombre: Object storage
+    nivel: 10
+    prerequisitos: [zonas-y-capas]
+    resuelve: >
+      Almacenamiento de objetos por clave, barato y prácticamente sin límite,
+      que no es un sistema de archivos: no hay directorios de verdad ni
+      renombrado atómico, y eso cambia cómo se escribe encima.
+    dominado_cuando: >
+      Podés explicar por qué "mover una carpeta" no es una operación barata
+      acá, y qué implica eso para un job que escribe resultados parciales.
+    fuentes:
+      - url: https://docs.aws.amazon.com/AmazonS3/latest/userguide/Welcome.html
+        por_que: deja explícito que las claves son planas y que el prefijo con barras es una convención, no una jerarquía
+      - url: https://cloud.google.com/storage/docs/introduction
+        por_que: el mismo modelo descrito por otro proveedor, útil para ver qué parte es del concepto y qué del servicio
+    implementaciones:
+      - nombre: Amazon S3
+        proveedor: aws
+        equivalencia: alta
+      - nombre: Google Cloud Storage
+        proveedor: gcp
+        equivalencia: alta
+      - nombre: Azure Data Lake Storage Gen2
+        proveedor: azure
+        equivalencia: alta
+
+  - slug: computo-serverless
+    tipo: capacidad-cloud
+    nombre: Cómputo serverless
+    nivel: 10
+    prerequisitos: [python-para-datos]
+    resuelve: >
+      Correr una función sin administrar el servidor: el proveedor arranca el
+      proceso cuando llega el evento y lo apaga después. Se paga por
+      ejecución, y el límite duro es cuánto puede durar cada invocación.
+    dominado_cuando: >
+      Podés decir qué parte de tu pipeline entra en el límite de tiempo y
+      memoria de una función y qué parte no, antes de intentar desplegarla.
+    fuentes:
+      - url: https://docs.aws.amazon.com/lambda/latest/dg/welcome.html
+        por_que: los límites de ejecución y el modelo de invocación están documentados de entrada, que es lo que condiciona el diseño
+      - url: https://learn.microsoft.com/en-us/azure/azure-functions/functions-overview
+        por_que: el mismo modelo con otros disparadores y otros límites, para comparar sin marketing
+    implementaciones:
+      - nombre: AWS Lambda
+        proveedor: aws
+        equivalencia: alta
+      - nombre: Cloud Run functions
+        proveedor: gcp
+        equivalencia: alta
+      - nombre: Azure Functions
+        proveedor: azure
+        equivalencia: alta
+
+  - slug: contenedores-gestionados
+    tipo: capacidad-cloud
+    nombre: Contenedores gestionados
+    nivel: 10
+    prerequisitos: [contenedores]
+    resuelve: >
+      Kubernetes operado por el proveedor. La plataforma es la misma en las
+      tres nubes porque es open source y portable; lo que cambia es quién
+      opera el plano de control y cómo se integra con el resto de la nube.
+    dominado_cuando: >
+      Podés decir qué parte de lo que sabés de esto es transferible entre
+      nubes y qué parte se queda con el proveedor.
+    fuentes:
+      - url: https://kubernetes.io/docs/concepts/
+        por_que: "es la fuente portable: lo que está acá se lleva a cualquiera de las tres ofertas gestionadas"
+      - url: https://cloud.google.com/kubernetes-engine/docs
+        por_que: muestra dónde termina el proyecto open source y dónde empieza el valor agregado del proveedor
+    implementaciones:
+      - nombre: Kubernetes autogestionado
+        proveedor: portable
+        equivalencia: alta
+      - nombre: Amazon EKS
+        proveedor: aws
+        equivalencia: alta
+      - nombre: Google GKE
+        proveedor: gcp
+        equivalencia: alta
+      - nombre: Azure AKS
+        proveedor: azure
+        equivalencia: alta
+
+  - slug: orquestacion-gestionada
+    tipo: capacidad-cloud
+    nombre: Orquestación gestionada
+    nivel: 10
+    prerequisitos: [orquestacion]
+    resuelve: >
+      Airflow operado por el proveedor: el mismo DAG y la misma API, con el
+      plano de control fuera de tu responsabilidad. La equivalencia es alta
+      justamente porque abajo corre el mismo proyecto open source.
+    dominado_cuando: >
+      Podés mover un DAG desde un Airflow propio a uno gestionado sabiendo
+      qué cambia: qué versiones hay disponibles, qué dependencias podés
+      instalar y de dónde salen las credenciales.
+    fuentes:
+      - url: https://docs.aws.amazon.com/mwaa/latest/userguide/what-is-mwaa.html
+        por_que: enumera qué administra el proveedor y qué queda de tu lado, que es la frontera que importa
+      - url: https://cloud.google.com/composer/docs
+        por_que: el mismo servicio en otra nube, útil para ver qué es de Airflow y qué del envoltorio
+    implementaciones:
+      - nombre: Airflow autogestionado
+        proveedor: portable
+        equivalencia: alta
+      - nombre: Amazon MWAA
+        proveedor: aws
+        equivalencia: alta
+      - nombre: Cloud Composer
+        proveedor: gcp
+        equivalencia: alta
+      - nombre: Workflow Orchestration Manager de Azure Data Factory
+        proveedor: azure
+        equivalencia: alta
+    # Es la única capacidad cloud de este nivel donde las cuatro
+    # implementaciones corren literalmente el mismo software.
+
+  - slug: warehouse-gestionado
+    tipo: capacidad-cloud
+    nombre: Warehouse gestionado
+    nivel: 10
+    prerequisitos: [oltp-vs-olap]
+    resuelve: >
+      Un almacén analítico operado por el proveedor: escala y mantenimiento
+      dejan de ser tu problema, a cambio de un modelo de costos que hay que
+      entender antes de usarlo.
+    dominado_cuando: >
+      Podés explicar por qué la misma consulta cuesta distinto en dos de
+      estos servicios, y elegir uno con un argumento que no sea la marca.
+    fuentes:
+      - url: https://cloud.google.com/bigquery/docs/introduction
+        por_que: documenta explícitamente la separación de cómputo y almacenamiento
+      - url: https://docs.aws.amazon.com/redshift/latest/mgmt/welcome.html
+        por_que: el modelo de clusters aprovisionados, que es la arquitectura contraria y explica la diferencia de costo
+    implementaciones:
+      - nombre: BigQuery
+        proveedor: gcp
+        equivalencia: media
+        nota: cómputo y almacenamiento separados, cobro por consulta escaneada
+      - nombre: Redshift
+        proveedor: aws
+        equivalencia: media
+        nota: clusters aprovisionados; Redshift Serverless acorta la distancia pero no los vuelve intercambiables
+      - nombre: Synapse
+        proveedor: azure
+        equivalencia: media
+        nota: combina pools dedicados y sin servidor en un mismo producto
+      - nombre: Snowflake
+        proveedor: portable
+        equivalencia: media
+        nota: corre sobre las tres nubes, así que la elección no es de proveedor sino de motor
+
+  # ---------- Nivel 11: transversales ----------
+  - slug: observabilidad
+    tipo: concepto
+    nombre: Observabilidad
+    nivel: 11
+    prerequisitos: [orquestacion, salud-de-fuentes]
+    resuelve: >
+      Saber qué hizo el pipeline sin volver a correrlo: logs con contexto,
+      métricas de frescura y de volumen, y una alerta que llegue a alguien. Un
+      pipeline que falla en silencio es peor que uno caído, porque el sitio
+      sigue mostrando datos viejos como si fueran de hoy.
+    dominado_cuando: >
+      Podés responder "¿corrió hoy y produjo lo que suele producir?" mirando
+      un solo lugar, y sabés qué pasaría si el pipeline directamente no
+      arrancara.
+    lo_vi_romperse:
+      texto: >
+        Están los logs con contexto y las alertas de salud de fuentes como
+        issues del repo, pero falta justo el caso que ninguna de las dos
+        cubre: si el cron deja de dispararse, no hay error que reportar y
+        nadie se entera. El dead-man switch externo sigue pendiente y está
+        escrito por qué importa. El otro hueco ya identificado es la fuente
+        que responde 200 y devuelve cero ítems porque le cambió el HTML;
+        detectarlo por "no produjo nada en X días" da falsos positivos, así
+        que el umbral hay que calibrarlo contra el histórico de cada fuente
+        en vez de fijarlo global.
+      link: null
+    fuentes:
+      - url: https://opentelemetry.io/docs/
+        por_que: el estándar abierto de trazas y métricas, para no atarse al formato de un proveedor
+      - url: https://healthchecks.io/docs/
+        por_que: "la forma más chica de un dead-man switch: un heartbeat que avisa cuando deja de llegar"
+
+  - slug: costo
+    tipo: concepto
+    nombre: Costo
+    nivel: 11
+    prerequisitos: [object-storage, warehouse-gestionado]
+    resuelve: >
+      En la nube cada decisión de diseño tiene precio: cuánto escanea una
+      consulta, cuánto se guarda, cuántas veces se llama a un modelo. El costo
+      es un requisito no funcional que se diseña, no una factura que se recibe
+      a fin de mes.
+    dominado_cuando: >
+      Podés estimar el costo mensual de tu pipeline antes de desplegarlo, y
+      decir qué decisión de diseño es la que más pesa en esa cifra.
+    lo_vi_romperse:
+      texto: >
+        El presupuesto se declaró primero, entre 5 y 10 USD al mes, y el
+        diseño se acomodó a él: el LLM corre al final de la cadena y solo
+        sobre lo que sobrevive a un filtro determinista, y la capa cruda se
+        particiona para caber en los 0,5 GB del free tier, verificado antes de
+        escribir código. Lo que no está cerrado es la otra mitad: el gasto
+        real del modelo contra ese presupuesto sigue sin medirse desde que
+        empezó a llamarse. Un presupuesto declarado y no medido es una
+        intención.
+      link: null
+    fuentes:
+      - url: https://cloud.google.com/bigquery/pricing
+        por_que: es el ejemplo más claro de que el costo depende de cómo escribís la consulta, no solo de cuánto guardás
+      - url: https://neon.com/docs/introduction/plans
+        por_que: los límites del plan gratuito son los que condicionaron el diseño de la capa cruda de este proyecto
+
+  - slug: gobernanza-y-datos-personales
+    tipo: concepto
+    nombre: Gobernanza y datos personales
+    nivel: 11
+    prerequisitos: [zonas-y-capas]
+    resuelve: >
+      Quién puede ver qué, cuánto tiempo se guarda y qué pasa cuando alguien
+      pide que lo borren. En un lake, el reflejo de "guardamos todo por si
+      acaso" choca de frente con la retención y con el borrado.
+    dominado_cuando: >
+      Podés decir qué columnas de tu modelo son datos personales y cómo
+      borrarías a una persona de todas las capas, incluida la cruda.
+    fuentes:
+      - url: https://www.postgresql.org/docs/current/ddl-rowsecurity.html
+        por_que: la versión concreta de "quién puede ver qué filas", aplicada en la base y no en la aplicación
+      - url: https://docs.aws.amazon.com/AmazonS3/latest/userguide/object-lifecycle-mgmt.html
+        por_que: la retención como configuración del almacenamiento, que es donde hay que implementarla para que se cumpla sola
