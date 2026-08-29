@@ -23,9 +23,11 @@ nodes:
       ni cadena vacía.
     lo_vi_romperse:
       texto: >
-        Llevando la bitácora de SQL, los errores no fueron de sintaxis sino
-        de lógica de tres valores: un WHERE con NULL descartaba filas que
-        yo esperaba ver, porque NULL no es igual ni distinto a nada.
+        Llevando la bitácora, el Día 3 estudié por qué un WHERE con NULL no
+        devuelve las filas que uno espera: NULL no es igual ni distinto a
+        nada, así que hay que preguntarle IS NULL. Mis errores propios de
+        esos días fueron más chatos y más repetidos: COUNT() vacío, SELECT *
+        junto a GROUP BY, MOD() en vez de %.
       link: null
     fuentes:
       - url: https://www.postgresql.org/docs/current/functions-comparison.html
@@ -53,13 +55,13 @@ nodes:
         parse_releases descartaba con un continue cualquier release cuya
         versión o fecha no se pudiera leer, y no logueaba nada. Los datos no
         aparecían y no había forma de enterarse: la corrida terminaba en
-        verde porque el error nunca salía del except. Ahora deja un warning
-        con el tag_name crudo. Un except que no dice nada no es manejo de
-        errores, es borrarlos.
+        verde. Ahora deja un warning con el tag_name crudo. Un descarte
+        silencioso es peor que un except que se traga el error, porque acá
+        ni siquiera hubo un error que tragar.
       link: https://github.com/JeanArdila711/data-engineering/commit/a8f3f85
     fuentes:
-      - url: https://docs.python.org/3/tutorial/errors.html
-        por_que: define qué atrapa realmente un except, que es donde se pierde el dato en silencio
+      - url: https://docs.python.org/3/howto/logging.html
+        por_que: un descarte que no se loguea es indistinguible de un dataset vacío, y acá está el mecanismo para que deje rastro
       - url: https://pandas.pydata.org/docs/
         por_que: la referencia de la librería con la que se empieza a manipular tablas en memoria
     implementaciones:
@@ -197,7 +199,7 @@ nodes:
         ingeniería de datos. Hizo falta un segundo archivo de configuración
         para separar "lo que se puede ingerir" de "lo que un DE usa todos los
         días".
-      link: null
+      link: https://github.com/JeanArdila711/data-engineering/blob/main/README.md#decisiones-de-diseño-que-vale-la-pena-señalar
     fuentes:
       - url: https://airflow.apache.org/docs/apache-airflow/stable/authoring-and-scheduling/dynamic-task-mapping.html
         por_que: el mismo patrón resuelto en un orquestador, con la lista de datasets como dato de entrada y no como código
@@ -311,10 +313,11 @@ nodes:
         hechos: fct_release guardaba solo la versión normalizada y nunca el
         tag_name crudo. Trino etiqueta sus releases con enteros (483), la
         normalización los rellenaba a 483.0.0 para que la clave de dedup
-        funcionara, y el sitio los mostraba como cambios de ruptura. Las siete
-        filas ya cargadas no se pudieron reparar desde la base, porque el tag
-        original no estaba guardado en ningún lado: hubo que volver a la API
-        de GitHub a buscarlo.
+        funcionara, y el sitio los mostraba como cambios de ruptura. El tag
+        original no estaba guardado en ningún lado, así que reparar las siete
+        filas ya cargadas exigió ir a la API de GitHub a verificar los tags
+        reales antes de correr un UPDATE dirigido sobre la base. Con el crudo
+        guardado, el arreglo hubiera sido una consulta y nada más.
       link: https://github.com/JeanArdila711/data-engineering/commit/bb80ac7
     fuentes:
       - url: https://docs.getdbt.com/best-practices/how-we-structure/1-guide-overview
@@ -358,9 +361,9 @@ nodes:
       columnas de doscientas lee solo esas tres, y los valores parecidos
       quedan contiguos, así que comprimen mucho mejor que en un CSV.
     dominado_cuando: >
-      Podés explicar por qué el mismo dataset ocupa menos y se consulta más
-      rápido en Parquet que en CSV, sin que la explicación sea "porque es
-      binario".
+      Corrés la misma consulta sobre el mismo dataset guardado en CSV y en
+      Parquet, y medís las dos cosas: cuánto ocupa cada archivo y cuánto tarda
+      la consulta en cada uno.
     fuentes:
       - url: https://parquet.apache.org/docs/
         por_que: la documentación del formato describe el layout por grupos de filas y los esquemas de codificación
@@ -381,8 +384,9 @@ nodes:
       montón de Parquet sueltos no tiene: transacciones, evolución de esquema
       y consultas sobre el estado que la tabla tenía en un momento pasado.
     dominado_cuando: >
-      Podés decir qué problema concreto de un directorio de Parquet resuelve
-      el manifiesto de un formato de tabla, y qué sigue costando lo mismo.
+      Escribís dos veces sobre la misma tabla, le agregás una columna en el
+      medio, y después consultás el estado que la tabla tenía antes del
+      segundo commit.
     fuentes:
       - url: https://iceberg.apache.org/spec/
         por_que: la spec es la fuente primaria de qué guarda el manifiesto y cómo se hace un commit atómico
@@ -404,18 +408,19 @@ nodes:
       de filas. Confundirlas es la causa más común de un reporte que tarda
       minutos.
     dominado_cuando: >
-      Podés decir a partir de qué volumen tu base transaccional deja de servir
-      como almacén analítico, con un número y con el motivo detrás del número.
+      Podés sacar el plan de ejecución de una consulta analítica sobre tu base
+      transaccional y señalar en él qué paso se vuelve caro a medida que
+      crecen las filas.
     lo_vi_romperse:
       texto: >
         Elegí Postgres —un motor transaccional— como almacén analítico a
-        propósito, y dejé escrito el umbral en el que dejaría de servir. La
+        propósito, sabiendo que es una elección con techo. La
         alternativa que casi gana era guardar JSON versionado en git: costo
         cero e historial gratis. Se cae del lado de la consulta, no del de la
         escritura: el estado acumulado del ecosistema es un modelo relacional
         y el digest necesita ventanas de siete días con joins. Postgres entró
         por eso y no por volumen, que con diez herramientas no lo justificaría.
-      link: null
+      link: https://github.com/JeanArdila711/data-engineering/blob/main/README.md#arquitectura
     fuentes:
       - url: https://duckdb.org/docs/
         por_que: permite correr el mismo SQL contra un motor columnar en tu máquina y ver la diferencia sin montar nada
@@ -518,10 +523,12 @@ nodes:
       texto: >
         El texto generado por el LLM vive en su propia capa, aislado de los
         hechos. Cuando la traducción al español empezó a meter comentarios del
-        modelo dentro del resumen, la reparación fue borrar esa capa y
-        regenerarla: no se tocó ni un release ni una mención. Si el resumen
-        hubiera estado en la misma tabla que el hecho, arreglar la traducción
-        habría sido una migración con riesgo sobre datos verificados.
+        modelo dentro del resumen, se arregló la generación y se decidió no
+        reprocesar lo ya guardado: el sitio se corrige solo a medida que
+        entran artículos nuevos. La deuda todavía se ve en artículos viejos.
+        Poder aceptarla salió gratis porque el resumen no comparte tabla con
+        el hecho; si la compartiera, la misma decisión habría sido una
+        migración con riesgo sobre datos verificados.
       link: https://github.com/JeanArdila711/data-engineering/commit/e7ad4a5
     fuentes:
       - url: https://docs.getdbt.com/best-practices/how-we-structure/1-guide-overview
@@ -586,7 +593,7 @@ nodes:
         estrella de Airflow, acá sirve a medias, porque un RSS solo devuelve
         los últimos N ítems y el histórico de artículos no se puede
         reconstruir por definición.
-      link: null
+      link: https://github.com/JeanArdila711/data-engineering/blob/main/README.md#arquitectura
     fuentes:
       - url: https://airflow.apache.org/docs/apache-airflow/stable/index.html
         por_que: el vocabulario estándar de DAG, tarea, schedule y reintento, que se usa hasta cuando no usás Airflow
@@ -636,8 +643,9 @@ nodes:
       su propio ritmo y guardan su posición. Desacopla a quien produce de
       quien consume en el tiempo, no solo en el código.
     dominado_cuando: >
-      Podés explicar por qué un consumidor lento no frena al productor, y qué
-      es exactamente lo que guarda un offset.
+      Ponés dos grupos de consumidores a leer el mismo topic a velocidades
+      distintas y mostrás que el productor no se frena y que cada grupo lleva
+      su propio offset.
     fuentes:
       - url: https://kafka.apache.org/documentation/
         por_que: la sección de diseño describe el log particionado y el offset como posición del consumidor
@@ -699,11 +707,12 @@ nodes:
     prerequisitos: [zonas-y-capas]
     resuelve: >
       Almacenamiento de objetos por clave, barato y prácticamente sin límite,
-      que no es un sistema de archivos: no hay directorios de verdad ni
-      renombrado atómico, y eso cambia cómo se escribe encima.
+      que en su forma base no es un sistema de archivos: las claves son planas
+      y el prefijo con barras es una convención, así que no hay directorios ni
+      renombrado atómico salvo que el servicio los agregue encima.
     dominado_cuando: >
-      Podés explicar por qué "mover una carpeta" no es una operación barata
-      acá, y qué implica eso para un job que escribe resultados parciales.
+      Subís un árbol de carpetas a un bucket, le cambiás el nombre al prefijo
+      de más arriba y contás cuántas operaciones hizo el cliente para lograrlo.
     fuentes:
       - url: https://docs.aws.amazon.com/AmazonS3/latest/userguide/Welcome.html
         por_que: deja explícito que las claves son planas y que el prefijo con barras es una convención, no una jerarquía
@@ -719,6 +728,7 @@ nodes:
       - nombre: Azure Data Lake Storage Gen2
         proveedor: azure
         equivalencia: alta
+        nota: con hierarchical namespace habilitado sí tiene directorios reales y rename atómico de directorio, que es justo lo que los otros dos no dan
 
   - slug: computo-serverless
     tipo: capacidad-cloud
@@ -758,8 +768,8 @@ nodes:
       tres nubes porque es open source y portable; lo que cambia es quién
       opera el plano de control y cómo se integra con el resto de la nube.
     dominado_cuando: >
-      Podés decir qué parte de lo que sabés de esto es transferible entre
-      nubes y qué parte se queda con el proveedor.
+      Desplegás el mismo manifiesto de Kubernetes en dos entornos distintos y
+      dejás por escrito qué archivo tuviste que tocar en cada uno y por qué.
     fuentes:
       - url: https://kubernetes.io/docs/concepts/
         por_que: "es la fuente portable: lo que está acá se lleva a cualquiera de las tres ofertas gestionadas"
@@ -823,8 +833,8 @@ nodes:
       dejan de ser tu problema, a cambio de un modelo de costos que hay que
       entender antes de usarlo.
     dominado_cuando: >
-      Podés explicar por qué la misma consulta cuesta distinto en dos de
-      estos servicios, y elegir uno con un argumento que no sea la marca.
+      Corrés la misma consulta en dos de estos servicios y ponés lado a lado
+      lo que el estimador de costo de cada uno dice antes de ejecutarla.
     fuentes:
       - url: https://cloud.google.com/bigquery/docs/introduction
         por_que: documenta explícitamente la separación de cómputo y almacenamiento
