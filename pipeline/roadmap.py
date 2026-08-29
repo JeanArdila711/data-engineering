@@ -89,11 +89,42 @@ def _detectar_ciclo(nodes: list[RoadmapNode]) -> list[str] | None:
 
 
 def _validar(roadmap: Roadmap, catalog: Catalog) -> None:
+    # Un YAML truncado o mal indentado puede parsear como lista vacía: sin este
+    # chequeo, sync_roadmap borraría la tabla entera (su DELETE mantiene solo
+    # los slugs presentes) sin una sola señal de que algo salió mal.
+    if not roadmap.nodes:
+        raise RoadmapError("el grafo no puede estar vacío")
+
     slugs = [n.slug for n in roadmap.nodes]
 
     duplicados = sorted(s for s, c in Counter(slugs).items() if c > 1)
     if duplicados:
         raise RoadmapError(f"slug duplicado en el grafo: {', '.join(duplicados)}")
+
+    # sync_roadmap inserta las listas de un nodo en un bucle con autocommit=True:
+    # un duplicado adentro de un nodo viola el UNIQUE a mitad de camino y deja
+    # estado parcial escrito. Se rechaza acá para que la validación siga
+    # significando "no se escribe nada".
+    for node in roadmap.nodes:
+        prereqs_dup = sorted(s for s, c in Counter(node.prerequisitos).items() if c > 1)
+        if prereqs_dup:
+            raise RoadmapError(
+                f"'{node.slug}' repite el mismo prerequisito: {', '.join(prereqs_dup)}"
+            )
+
+        fuentes_dup = sorted(u for u, c in Counter(f.url for f in node.fuentes).items() if c > 1)
+        if fuentes_dup:
+            raise RoadmapError(
+                f"'{node.slug}' repite la misma fuente: {', '.join(fuentes_dup)}"
+            )
+
+        implementaciones_dup = sorted(
+            n for n, c in Counter(i.nombre for i in node.implementaciones).items() if c > 1
+        )
+        if implementaciones_dup:
+            raise RoadmapError(
+                f"'{node.slug}' repite la misma implementación: {', '.join(implementaciones_dup)}"
+            )
 
     conocidos = set(slugs)
     for node in roadmap.nodes:

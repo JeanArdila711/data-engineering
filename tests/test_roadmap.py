@@ -125,3 +125,41 @@ def test_rechaza_tipo_invalido(tmp_path):
     path = _escribir(tmp_path, [_nodo("a", tipo="inventado")])
     with pytest.raises(RoadmapError):
         load_roadmap(path, CATALOGO)
+
+
+def test_rechaza_grafo_vacio(tmp_path):
+    """Un YAML truncado o mal indentado parsea como lista vacía: sin este
+    chequeo, sync_roadmap borraría la tabla entera sin ninguna señal."""
+    path = _escribir(tmp_path, [])
+    with pytest.raises(RoadmapError, match="vac"):
+        load_roadmap(path, CATALOGO)
+
+
+def test_rechaza_duplicados_dentro_de_un_nodo(tmp_path):
+    """Prerequisitos, fuentes o implementaciones repetidas dentro de un mismo
+    nodo violarían un UNIQUE a mitad del bucle de sync_roadmap, dejando estado
+    parcial escrito porque la conexión usa autocommit=True."""
+    path = _escribir(tmp_path, [
+        _nodo("a", prerequisitos=["b", "b"]),
+        _nodo("b"),
+    ])
+    with pytest.raises(RoadmapError, match="prerequisito"):
+        load_roadmap(path, CATALOGO)
+
+    path = _escribir(tmp_path, [
+        _nodo("a", fuentes=[
+            {"url": "http://x", "por_que": "y"},
+            {"url": "http://x", "por_que": "z"},
+        ]),
+    ])
+    with pytest.raises(RoadmapError, match="fuente"):
+        load_roadmap(path, CATALOGO)
+
+    path = _escribir(tmp_path, [
+        _nodo("a", implementaciones=[
+            {"nombre": "Airflow", "tool_slug": "airflow"},
+            {"nombre": "Airflow"},
+        ]),
+    ])
+    with pytest.raises(RoadmapError, match="implementaci"):
+        load_roadmap(path, CATALOGO)
