@@ -1,0 +1,37 @@
+nodes:
+  - slug: sql
+    tipo: concepto
+    nombre: SQL
+    resuelve: consultar y transformar datos tabulares
+    dominado_cuando: podés escribir joins, agregaciones y window functions sin googlear la sintaxis
+    nivel: 0
+    orden_sugerido: 1
+
+  - slug: ingesta
+    tipo: concepto
+    nombre: Ingesta de datos
+    resuelve: traer datos de una fuente externa al lake o warehouse
+    dominado_cuando: podés diseñar una carga incremental sin duplicar ni perder registros
+    nivel: 1
+    orden_sugerido: 1
+    prerequisitos: [sql]
+    lo_vi_romperse:
+      texto: un full load diario contra una API paginada tumbó el rate limit de la fuente
+    fuentes:
+      - url: https://www.getdbt.com/blog/rss.xml
+        por_que: ejemplo de fuente citable para un nodo de ingesta
+    implementaciones:
+      - nombre: Apache Airflow
+        tool_slug: airflow
+
+  - slug: orquestacion
+    tipo: herramienta
+    nombre: Orquestación de pipelines
+    resuelve: coordinar dependencias, reintentos y horarios entre tareas
+    dominado_cuando: podés declarar un DAG con backfill y catchup correctos
+    nivel: 2
+    orden_sugerido: 1
+    prerequisitos: [ingesta]
+    implementaciones:
+      - nombre: Apache Airflow
+        tool_slug: airflow
