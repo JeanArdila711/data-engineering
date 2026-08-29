@@ -10,6 +10,11 @@ sources:
       - name: articles
       - name: fct_article_mention
       - name: summaries
+      - name: roadmap_node
+      - name: roadmap_edge
+      - name: roadmap_experience
+      - name: roadmap_source
+      - name: roadmap_implementation
 
 models:
   - name: stg_tools
@@ -53,4 +58,20 @@ models:
               arguments:
                 values: ["en", "es"]
       - name: text
+        tests: [not_null]
+
+  - name: stg_roadmap_nodes
+    columns:
+      - name: slug
+        tests: [unique, not_null]
+      - name: tipo
+        tests: [not_null]
+      - name: nivel
+        tests: [not_null]
+
+  - name: stg_roadmap_edges
+    columns:
+      - name: from_slug
+        tests: [not_null]
+      - name: to_slug
         tests: [not_null]

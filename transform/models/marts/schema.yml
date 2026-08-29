@@ -59,3 +59,22 @@ models:
         tests: [not_null]
       - name: article_count_7d
         tests: [not_null]
+
+  - name: mart_roadmap
+    columns:
+      - name: slug
+        tests: [unique, not_null]
+      - name: tipo
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['concepto', 'herramienta', 'capacidad-cloud']
+      - name: nombre
+        tests: [not_null]
+      - name: resuelve
+        tests: [not_null]
+      - name: dominado_cuando
+        tests: [not_null]
+      - name: nivel
+        tests: [not_null]
