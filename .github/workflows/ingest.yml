@@ -33,6 +33,11 @@ jobs:
           GEMINI_MODEL_JUDGE: ${{ vars.GEMINI_MODEL_JUDGE }}
         run: uv run python -m pipeline.run_articles
 
+      - name: Sincronizar la ruta
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: uv run python -m pipeline.run_roadmap
+
       - name: Transformar con dbt
         working-directory: transform
         env:
