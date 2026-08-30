@@ -360,7 +360,7 @@ export default function Navbar() {
             onMouseLeave={() => setShowTelemetry(false)}
           >
             <a
-              href="#radar"
+              href="/#radar"
               onClick={(e) => handleNavClick(e, '#radar')}
               className="flex items-center gap-2 font-mono text-xs font-bold uppercase tracking-[0.2em] text-white hover:text-neutral-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2 focus-visible:ring-offset-black rounded-sm transition-colors cursor-pointer select-none py-1 pl-1 pr-2 shrink-0 whitespace-nowrap"
             >
@@ -479,7 +479,7 @@ export default function Navbar() {
 
             {/* Unified 3D Dynamic Morphing Action Button: Explorar Stack (Top) ➔ GitHub Star (Ecosistema+) */}
             <motion.a
-              href={isLowerPage ? "https://github.com/JeanArdila711/data-engineering" : "#ecosystem"}
+              href={isLowerPage ? "https://github.com/JeanArdila711/data-engineering" : "/#ecosystem"}
               target={isLowerPage ? "_blank" : undefined}
               rel={isLowerPage ? "noopener noreferrer" : undefined}
               onClick={isLowerPage ? undefined : (e) => handleNavClick(e, '#ecosystem')}
@@ -745,16 +745,17 @@ export default function Navbar() {
                           { label: 'dbt Core', slug: 'dbt-core' },
                           { label: 'Kafka', slug: 'apache-kafka' },
                         ].map((eng) => (
-                          <button
+                          <Link
                             key={eng.slug}
+                            href="/#ecosystem"
                             onClick={(e) => {
                               closeMenu();
-                              handleNavClick(e as any, '#ecosystem');
+                              handleNavClick(e, '#ecosystem');
                             }}
                             className="px-2.5 py-1 rounded-lg border border-neutral-800 bg-neutral-900/80 text-[11px] font-mono text-neutral-300 active:bg-neutral-800 hover:text-white shrink-0 transition-colors cursor-pointer"
                           >
                             {eng.label}
-                          </button>
+                          </Link>
                         ))}
                       </div>
                     </div>

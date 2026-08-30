@@ -3,8 +3,8 @@ import type { RoadmapNode } from '@/lib/roadmap'
 const NIVELES: Record<number, string> = {
   0: 'Base', 1: 'Modelo mental', 2: 'Ingesta', 3: 'Almacenamiento',
   4: 'Almacenamiento analítico', 5: 'Transformación y modelado',
-  6: 'Orquestación', 7: 'Streaming', 8: 'Procesamiento distribuido',
-  10: 'Nube', 11: 'Transversales',
+  6: 'Orquestación', 7: 'Streaming', 8: 'Garantías de entrega',
+  9: 'Procesamiento distribuido', 10: 'Nube', 11: 'Transversales',
 }
 
 function Implementacion({ impl }: { impl: RoadmapNode['implementaciones'][number] }) {
