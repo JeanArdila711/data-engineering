@@ -7,6 +7,7 @@ from pathlib import Path
 import psycopg
 
 from pipeline.config import Catalog
+from pipeline.roadmap import Roadmap
 from pipeline.sources.github import ReleaseRecord
 
 _MIGRATIONS_TABLE = """
@@ -96,6 +97,67 @@ def sync_sources(conn: psycopg.Connection, catalog: Catalog) -> dict[str, int]:
             )
             ids[tool.slug] = cur.fetchone()[0]
     return ids
+
+
+def sync_roadmap(conn: psycopg.Connection, roadmap: Roadmap) -> None:
+    """Sincroniza el grafo de la ruta. Reemplaza en vez de historizar.
+
+    A diferencia de sync_catalog (SCD2), acá no hay historial que conservar:
+    cuando una arista se corrige, la versión vieja estaba mal. Git ya guarda
+    ese historial. Borrar los nodos que salieron del YAML arrastra aristas,
+    experiencias, fuentes e implementaciones por ON DELETE CASCADE.
+    """
+    slugs = [node.slug for node in roadmap.nodes]
+
+    with conn.cursor() as cur:
+        cur.execute("DELETE FROM roadmap_node WHERE NOT (slug = ANY(%s))", (slugs,))
+
+        for node in roadmap.nodes:
+            cur.execute(
+                "INSERT INTO roadmap_node "
+                "(slug, tipo, nombre, resuelve, dominado_cuando, nivel, orden_sugerido) "
+                "VALUES (%s, %s, %s, %s, %s, %s, %s) "
+                "ON CONFLICT (slug) DO UPDATE SET "
+                "tipo = EXCLUDED.tipo, nombre = EXCLUDED.nombre, "
+                "resuelve = EXCLUDED.resuelve, dominado_cuando = EXCLUDED.dominado_cuando, "
+                "nivel = EXCLUDED.nivel, orden_sugerido = EXCLUDED.orden_sugerido",
+                (node.slug, node.tipo, node.nombre, node.resuelve,
+                 node.dominado_cuando, node.nivel, node.orden_sugerido),
+            )
+
+        # Los hijos se reemplazan enteros por nodo: son listas cortas y
+        # calcular el diff costaría más que reescribirlas.
+        for node in roadmap.nodes:
+            cur.execute("DELETE FROM roadmap_edge WHERE to_slug = %s", (node.slug,))
+            for previo in node.prerequisitos:
+                cur.execute(
+                    "INSERT INTO roadmap_edge (from_slug, to_slug) VALUES (%s, %s)",
+                    (previo, node.slug),
+                )
+
+            cur.execute("DELETE FROM roadmap_experience WHERE node_slug = %s", (node.slug,))
+            if node.lo_vi_romperse is not None:
+                cur.execute(
+                    "INSERT INTO roadmap_experience (node_slug, texto, link) VALUES (%s, %s, %s)",
+                    (node.slug, node.lo_vi_romperse.texto, node.lo_vi_romperse.link),
+                )
+
+            cur.execute("DELETE FROM roadmap_source WHERE node_slug = %s", (node.slug,))
+            for fuente in node.fuentes:
+                cur.execute(
+                    "INSERT INTO roadmap_source (node_slug, url, por_que) VALUES (%s, %s, %s)",
+                    (node.slug, fuente.url, fuente.por_que),
+                )
+
+            cur.execute("DELETE FROM roadmap_implementation WHERE node_slug = %s", (node.slug,))
+            for impl in node.implementaciones:
+                cur.execute(
+                    "INSERT INTO roadmap_implementation "
+                    "(node_slug, nombre, tool_slug, proveedor, equivalencia, nota) "
+                    "VALUES (%s, %s, %s, %s, %s, %s)",
+                    (node.slug, impl.nombre, impl.tool_slug,
+                     impl.proveedor, impl.equivalencia, impl.nota),
+                )
 
 
 def save_raw_fetch(conn: psycopg.Connection, source_id: int, ds: date, payload: str) -> None:

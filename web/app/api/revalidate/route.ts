@@ -9,5 +9,6 @@ export async function POST(request: NextRequest) {
   }
 
   revalidatePath('/')
+  revalidatePath('/ruta')
   return NextResponse.json({ revalidated: true })
 }

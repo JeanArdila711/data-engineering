@@ -3,6 +3,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import {
   motion,
   AnimatePresence,
@@ -18,18 +19,20 @@ import {
   ArrowRight,
   Search,
   ArrowUp,
-  Command,
   Sparkles,
   Star,
 } from 'lucide-react';
 
 const LINKS = [
-  { label: 'Radar', id: 'radar', href: '#radar' },
-  { label: 'Manifiesto', id: 'manifiesto', href: '#manifiesto' },
-  { label: 'Ecosistema', id: 'ecosystem', href: '#ecosystem' },
-  { label: 'Artículos', id: 'articulos', href: '#articulos' },
-  { label: 'Digest', id: 'digest', href: '#digest' },
+  { label: 'Radar', id: 'radar', href: '/#radar' },
+  { label: 'Ecosistema', id: 'ecosystem', href: '/#ecosystem' },
+  { label: 'Artículos', id: 'articulos', href: '/#articulos' },
+  { label: 'Digest', id: 'digest', href: '/#digest' },
 ];
+
+// Rumbo es una ruta real, no una sección de esta página: va separado
+// visualmente para que la diferencia se lea sin explicarla.
+const ROUTE_LINK = { label: 'Rumbo', id: 'rumbo', href: '/ruta' };
 
 // Dark engineering theme RGB tokens for dynamic scroll alpha interpolation
 const CARD_RGB = '10, 10, 10';
@@ -83,7 +86,9 @@ const MOBILE_MENU_VARIANTS = {
 };
 
 export default function Navbar() {
-  const [active, setActive] = useState<string | null>('radar');
+  const pathname = usePathname();
+  const isHome = pathname === '/';
+  const [active, setActive] = useState<string | null>(isHome ? 'radar' : null);
   const [hovered, setHovered] = useState<string | null>(null);
   const [lean, setLean] = useState(0);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -127,8 +132,32 @@ export default function Navbar() {
     targetRef.current = next;
   }
 
+  // Al llegar a home con un hash en la URL (ej. navegando desde /ruta), el
+  // salto nativo del navegador queda tapado por `scroll-behavior: smooth`
+  // en globals.css: se ejecuta antes que el scroll-spy y con behavior
+  // 'instant' para que no compita con la animación CSS ni con el efecto de
+  // abajo, que asume scrollY ya posicionado.
+  useEffect(() => {
+    if (!isHome) return;
+    const id = window.location.hash.replace('#', '');
+    if (!id) return;
+
+    const el = document.getElementById(id);
+    if (!el) return;
+
+    updateLean(id);
+    setActive(id);
+
+    const navbarHeight = 80;
+    const elementPosition = el.getBoundingClientRect().top + window.scrollY;
+    window.scrollTo({ top: Math.max(0, elementPosition - navbarHeight), behavior: 'instant' });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isHome]);
+
   // Robust Scroll Spy for Active Section (Eliminates ratio jumping between sections of different heights)
   useEffect(() => {
+    if (!isHome) return;
+
     let ticking = false;
 
     const onScrollSpy = () => {
@@ -185,26 +214,28 @@ export default function Navbar() {
     window.addEventListener('scroll', onScrollSpy, { passive: true });
     onScrollSpy();
     return () => window.removeEventListener('scroll', onScrollSpy);
-  }, []);
+  }, [isHome]);
 
-  // Smooth click navigation with fixed navbar offset
+  // Smooth click navigation with fixed navbar offset. Si el ancla no existe en
+  // la página actual (ej. clic en /ruta), se deja la navegación nativa del
+  // <a> para que el navegador vaya a la home y salte a la sección.
   const handleNavClick = (e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
-    e.preventDefault();
-    const id = href.replace('#', '');
+    const id = href.split('#')[1];
     const el = document.getElementById(id);
-    if (el) {
-      updateLean(id);
-      setActive(id);
+    if (!el) return;
 
-      const navbarHeight = 80;
-      const elementPosition = el.getBoundingClientRect().top + window.scrollY;
-      const offsetPosition = Math.max(0, elementPosition - navbarHeight);
+    e.preventDefault();
+    updateLean(id);
+    setActive(id);
 
-      window.scrollTo({
-        top: offsetPosition,
-        behavior: 'smooth',
-      });
-    }
+    const navbarHeight = 80;
+    const elementPosition = el.getBoundingClientRect().top + window.scrollY;
+    const offsetPosition = Math.max(0, elementPosition - navbarHeight);
+
+    window.scrollTo({
+      top: offsetPosition,
+      behavior: 'smooth',
+    });
   };
 
   // Quick Search Command Palette Trigger
@@ -329,7 +360,7 @@ export default function Navbar() {
             onMouseLeave={() => setShowTelemetry(false)}
           >
             <a
-              href="#radar"
+              href="/#radar"
               onClick={(e) => handleNavClick(e, '#radar')}
               className="flex items-center gap-2 font-mono text-xs font-bold uppercase tracking-[0.2em] text-white hover:text-neutral-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2 focus-visible:ring-offset-black rounded-sm transition-colors cursor-pointer select-none py-1 pl-1 pr-2 shrink-0 whitespace-nowrap"
             >
@@ -384,7 +415,8 @@ export default function Navbar() {
             </AnimatePresence>
           </motion.div>
 
-          {/* Center: Magnetic Pill Section Navigation */}
+          {/* Center: Magnetic Pill Section Navigation + Rumbo */}
+          <div className="relative z-10 flex items-center gap-1 lg:gap-2 shrink-0">
           <motion.ul
             variants={LIST_VARIANTS}
             onMouseLeave={handleLeave}
@@ -424,25 +456,30 @@ export default function Navbar() {
             })}
           </motion.ul>
 
+          <span className="h-4 w-px bg-neutral-800" aria-hidden />
+
+          <Link
+            href={ROUTE_LINK.href}
+            className="relative z-10 block rounded-full px-2.5 lg:px-3 py-1.5 text-xs font-mono tracking-wider uppercase whitespace-nowrap text-neutral-400 hover:text-neutral-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2 focus-visible:ring-offset-black transition-colors duration-150 cursor-pointer"
+          >
+            {ROUTE_LINK.label}
+          </Link>
+          </div>
+
           {/* Right Actions: Quick Search ⌘K + Smart Morphing Action Button */}
           <div className="relative z-10 flex items-center gap-2 lg:gap-2.5 shrink-0">
             {/* Quick Search Button */}
             <button
               onClick={handleOpenSearch}
-              className="flex items-center gap-1.5 px-2.5 lg:px-3 py-1.5 rounded-full border border-neutral-800 bg-neutral-950/80 hover:bg-neutral-900 text-neutral-400 hover:text-white text-xs font-mono transition-all cursor-pointer shadow-inner active:scale-95 group shrink-0 whitespace-nowrap"
+              className="flex items-center justify-center size-8 rounded-full border border-neutral-800 bg-neutral-950/80 hover:bg-neutral-900 text-neutral-400 hover:text-white transition-all cursor-pointer shadow-inner active:scale-95 group shrink-0"
               title="Buscar herramienta (⌘K)"
             >
-              <Search size={12} className="text-neutral-500 group-hover:text-emerald-400 transition-colors shrink-0" />
-              <span className="text-[11px] whitespace-nowrap">Buscar</span>
-              <kbd className="flex items-center gap-0.5 text-[9px] font-mono text-neutral-500 bg-neutral-900 border border-neutral-800 px-1 py-0.5 rounded shrink-0">
-                <Command size={9} />
-                <span>K</span>
-              </kbd>
+              <Search size={13} className="text-neutral-500 group-hover:text-emerald-400 transition-colors shrink-0" />
             </button>
 
             {/* Unified 3D Dynamic Morphing Action Button: Explorar Stack (Top) ➔ GitHub Star (Ecosistema+) */}
             <motion.a
-              href={isLowerPage ? "https://github.com/JeanArdila711/data-engineering" : "#ecosystem"}
+              href={isLowerPage ? "https://github.com/JeanArdila711/data-engineering" : "/#ecosystem"}
               target={isLowerPage ? "_blank" : undefined}
               rel={isLowerPage ? "noopener noreferrer" : undefined}
               onClick={isLowerPage ? undefined : (e) => handleNavClick(e, '#ecosystem')}
@@ -674,6 +711,26 @@ export default function Navbar() {
                       </motion.a>
                     ))}
 
+                    {/* Divisor: Rumbo es una ruta real, no una ancla de esta página */}
+                    <div className="w-full border-b border-neutral-900/70" aria-hidden />
+
+                    <motion.div variants={MOBILE_MENU_VARIANTS} className="w-full">
+                      <Link
+                        href={ROUTE_LINK.href}
+                        onClick={closeMenu}
+                        className="group flex items-center justify-between py-3.5 w-full active:bg-neutral-900/30 px-2 rounded-xl transition-all cursor-pointer"
+                      >
+                        <span className="font-heading text-2xl sm:text-3xl font-bold tracking-tight text-neutral-200 group-hover:text-white group-hover:translate-x-1.5 transition-all duration-200 uppercase">
+                          {ROUTE_LINK.label}
+                        </span>
+
+                        <span className="font-mono text-[10px] uppercase tracking-wider text-neutral-600 group-hover:text-emerald-400 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                          <span>Ir</span>
+                          <ArrowRight size={12} />
+                        </span>
+                      </Link>
+                    </motion.div>
+
                     {/* Quick Engine Direct Filter Pills */}
                     <div className="w-full flex flex-col gap-2 my-2 py-3 border-y border-neutral-900/60">
                       <span className="text-[10px] font-mono uppercase tracking-widest text-neutral-500 flex items-center gap-1.5">
@@ -688,16 +745,17 @@ export default function Navbar() {
                           { label: 'dbt Core', slug: 'dbt-core' },
                           { label: 'Kafka', slug: 'apache-kafka' },
                         ].map((eng) => (
-                          <button
+                          <Link
                             key={eng.slug}
+                            href="/#ecosystem"
                             onClick={(e) => {
                               closeMenu();
-                              handleNavClick(e as any, '#ecosystem');
+                              handleNavClick(e, '#ecosystem');
                             }}
                             className="px-2.5 py-1 rounded-lg border border-neutral-800 bg-neutral-900/80 text-[11px] font-mono text-neutral-300 active:bg-neutral-800 hover:text-white shrink-0 transition-colors cursor-pointer"
                           >
                             {eng.label}
-                          </button>
+                          </Link>
                         ))}
                       </div>
                     </div>

@@ -1,0 +1,940 @@
+# Grafo de la ruta de aprendizaje (Rumbo).
+#
+# El concepto es el nodo; las herramientas son formas de practicarlo.
+# Ningún nodo explica el tema: lo define, lo ancla en experiencia real,
+# da un criterio de dominio y señala dónde aprenderlo.
+#
+# lo_vi_romperse SOLO si pasó de verdad. Si no, se omite y la UI muestra
+# el marcador de "todavía no lo practiqué".
+
+nodes:
+  # ---------- Nivel 0: base ----------
+  - slug: sql
+    tipo: herramienta
+    nombre: SQL
+    nivel: 0
+    resuelve: >
+      Es el lenguaje en el que se hacen las preguntas a los datos. Todo lo
+      demás de la ruta asume que ya podés expresar un join, una agregación
+      y una ventana sin pelearte con la sintaxis.
+    dominado_cuando: >
+      Podés responder una pregunta de negocio con una sola consulta que
+      incluya join, agregación y filtro, y explicar por qué NULL no es cero
+      ni cadena vacía.
+    lo_vi_romperse:
+      texto: >
+        Llevando la bitácora, el Día 3 estudié por qué un WHERE con NULL no
+        devuelve las filas que uno espera: NULL no es igual ni distinto a
+        nada, así que hay que preguntarle IS NULL. Mis errores propios de
+        esos días fueron más chatos y más repetidos: COUNT() vacío, SELECT *
+        junto a GROUP BY, MOD() en vez de %.
+      link: null
+    fuentes:
+      - url: https://www.postgresql.org/docs/current/functions-comparison.html
+        por_que: la documentación oficial de Postgres explica la lógica de tres valores sin rodeos
+    implementaciones:
+      - nombre: PostgreSQL
+      - nombre: DuckDB
+        tool_slug: duckdb
+
+  - slug: python-para-datos
+    tipo: herramienta
+    nombre: Python para datos
+    nivel: 0
+    resuelve: >
+      Es el pegamento del pipeline: pedirle datos a una API, normalizarlos,
+      escribirlos a una base y fallar de forma legible cuando algo no sale.
+      No es Python de aplicación web; es Python que corre solo, sin nadie
+      mirando la pantalla.
+    dominado_cuando: >
+      Podés escribir un script que traiga datos de una fuente, los valide
+      contra un esquema y salga con un código distinto según lo que pasó, y
+      que tus propios logs alcancen para saber qué hizo sin volver a correrlo.
+    lo_vi_romperse:
+      texto: >
+        parse_releases descartaba con un continue cualquier release cuya
+        versión o fecha no se pudiera leer, y no logueaba nada. Los datos no
+        aparecían y no había forma de enterarse: la corrida terminaba en
+        verde. Ahora deja un warning con el tag_name crudo. Un descarte
+        silencioso es peor que un except que se traga el error, porque acá
+        ni siquiera hubo un error que tragar.
+      link: https://github.com/JeanArdila711/data-engineering/commit/a8f3f85
+    fuentes:
+      - url: https://docs.python.org/3/howto/logging.html
+        por_que: un descarte que no se loguea es indistinguible de un dataset vacío, y acá está el mecanismo para que deje rastro
+      - url: https://pandas.pydata.org/docs/
+        por_que: la referencia de la librería con la que se empieza a manipular tablas en memoria
+    implementaciones:
+      - nombre: Python
+      - nombre: pandas
+      - nombre: Polars
+        tool_slug: polars
+
+  - slug: git
+    tipo: herramienta
+    nombre: Git
+    nivel: 0
+    resuelve: >
+      El historial del proyecto también es dato: qué cambió, cuándo y por
+      qué. En un pipeline pesa doble, porque la configuración —el catálogo,
+      el grafo— vive en el repo, y el diff de un YAML es la revisión de
+      calidad de ese dato.
+    dominado_cuando: >
+      Podés separar en dos commits un trabajo que quedó mezclado en uno solo,
+      y explicar qué reescribe un rebase antes de correrlo.
+    lo_vi_romperse:
+      texto: >
+        Dos agentes trabajando en paralelo sobre el mismo repo hicieron
+        git add casi al mismo tiempo y se pisaron: dos tareas independientes
+        terminaron dentro de un mismo commit. Se separaron con un rebase
+        antes de empujar. El árbol de trabajo es estado compartido y git no
+        lo protege por vos.
+      link: null
+    fuentes:
+      - url: https://git-scm.com/book/en/v2
+        por_que: Pro Git es el libro oficial y explica rebase desde el modelo de datos, no como receta
+    implementaciones:
+      - nombre: Git
+
+  - slug: linea-de-comandos
+    tipo: herramienta
+    nombre: Línea de comandos
+    nivel: 0
+    resuelve: >
+      Casi todo lo que corre un pipeline vive detrás de una shell: variables
+      de entorno, códigos de salida, tuberías, cron. Sin esto no podés leer
+      por qué falló un job en un runner al que no le podés hacer clic.
+    dominado_cuando: >
+      Podés encadenar comandos con tuberías para responder una pregunta sobre
+      un archivo de log, y sabés por qué un exit code distinto de cero corta
+      un workflow y uno igual a cero lo deja seguir aunque el trabajo no se
+      haya hecho.
+    fuentes:
+      - url: https://www.gnu.org/software/bash/manual/bash.html
+        por_que: el manual de Bash es la referencia de los detalles que muerden, como el estado de salida de una tubería
+    implementaciones:
+      - nombre: Bash
+
+  - slug: contenedores
+    tipo: herramienta
+    nombre: Contenedores
+    nivel: 0
+    prerequisitos: [linea-de-comandos]
+    resuelve: >
+      Empaquetar el entorno junto con el código para que "en mi máquina
+      funciona" deje de ser una explicación. Es además la unidad que
+      ejecutan casi todos los orquestadores y servicios gestionados.
+    dominado_cuando: >
+      Podés escribir un Dockerfile que corra tu pipeline con las dependencias
+      fijadas, y explicar por qué una imagen construida sobre un tag móvil
+      deja de ser reproducible sin que nadie cambie nada.
+    fuentes:
+      - url: https://docs.docker.com/reference/dockerfile/
+        por_que: la referencia del Dockerfile es donde se ve qué queda fijado en la imagen y qué no
+    implementaciones:
+      - nombre: Docker
+
+  # ---------- Nivel 1: modelo mental ----------
+  - slug: ciclo-de-vida-del-dato
+    tipo: concepto
+    nombre: Ciclo de vida del dato
+    nivel: 1
+    resuelve: >
+      El mapa del oficio: generación, almacenamiento, ingesta, transformación
+      y servido, cruzados por corrientes que aparecen en todas las etapas
+      (seguridad, gestión de datos, DataOps, arquitectura, orquestación,
+      ingeniería de software). Sirve para ubicar una herramienta nueva antes
+      de aprenderla.
+    dominado_cuando: >
+      Podés agarrar cualquier herramienta y decir en qué etapa vive y qué
+      corriente transversal toca, sin leer su página de marketing.
+    fuentes:
+      - url: https://openlibrary.org/isbn/9781098108304
+        por_que: "\"Fundamentals of Data Engineering\" (Reis y Housley, 2022) es de donde sale este marco; se cita y se linkea, no se transcribe"
+
+  - slug: batch-vs-streaming
+    tipo: concepto
+    nombre: Batch y streaming
+    nivel: 1
+    prerequisitos: [ciclo-de-vida-del-dato]
+    resuelve: >
+      Procesar en lotes acotados o evento por evento a medida que llegan. La
+      diferencia que importa no es la velocidad, es qué garantías necesita el
+      caso de uso y cuánta infraestructura hay que operar para darlas.
+    dominado_cuando: >
+      Podés defender por escrito que un caso NO necesita streaming, usando
+      como argumento la latencia que el negocio tolera de verdad y no la que
+      suena mejor.
+    fuentes:
+      - url: https://spark.apache.org/docs/latest/structured-streaming-programming-guide.html
+        por_que: presenta el streaming como una tabla que crece, que es el puente conceptual desde batch
+      - url: https://kafka.apache.org/documentation/
+        por_que: el lado de la ingesta continua, desde la documentación del proyecto que la popularizó
+    implementaciones:
+      - nombre: Spark Structured Streaming
+        tool_slug: spark
+      - nombre: Flink
+        tool_slug: flink
+
+  # ---------- Nivel 2: ingesta ----------
+  - slug: ingesta-desacoplada
+    tipo: concepto
+    nombre: Ingesta desacoplada
+    nivel: 2
+    prerequisitos: [ciclo-de-vida-del-dato, python-para-datos]
+    resuelve: >
+      El worker no sabe qué fuentes existen: recibe una configuración y la
+      ejecuta. Agregar una fuente pasa a ser un registro nuevo en vez de un
+      despliegue, y una fuente rota no arrastra a las demás.
+    dominado_cuando: >
+      Podés agregar una fuente nueva sin abrir el archivo del worker, y una
+      fuente que falla deja al resto de la corrida en verde.
+    lo_vi_romperse:
+      texto: >
+        El catálogo se armó con un criterio de ingesta: "tiene repo de GitHub
+        y feed RSS oficial verificable". Para el worker está bien. El problema
+        apareció después: ese criterio se había convertido, sin que nadie lo
+        decidiera, en el alcance del producto. SQL no tiene repo y Postgres no
+        publica releases en GitHub, así que quedaron afuera de un sitio sobre
+        ingeniería de datos. Hizo falta un segundo archivo de configuración
+        para separar "lo que se puede ingerir" de "lo que un DE usa todos los
+        días".
+      link: https://github.com/JeanArdila711/data-engineering/blob/main/README.md#decisiones-de-diseño-que-vale-la-pena-señalar
+    fuentes:
+      - url: https://airflow.apache.org/docs/apache-airflow/stable/authoring-and-scheduling/dynamic-task-mapping.html
+        por_que: el mismo patrón resuelto en un orquestador, con la lista de datasets como dato de entrada y no como código
+    implementaciones:
+      - nombre: Airflow
+        tool_slug: airflow
+
+  - slug: idempotencia
+    tipo: concepto
+    nombre: Idempotencia
+    nivel: 2
+    prerequisitos: [ingesta-desacoplada]
+    resuelve: >
+      Correr el mismo proceso dos veces tiene que dejar el mismo estado.
+      Sin esto, un reintento duplica datos y un backfill corrompe el
+      histórico en vez de repararlo.
+    dominado_cuando: >
+      Podés correr tu pipeline dos veces seguidas y comprobar que el estado
+      de la base es idéntico, y sabés decir cuál es la clave que lo garantiza.
+    lo_vi_romperse:
+      texto: >
+        El hash de contenido se calculaba sobre el JSON crudo de GitHub, que
+        trae download_count por asset. Cambiaba con que alguien descargara un
+        archivo, sin release nuevo, así que cada corrida guardaba una fila
+        nueva. La garantía tiene que vivir en un constraint, no en la
+        disciplina del código que escribe.
+      link: https://github.com/JeanArdila711/data-engineering/commit/cbc7d18
+    fuentes:
+      - url: https://docs.getdbt.com/docs/build/incremental-models
+        por_que: la documentación de dbt muestra el mismo problema resuelto con clave única
+    implementaciones:
+      - nombre: dbt
+        tool_slug: dbt-core
+
+  - slug: carga-incremental
+    tipo: concepto
+    nombre: Carga incremental
+    nivel: 2
+    prerequisitos: [idempotencia]
+    resuelve: >
+      Traer solo lo que cambió desde la última corrida en vez de recargar
+      todo. Necesita una clave natural estable y una marca de agua confiable;
+      sin las dos cosas, "incremental" termina siendo un sinónimo de duplicar.
+    dominado_cuando: >
+      Podés nombrar la clave natural de tu fuente y decir qué pasa cuando
+      llega un registro con fecha vieja, sin tener que correr el pipeline para
+      averiguarlo.
+    lo_vi_romperse:
+      texto: >
+        El primer diseño del descubrimiento de herramientas contaba menciones
+        con un mention_count que se incrementaba en cada corrida: volver a
+        procesar el mismo artículo lo contaba de nuevo, así que el umbral para
+        proponer un candidato se alcanzaba solo con el paso del tiempo. Se
+        reemplazó por una tabla con UNIQUE(candidate_id, article_url), donde
+        contar dos veces el mismo artículo es imposible por constraint. Este
+        lo agarré en la revisión del plan, antes de escribir el código; la vez
+        anterior, con el hash de raw_fetches, me enteré en producción.
+      link: https://github.com/JeanArdila711/data-engineering/commit/c2d9aed
+    fuentes:
+      - url: https://docs.getdbt.com/docs/build/incremental-strategy
+        por_que: enumera las estrategias reales de carga incremental y qué asume cada una sobre la clave
+      - url: https://www.postgresql.org/docs/current/sql-insert.html
+        por_que: ON CONFLICT es la forma de que la base, y no el código, garantice que no se duplica
+    implementaciones:
+      - nombre: dbt
+        tool_slug: dbt-core
+      - nombre: PostgreSQL
+
+  - slug: salud-de-fuentes
+    tipo: concepto
+    nombre: Salud de fuentes
+    nivel: 2
+    prerequisitos: [ingesta-desacoplada]
+    resuelve: >
+      Una fuente externa se cae, cambia de formato o responde 200 con basura.
+      El pipeline tiene que clasificar el fallo, reintentar solo lo que tiene
+      sentido reintentar, y degradar la fuente rota sin bloquear al resto.
+    dominado_cuando: >
+      Podés decir, para cada fuente, cuándo fue su último éxito y cuántas
+      corridas seguidas lleva fallando, sin abrir un log.
+    lo_vi_romperse:
+      texto: >
+        El feed de Iceberg se cayó a las pocas horas de haberlo verificado a
+        mano. Verificar una fuente una vez no dice nada sobre mañana: lo que
+        hace falta es last_success_at, consecutive_failures y una regla de
+        degradación a las tres corridas. Aparte, los reintentos con backoff
+        exponencial sin jitter sincronizaban a fuentes distintas en el mismo
+        instante, que es el fallo que el backoff venía a evitar.
+      link: https://github.com/JeanArdila711/data-engineering/commit/234e0ed
+    fuentes:
+      - url: https://aws.amazon.com/blogs/architecture/exponential-backoff-and-jitter/
+        por_que: explica con simulaciones por qué el backoff sin jitter vuelve a sincronizar a los clientes
+
+  # ---------- Nivel 3: almacenamiento ----------
+  - slug: zonas-y-capas
+    tipo: concepto
+    nombre: Zonas y capas
+    nivel: 3
+    prerequisitos: [ingesta-desacoplada]
+    resuelve: >
+      Guardar la respuesta cruda antes de tocarla y separar las capas por lo
+      que garantiza cada una: cruda tal cual llegó, limpia con tipos y
+      contratos, servida para consumo. Permite arreglar el parser y reprocesar
+      sin volver a pegarle a la fuente.
+    dominado_cuando: >
+      Podés mejorar tu parser y reconstruir el histórico entero sin hacer una
+      sola llamada de red.
+    lo_vi_romperse:
+      texto: >
+        El principio estaba aplicado en raw_fetches pero no en la tabla de
+        hechos: fct_release guardaba solo la versión normalizada y nunca el
+        tag_name crudo. Trino etiqueta sus releases con enteros (483), la
+        normalización los rellenaba a 483.0.0 para que la clave de dedup
+        funcionara, y el sitio los mostraba como cambios de ruptura. El tag
+        original no estaba guardado en ningún lado, así que reparar las siete
+        filas ya cargadas exigió ir a la API de GitHub a verificar los tags
+        reales antes de correr un UPDATE dirigido sobre la base. Con el crudo
+        guardado, el arreglo hubiera sido una consulta y nada más.
+      link: https://github.com/JeanArdila711/data-engineering/commit/bb80ac7
+    fuentes:
+      - url: https://docs.getdbt.com/best-practices/how-we-structure/1-guide-overview
+        por_que: describe capas con responsabilidades separadas y qué se le permite a cada una
+
+  - slug: particionamiento
+    tipo: concepto
+    nombre: Particionamiento
+    nivel: 3
+    prerequisitos: [zonas-y-capas]
+    resuelve: >
+      Partir el dato por una columna para no escanearlo entero en cada
+      consulta y para poder reescribir un pedazo sin tocar el resto. La clave
+      de partición decide qué consultas salen baratas y cuáles no.
+    dominado_cuando: >
+      Podés elegir una clave de partición diciendo qué consulta se vuelve
+      barata con ella y cuántas particiones vas a tener dentro de un año.
+    lo_vi_romperse:
+      texto: >
+        La capa cruda se particiona por content_hash justamente para no
+        guardar dos veces el mismo payload. Pero el hash se calculaba sobre el
+        JSON crudo de GitHub, que trae download_count: con que alguien
+        descargara un asset, el hash cambiaba y aparecía una partición nueva
+        sin que hubiera release. El ahorro que justificaba la clave de
+        partición quedaba anulado, y contra los 0,5 GB del free tier de Neon
+        eso deja de ser un detalle.
+      link: https://github.com/JeanArdila711/data-engineering/commit/cbc7d18
+    fuentes:
+      - url: https://iceberg.apache.org/docs/latest/partitioning/
+        por_que: muestra el particionamiento oculto y por qué exponer la clave al usuario envejece mal
+      - url: https://www.postgresql.org/docs/current/ddl-partitioning.html
+        por_que: la versión de la misma idea dentro de una base relacional, con sus límites explícitos
+
+  - slug: formatos-columnares
+    tipo: concepto
+    nombre: Formatos columnares
+    nivel: 3
+    prerequisitos: [zonas-y-capas]
+    resuelve: >
+      Guardar por columna en vez de por fila. Una consulta que pide tres
+      columnas de doscientas lee solo esas tres, y los valores parecidos
+      quedan contiguos, así que comprimen mucho mejor que en un CSV.
+    dominado_cuando: >
+      Corrés la misma consulta sobre el mismo dataset guardado en CSV y en
+      Parquet, y medís las dos cosas: cuánto ocupa cada archivo y cuánto tarda
+      la consulta en cada uno.
+    fuentes:
+      - url: https://parquet.apache.org/docs/
+        por_que: la documentación del formato describe el layout por grupos de filas y los esquemas de codificación
+    implementaciones:
+      - nombre: Parquet
+      - nombre: DuckDB
+        tool_slug: duckdb
+      - nombre: Polars
+        tool_slug: polars
+
+  - slug: table-formats
+    tipo: concepto
+    nombre: Formatos de tabla
+    nivel: 3
+    prerequisitos: [formatos-columnares, particionamiento]
+    resuelve: >
+      Una capa de metadatos sobre archivos columnares que agrega lo que un
+      montón de Parquet sueltos no tiene: transacciones, evolución de esquema
+      y consultas sobre el estado que la tabla tenía en un momento pasado.
+    dominado_cuando: >
+      Escribís dos veces sobre la misma tabla, le agregás una columna en el
+      medio, y después consultás el estado que la tabla tenía antes del
+      segundo commit.
+    fuentes:
+      - url: https://iceberg.apache.org/spec/
+        por_que: la spec es la fuente primaria de qué guarda el manifiesto y cómo se hace un commit atómico
+    implementaciones:
+      - nombre: Iceberg
+        tool_slug: iceberg
+      - nombre: Delta Lake
+      - nombre: Hudi
+
+  # ---------- Nivel 4: almacenamiento analítico ----------
+  - slug: oltp-vs-olap
+    tipo: concepto
+    nombre: OLTP y OLAP
+    nivel: 4
+    prerequisitos: [sql, formatos-columnares]
+    resuelve: >
+      Dos formas de organizar el mismo dato para cargas opuestas: muchas
+      escrituras chiquitas y puntuales, o pocas consultas que agregan millones
+      de filas. Confundirlas es la causa más común de un reporte que tarda
+      minutos.
+    dominado_cuando: >
+      Podés sacar el plan de ejecución de una consulta analítica sobre tu base
+      transaccional y señalar en él qué paso se vuelve caro a medida que
+      crecen las filas.
+    lo_vi_romperse:
+      texto: >
+        Elegí Postgres —un motor transaccional— como almacén analítico a
+        propósito, sabiendo que es una elección con techo. La
+        alternativa que casi gana era guardar JSON versionado en git: costo
+        cero e historial gratis. Se cae del lado de la consulta, no del de la
+        escritura: el estado acumulado del ecosistema es un modelo relacional
+        y el digest necesita ventanas de siete días con joins. Postgres entró
+        por eso y no por volumen, que con diez herramientas no lo justificaría.
+      link: https://github.com/JeanArdila711/data-engineering/blob/main/README.md#arquitectura
+    fuentes:
+      - url: https://duckdb.org/docs/
+        por_que: permite correr el mismo SQL contra un motor columnar en tu máquina y ver la diferencia sin montar nada
+      - url: https://www.postgresql.org/docs/current/ddl-partitioning.html
+        por_que: hasta dónde estira un motor transaccional antes de que la carga analítica lo incomode
+
+  - slug: lake-vs-warehouse-vs-lakehouse
+    tipo: concepto
+    nombre: Lake, warehouse y lakehouse
+    nivel: 4
+    prerequisitos: [oltp-vs-olap, table-formats]
+    resuelve: >
+      Tres formas de ubicar el almacenamiento analítico: archivos sobre object
+      storage, un motor que gestiona su propio almacenamiento cerrado, o
+      archivos abiertos con la capa de metadatos que les da garantías de tabla.
+    dominado_cuando: >
+      Podés elegir uno para un caso concreto nombrando qué perdés con esa
+      elección, no solo qué ganás.
+    fuentes:
+      - url: https://iceberg.apache.org/
+        por_que: el lado de "archivos abiertos con garantías", que es lo que define al lakehouse
+      - url: https://docs.databricks.com/
+        por_que: la documentación del proveedor que empuja el término, útil para ver qué promete y qué exige a cambio
+
+  # ---------- Nivel 5: transformación y modelado ----------
+  - slug: modelado-dimensional
+    tipo: concepto
+    nombre: Modelado dimensional
+    nivel: 5
+    prerequisitos: [oltp-vs-olap]
+    resuelve: >
+      Separar hechos —lo que pasó, medible, con un grano declarado— de
+      dimensiones, que son el contexto que los describe. El grano es la
+      decisión que ordena todo lo demás: una fila de la tabla de hechos es
+      exactamente qué.
+    dominado_cuando: >
+      Podés declarar en una frase el grano de tu tabla de hechos, y detectar
+      que un reporte duplica importes porque cruzó dos hechos de granos
+      distintos.
+    lo_vi_romperse:
+      texto: >
+        dim_tool usa una surrogate key autoincremental. Con un solo escritor
+        secuencial funciona, pero deja de ser determinista en cuanto haya dos
+        procesos cargando, y reconstruir la dimensión desde cero daría claves
+        distintas a las de hoy. Quedó anotado como deuda y no se cambió:
+        ahora mismo no es un bug y tocarlo sería riesgo en producción sin
+        beneficio. Con un hash determinista sobre la clave natural no habría
+        existido la discusión.
+      link: null
+    fuentes:
+      - url: https://www.kimballgroup.com/data-warehouse-business-intelligence-resources/kimball-techniques/dimensional-modeling-techniques/
+        por_que: el listado de técnicas del grupo que definió el vocabulario de hechos y dimensiones
+    implementaciones:
+      - nombre: dbt
+        tool_slug: dbt-core
+      - nombre: PostgreSQL
+
+  - slug: historizacion-scd
+    tipo: concepto
+    nombre: Historización (SCD)
+    nivel: 5
+    prerequisitos: [modelado-dimensional]
+    resuelve: >
+      Los atributos de una dimensión cambian. Sobrescribirlos pierde la
+      respuesta a "¿qué categoría tenía esto cuando pasó aquel hecho?". El
+      Tipo 2 abre una fila nueva con su vigencia en vez de pisar la anterior.
+    dominado_cuando: >
+      Podés responder con una consulta qué valor tenía un atributo en una
+      fecha pasada, sin depender de un backup.
+    lo_vi_romperse:
+      texto: >
+        dim_tool estaba implementada como SCD Tipo 2 —vigencias, is_current,
+        todo— y el mart la joineaba por is_current. O sea: se pagó el costo
+        del historial y después se consultaba siempre la foto de hoy, que es
+        justo lo que el Tipo 2 existe para no hacer. Se corrigió con un join
+        por rango sobre published_at. En el mismo arreglo apareció el otro
+        lado: sync_catalog nunca cerraba la fila de una herramienta retirada
+        del catálogo, así que quedaba vigente para siempre.
+      link: https://github.com/JeanArdila711/data-engineering/commit/97ec956
+    fuentes:
+      - url: https://docs.getdbt.com/docs/build/snapshots
+        por_que: es la implementación de SCD Tipo 2 que vas a leer y usar, con sus estrategias de detección de cambio
+    implementaciones:
+      - nombre: dbt
+        tool_slug: dbt-core
+
+  - slug: elt-y-capas-de-transformacion
+    tipo: concepto
+    nombre: ELT y capas de transformación
+    nivel: 5
+    prerequisitos: [zonas-y-capas, oltp-vs-olap]
+    resuelve: >
+      Cargar primero y transformar adentro del almacén, en capas con
+      contrato: cruda, staging con tipos y nombres, marts para consumo. Cada
+      capa se tiene que poder reconstruir desde la de abajo.
+    dominado_cuando: >
+      Podés borrar entera una capa derivada y regenerarla desde la anterior
+      sin volver a la fuente y sin perder un solo hecho verificado.
+    lo_vi_romperse:
+      texto: >
+        El texto generado por el LLM vive en su propia capa, aislado de los
+        hechos. Cuando la traducción al español empezó a meter comentarios del
+        modelo dentro del resumen, se arregló la generación y se decidió no
+        reprocesar lo ya guardado: el sitio se corrige solo a medida que
+        entran artículos nuevos. La deuda todavía se ve en artículos viejos.
+        Poder aceptarla salió gratis porque el resumen no comparte tabla con
+        el hecho; si la compartiera, la misma decisión habría sido una
+        migración con riesgo sobre datos verificados.
+      link: https://github.com/JeanArdila711/data-engineering/commit/e7ad4a5
+    fuentes:
+      - url: https://docs.getdbt.com/best-practices/how-we-structure/1-guide-overview
+        por_que: pone por escrito qué le corresponde a staging y qué a los marts, que es donde se filtran las decisiones
+    implementaciones:
+      - nombre: dbt
+        tool_slug: dbt-core
+
+  - slug: calidad-y-tests-de-datos
+    tipo: concepto
+    nombre: Calidad y tests de datos
+    nivel: 5
+    prerequisitos: [elt-y-capas-de-transformacion]
+    resuelve: >
+      Chequeos que corren con el pipeline y no en la cabeza de alguien: no
+      nulo, valores aceptados, unicidad del grano, integridad referencial. Y
+      una política para lo que falla, que no puede ser tirarlo.
+    dominado_cuando: >
+      Tenés un test que falla a propósito cuando le metés un dato malo, y
+      sabés dónde queda ese dato después de fallar.
+    lo_vi_romperse:
+      texto: >
+        El validador de anclaje se probó con citas inventadas a propósito,
+        porque un validador que nunca rechaza nada no está validando. La otra
+        mitad la encontró una auditoría posterior: stg_article_mentions y
+        stg_summaries no tenían un solo test y el grano compuesto no estaba
+        cubierto en ningún lado, así que la suite estaba en verde sobre
+        modelos que nadie chequeaba. El complemento es la cuarentena: lo que
+        no valida se guarda con su error, porque descartarlo en silencio
+        pierde el dato y también la señal de que la fuente cambió.
+      link: https://github.com/JeanArdila711/data-engineering/commit/4c58900
+    fuentes:
+      - url: https://docs.getdbt.com/docs/build/data-tests
+        por_que: separa los tests genéricos de los singulares, que es la distinción que hace falta para cubrir un grano compuesto
+      - url: https://greatexpectations.io/
+        por_que: la alternativa fuera de dbt, útil cuando la validación tiene que correr antes de cargar
+    implementaciones:
+      - nombre: dbt
+        tool_slug: dbt-core
+      - nombre: Great Expectations
+
+  # ---------- Nivel 6: orquestación ----------
+  - slug: orquestacion
+    tipo: concepto
+    nombre: Orquestación
+    nivel: 6
+    prerequisitos: [idempotencia]
+    resuelve: >
+      Decidir qué corre, cuándo, en qué orden y qué pasa cuando algo falla,
+      separado de la lógica que hace el trabajo. El código que transforma no
+      debería saber quién lo dispara ni con qué fecha.
+    dominado_cuando: >
+      Podés cambiar de orquestador sin tocar el código que transforma los
+      datos, y decir qué tarea corre después de un fallo y cuál no.
+    lo_vi_romperse:
+      texto: >
+        Evalué Airflow y no lo puse: para unas 25 fuentes diarias, el
+        orquestador cuesta más de operar que el pipeline entero. Lo que sí
+        conservé es la parte transferible —jobs paramétricos y deterministas,
+        reintentos con backoff, logs con contexto de fuente y paso—. El
+        detalle que terminó de decidirlo: el backfill, que es el argumento
+        estrella de Airflow, acá sirve a medias, porque un RSS solo devuelve
+        los últimos N ítems y el histórico de artículos no se puede
+        reconstruir por definición.
+      link: https://github.com/JeanArdila711/data-engineering/blob/main/README.md#arquitectura
+    fuentes:
+      - url: https://airflow.apache.org/docs/apache-airflow/stable/index.html
+        por_que: el vocabulario estándar de DAG, tarea, schedule y reintento, que se usa hasta cuando no usás Airflow
+      - url: https://docs.dagster.io/
+        por_que: la alternativa que modela activos de datos en vez de tareas, útil para ver que el modelo de tareas es una elección
+    implementaciones:
+      - nombre: Airflow
+        tool_slug: airflow
+      - nombre: Dagster
+        tool_slug: dagster
+      - nombre: GitHub Actions
+
+  - slug: backfill-y-reprocesamiento
+    tipo: concepto
+    nombre: Backfill y reprocesamiento
+    nivel: 6
+    prerequisitos: [orquestacion, particionamiento]
+    resuelve: >
+      Volver a correr el pasado: para llenar un hueco de historia que nunca se
+      cargó, o para reprocesar con la lógica ya corregida. Solo es seguro si
+      la escritura es idempotente y está particionada.
+    dominado_cuando: >
+      Podés recorrer el histórico completo de una fuente y quedarte tranquilo
+      de que correrlo dos veces no duplica nada.
+    lo_vi_romperse:
+      texto: >
+        El backfill de releases traía 30 por herramienta y paraba ahí, porque
+        nadie estaba paginando la API de GitHub, que sí devuelve el historial
+        completo. No fallaba: devolvía menos y quedaba en verde. La primera
+        corrida con paginación trajo 913 releases nuevos en una sola pasada.
+        Un hueco de historia no levanta ninguna alerta; hay que ir a buscarlo.
+      link: https://github.com/JeanArdila711/data-engineering/commit/a8f3f85
+    fuentes:
+      - url: https://docs.github.com/en/rest/using-the-rest-api/using-pagination-in-the-rest-api
+        por_que: el caso concreto donde el default de la API es una página y el histórico está una llamada más allá
+      - url: https://airflow.apache.org/docs/apache-airflow/stable/core-concepts/dag-run.html
+        por_que: define el intervalo de datos de una corrida, que es lo que hace reproducible un reproceso
+
+  # ---------- Niveles 7-9: streaming y distribuido ----------
+  - slug: mensajeria-y-logs-de-eventos
+    tipo: concepto
+    nombre: Mensajería y logs de eventos
+    nivel: 7
+    prerequisitos: [batch-vs-streaming]
+    resuelve: >
+      Un log de eventos particionado y ordenado donde los consumidores leen a
+      su propio ritmo y guardan su posición. Desacopla a quien produce de
+      quien consume en el tiempo, no solo en el código.
+    dominado_cuando: >
+      Ponés dos grupos de consumidores a leer el mismo topic a velocidades
+      distintas y mostrás que el productor no se frena y que cada grupo lleva
+      su propio offset.
+    fuentes:
+      - url: https://kafka.apache.org/documentation/
+        por_que: la sección de diseño describe el log particionado y el offset como posición del consumidor
+    implementaciones:
+      - nombre: Kafka
+        tool_slug: kafka
+
+  - slug: garantias-de-entrega
+    tipo: concepto
+    nombre: Garantías de entrega
+    nivel: 8
+    prerequisitos: [mensajeria-y-logs-de-eventos, idempotencia]
+    resuelve: >
+      Al menos una vez, a lo sumo una vez, exactamente una vez: qué promete el
+      sistema cuando algo se cae en el medio. "Exactamente una vez" casi
+      siempre es "al menos una vez" más un consumidor idempotente.
+    dominado_cuando: >
+      Podés decir qué garantía da tu consumidor y qué se duplica o se pierde
+      si el proceso muere justo antes de confirmar.
+    fuentes:
+      - url: https://kafka.apache.org/documentation/
+        por_que: la sección de semántica de entrega es la explicación primaria de las tres garantías y de su costo
+      - url: https://nightlies.apache.org/flink/flink-docs-stable/
+        por_que: muestra el otro mecanismo, checkpoints de estado, para conseguir la garantía fuerte
+    implementaciones:
+      - nombre: Kafka
+        tool_slug: kafka
+      - nombre: Flink
+        tool_slug: flink
+
+  - slug: procesamiento-distribuido
+    tipo: concepto
+    nombre: Procesamiento distribuido
+    nivel: 9
+    prerequisitos: [particionamiento, python-para-datos]
+    resuelve: >
+      Repartir entre varias máquinas un cómputo que no entra en una. El costo
+      que aparece es el movimiento de datos entre nodos: casi todo lo que se
+      optimiza acá es evitar barajar filas de una máquina a otra.
+    dominado_cuando: >
+      Podés reconocer cuándo un trabajo NO necesita un clúster, y cuando sí lo
+      necesita, señalar en qué paso está el shuffle.
+    fuentes:
+      - url: https://spark.apache.org/docs/latest/
+        por_que: el motor de referencia y su modelo de ejecución por etapas separadas por shuffles
+      - url: https://trino.io/docs/current/
+        por_que: el mismo problema resuelto para consultas SQL interactivas sobre fuentes distintas
+    implementaciones:
+      - nombre: Spark
+        tool_slug: spark
+      - nombre: Trino
+        tool_slug: trino
+
+  # ---------- Nivel 10: capacidades cloud ----------
+  - slug: object-storage
+    tipo: capacidad-cloud
+    nombre: Object storage
+    nivel: 10
+    prerequisitos: [zonas-y-capas]
+    resuelve: >
+      Almacenamiento de objetos por clave, barato y prácticamente sin límite,
+      que en su forma base no es un sistema de archivos: las claves son planas
+      y el prefijo con barras es una convención, así que no hay directorios ni
+      renombrado atómico salvo que el servicio los agregue encima.
+    dominado_cuando: >
+      Subís un árbol de carpetas a un bucket, le cambiás el nombre al prefijo
+      de más arriba y contás cuántas operaciones hizo el cliente para lograrlo.
+    fuentes:
+      - url: https://docs.aws.amazon.com/AmazonS3/latest/userguide/Welcome.html
+        por_que: deja explícito que las claves son planas y que el prefijo con barras es una convención, no una jerarquía
+      - url: https://cloud.google.com/storage/docs/introduction
+        por_que: el mismo modelo descrito por otro proveedor, útil para ver qué parte es del concepto y qué del servicio
+    implementaciones:
+      - nombre: Amazon S3
+        proveedor: aws
+        equivalencia: alta
+      - nombre: Google Cloud Storage
+        proveedor: gcp
+        equivalencia: alta
+      - nombre: Azure Data Lake Storage Gen2
+        proveedor: azure
+        equivalencia: alta
+        nota: con hierarchical namespace habilitado sí tiene directorios reales y rename atómico de directorio, que es justo lo que los otros dos no dan
+
+  - slug: computo-serverless
+    tipo: capacidad-cloud
+    nombre: Cómputo serverless
+    nivel: 10
+    prerequisitos: [python-para-datos]
+    resuelve: >
+      Correr una función sin administrar el servidor: el proveedor arranca el
+      proceso cuando llega el evento y lo apaga después. Se paga por
+      ejecución, y el límite duro es cuánto puede durar cada invocación.
+    dominado_cuando: >
+      Podés decir qué parte de tu pipeline entra en el límite de tiempo y
+      memoria de una función y qué parte no, antes de intentar desplegarla.
+    fuentes:
+      - url: https://docs.aws.amazon.com/lambda/latest/dg/welcome.html
+        por_que: los límites de ejecución y el modelo de invocación están documentados de entrada, que es lo que condiciona el diseño
+      - url: https://learn.microsoft.com/en-us/azure/azure-functions/functions-overview
+        por_que: el mismo modelo con otros disparadores y otros límites, para comparar sin marketing
+    implementaciones:
+      - nombre: AWS Lambda
+        proveedor: aws
+        equivalencia: alta
+      - nombre: Cloud Run functions
+        proveedor: gcp
+        equivalencia: alta
+      - nombre: Azure Functions
+        proveedor: azure
+        equivalencia: alta
+
+  - slug: contenedores-gestionados
+    tipo: capacidad-cloud
+    nombre: Contenedores gestionados
+    nivel: 10
+    prerequisitos: [contenedores]
+    resuelve: >
+      Kubernetes operado por el proveedor. La plataforma es la misma en las
+      tres nubes porque es open source y portable; lo que cambia es quién
+      opera el plano de control y cómo se integra con el resto de la nube.
+    dominado_cuando: >
+      Desplegás el mismo manifiesto de Kubernetes en dos entornos distintos y
+      dejás por escrito qué archivo tuviste que tocar en cada uno y por qué.
+    fuentes:
+      - url: https://kubernetes.io/docs/concepts/
+        por_que: "es la fuente portable: lo que está acá se lleva a cualquiera de las tres ofertas gestionadas"
+      - url: https://cloud.google.com/kubernetes-engine/docs
+        por_que: muestra dónde termina el proyecto open source y dónde empieza el valor agregado del proveedor
+    implementaciones:
+      - nombre: Kubernetes autogestionado
+        proveedor: portable
+        equivalencia: alta
+      - nombre: Amazon EKS
+        proveedor: aws
+        equivalencia: alta
+      - nombre: Google GKE
+        proveedor: gcp
+        equivalencia: alta
+      - nombre: Azure AKS
+        proveedor: azure
+        equivalencia: alta
+
+  - slug: orquestacion-gestionada
+    tipo: capacidad-cloud
+    nombre: Orquestación gestionada
+    nivel: 10
+    prerequisitos: [orquestacion]
+    resuelve: >
+      Airflow operado por el proveedor: el mismo DAG y la misma API, con el
+      plano de control fuera de tu responsabilidad. La equivalencia es alta
+      justamente porque abajo corre el mismo proyecto open source.
+    dominado_cuando: >
+      Podés mover un DAG desde un Airflow propio a uno gestionado sabiendo
+      qué cambia: qué versiones hay disponibles, qué dependencias podés
+      instalar y de dónde salen las credenciales.
+    fuentes:
+      - url: https://docs.aws.amazon.com/mwaa/latest/userguide/what-is-mwaa.html
+        por_que: enumera qué administra el proveedor y qué queda de tu lado, que es la frontera que importa
+      - url: https://cloud.google.com/composer/docs
+        por_que: el mismo servicio en otra nube, útil para ver qué es de Airflow y qué del envoltorio
+    implementaciones:
+      - nombre: Airflow autogestionado
+        proveedor: portable
+        equivalencia: alta
+      - nombre: Amazon MWAA
+        proveedor: aws
+        equivalencia: alta
+      - nombre: Cloud Composer
+        proveedor: gcp
+        equivalencia: alta
+      - nombre: Workflow Orchestration Manager de Azure Data Factory
+        proveedor: azure
+        equivalencia: alta
+    # Es la única capacidad cloud de este nivel donde las cuatro
+    # implementaciones corren literalmente el mismo software.
+
+  - slug: warehouse-gestionado
+    tipo: capacidad-cloud
+    nombre: Warehouse gestionado
+    nivel: 10
+    prerequisitos: [oltp-vs-olap]
+    resuelve: >
+      Un almacén analítico operado por el proveedor: escala y mantenimiento
+      dejan de ser tu problema, a cambio de un modelo de costos que hay que
+      entender antes de usarlo.
+    dominado_cuando: >
+      Corrés la misma consulta en dos de estos servicios y ponés lado a lado
+      lo que el estimador de costo de cada uno dice antes de ejecutarla.
+    fuentes:
+      - url: https://cloud.google.com/bigquery/docs/introduction
+        por_que: documenta explícitamente la separación de cómputo y almacenamiento
+      - url: https://docs.aws.amazon.com/redshift/latest/mgmt/welcome.html
+        por_que: el modelo de clusters aprovisionados, que es la arquitectura contraria y explica la diferencia de costo
+    implementaciones:
+      - nombre: BigQuery
+        proveedor: gcp
+        equivalencia: media
+        nota: cómputo y almacenamiento separados, cobro por consulta escaneada
+      - nombre: Redshift
+        proveedor: aws
+        equivalencia: media
+        nota: clusters aprovisionados; Redshift Serverless acorta la distancia pero no los vuelve intercambiables
+      - nombre: Synapse
+        proveedor: azure
+        equivalencia: media
+        nota: combina pools dedicados y sin servidor en un mismo producto
+      - nombre: Snowflake
+        proveedor: portable
+        equivalencia: media
+        nota: corre sobre las tres nubes, así que la elección no es de proveedor sino de motor
+
+  # ---------- Nivel 11: transversales ----------
+  - slug: observabilidad
+    tipo: concepto
+    nombre: Observabilidad
+    nivel: 11
+    prerequisitos: [orquestacion, salud-de-fuentes]
+    resuelve: >
+      Saber qué hizo el pipeline sin volver a correrlo: logs con contexto,
+      métricas de frescura y de volumen, y una alerta que llegue a alguien. Un
+      pipeline que falla en silencio es peor que uno caído, porque el sitio
+      sigue mostrando datos viejos como si fueran de hoy.
+    dominado_cuando: >
+      Podés responder "¿corrió hoy y produjo lo que suele producir?" mirando
+      un solo lugar, y sabés qué pasaría si el pipeline directamente no
+      arrancara.
+    lo_vi_romperse:
+      texto: >
+        Están los logs con contexto y las alertas de salud de fuentes como
+        issues del repo, pero falta justo el caso que ninguna de las dos
+        cubre: si el cron deja de dispararse, no hay error que reportar y
+        nadie se entera. El dead-man switch externo sigue pendiente y está
+        escrito por qué importa. El otro hueco ya identificado es la fuente
+        que responde 200 y devuelve cero ítems porque le cambió el HTML;
+        detectarlo por "no produjo nada en X días" da falsos positivos, así
+        que el umbral hay que calibrarlo contra el histórico de cada fuente
+        en vez de fijarlo global.
+      link: null
+    fuentes:
+      - url: https://opentelemetry.io/docs/
+        por_que: el estándar abierto de trazas y métricas, para no atarse al formato de un proveedor
+      - url: https://healthchecks.io/docs/
+        por_que: "la forma más chica de un dead-man switch: un heartbeat que avisa cuando deja de llegar"
+
+  - slug: costo
+    tipo: concepto
+    nombre: Costo
+    nivel: 11
+    prerequisitos: [object-storage, warehouse-gestionado]
+    resuelve: >
+      En la nube cada decisión de diseño tiene precio: cuánto escanea una
+      consulta, cuánto se guarda, cuántas veces se llama a un modelo. El costo
+      es un requisito no funcional que se diseña, no una factura que se recibe
+      a fin de mes.
+    dominado_cuando: >
+      Podés estimar el costo mensual de tu pipeline antes de desplegarlo, y
+      decir qué decisión de diseño es la que más pesa en esa cifra.
+    lo_vi_romperse:
+      texto: >
+        El presupuesto se declaró primero, entre 5 y 10 USD al mes, y el
+        diseño se acomodó a él: el LLM corre al final de la cadena y solo
+        sobre lo que sobrevive a un filtro determinista, y la capa cruda se
+        particiona para caber en los 0,5 GB del free tier, verificado antes de
+        escribir código. Lo que no está cerrado es la otra mitad: el gasto
+        real del modelo contra ese presupuesto sigue sin medirse desde que
+        empezó a llamarse. Un presupuesto declarado y no medido es una
+        intención.
+      link: null
+    fuentes:
+      - url: https://cloud.google.com/bigquery/pricing
+        por_que: es el ejemplo más claro de que el costo depende de cómo escribís la consulta, no solo de cuánto guardás
+      - url: https://neon.com/docs/introduction/plans
+        por_que: los límites del plan gratuito son los que condicionaron el diseño de la capa cruda de este proyecto
+
+  - slug: gobernanza-y-datos-personales
+    tipo: concepto
+    nombre: Gobernanza y datos personales
+    nivel: 11
+    prerequisitos: [zonas-y-capas]
+    resuelve: >
+      Quién puede ver qué, cuánto tiempo se guarda y qué pasa cuando alguien
+      pide que lo borren. En un lake, el reflejo de "guardamos todo por si
+      acaso" choca de frente con la retención y con el borrado.
+    dominado_cuando: >
+      Podés decir qué columnas de tu modelo son datos personales y cómo
+      borrarías a una persona de todas las capas, incluida la cruda.
+    fuentes:
+      - url: https://www.postgresql.org/docs/current/ddl-rowsecurity.html
+        por_que: la versión concreta de "quién puede ver qué filas", aplicada en la base y no en la aplicación
+      - url: https://docs.aws.amazon.com/AmazonS3/latest/userguide/object-lifecycle-mgmt.html
+        por_que: la retención como configuración del almacenamiento, que es donde hay que implementarla para que se cumpla sola
