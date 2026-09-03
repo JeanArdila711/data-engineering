@@ -78,3 +78,21 @@ models:
         tests: [not_null]
       - name: nivel
         tests: [not_null]
+
+  - name: mart_roadmap_wizard
+    description: Una fila por opción del wizard de Rumbo, con los nodos que declara.
+    columns:
+      - name: kind
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['objetivo', 'partida']
+      - name: slug
+        tests: [not_null]
+      - name: nombre
+        tests: [not_null]
+      - name: descripcion
+        tests: [not_null]
+      - name: orden
+        tests: [not_null]
