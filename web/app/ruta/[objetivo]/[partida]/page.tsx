@@ -59,8 +59,8 @@ export default async function RutaPersonalPage({ params }: { params: Params }) {
             Con lo que ya sabés, esta ruta no tiene nodos pendientes. Probá un objetivo más amplio.
           </p>
         ) : (
-          <Suspense fallback={<RoadmapSection grupos={agruparPorNivel(ruta)} notas={notas} encabezado={false} />}>
-            <RutaInteractiva ruta={ruta} notas={notas} encabezado={false} />
+          <Suspense fallback={<RoadmapSection grupos={agruparPorNivel(ruta)} notas={notas} encabezado={false} sabidos={sabidos} />}>
+            <RutaInteractiva ruta={ruta} sabidosBase={sabidos} notas={notas} encabezado={false} />
           </Suspense>
         )}
         <Footer />

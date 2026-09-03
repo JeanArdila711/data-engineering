@@ -24,6 +24,7 @@ export default function RoadmapSection({
   encabezado = true,
   sabidos = [],
   frontera = new Set<string>(),
+  togglables = new Set<string>(),
   onToggleSabido,
 }: {
   grupos: { nivel: number; nodes: RoadmapNode[] }[];
@@ -33,6 +34,8 @@ export default function RoadmapSection({
   sabidos?: RoadmapNode[];
   /** Slugs que se pueden arrancar ya: sin prerequisitos pendientes. */
   frontera?: Set<string>;
+  /** Slugs sobre los que el toggle "Ya sé esto" puede actuar (dentro de la ruta actual). */
+  togglables?: Set<string>;
   /** Si viene, las vistas muestran el toggle "Ya sé esto". */
   onToggleSabido?: (slug: string) => void;
 }) {
@@ -128,7 +131,7 @@ export default function RoadmapSection({
           />
 
           <p className="text-sm md:text-base text-neutral-400 font-light max-w-3xl leading-relaxed">
-            Los 34 nodos ordenados topológicamente por nivel y prerequisitos, conectados a los datos vivos del pipeline.
+            Los {allNodes.length} nodos ordenados topológicamente por nivel y prerequisitos, conectados a los datos vivos del pipeline.
             Explora la ruta en formato de <strong className="text-neutral-200 font-medium">IDE con árbol de archivos</strong>, navega el <strong className="text-neutral-200 font-medium">Grafo interactivo de Obsidian</strong> o inspecciona las fichas técnicas.
           </p>
         </div>
@@ -281,6 +284,7 @@ export default function RoadmapSection({
           notas={notas}
           frontera={frontera}
           sabidosSet={sabidosSet}
+          togglables={togglables}
           onToggleSabido={onToggleSabido}
         />
       ) : viewMode === 'graph' ? (
@@ -300,6 +304,7 @@ export default function RoadmapSection({
           dependentsMap={dependentsMap}
           frontera={frontera}
           sabidosSet={sabidosSet}
+          togglables={togglables}
           onToggleSabido={onToggleSabido}
         />
       )}

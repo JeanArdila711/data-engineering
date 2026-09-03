@@ -65,6 +65,7 @@ interface RoadmapIdeViewProps {
   notas?: Record<string, string>;
   frontera?: Set<string>;
   sabidosSet?: Set<string>;
+  togglables?: Set<string>;
   onToggleSabido?: (slug: string) => void;
 }
 
@@ -77,6 +78,7 @@ export default function RoadmapIdeView({
   notas = {},
   frontera = new Set<string>(),
   sabidosSet = new Set<string>(),
+  togglables = new Set<string>(),
   onToggleSabido,
 }: RoadmapIdeViewProps) {
   // Folders open state: default all open or open current node's folder
@@ -239,7 +241,7 @@ export default function RoadmapIdeView({
                     Podés arrancar acá
                   </span>
                 )}
-                {onToggleSabido && (
+                {onToggleSabido && togglables.has(activeNode.slug) && (
                   <BotonSabido sabido={sabidosSet.has(activeNode.slug)} onClick={() => onToggleSabido(activeNode.slug)} />
                 )}
               </div>

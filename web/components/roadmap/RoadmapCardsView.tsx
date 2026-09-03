@@ -40,6 +40,7 @@ interface RoadmapCardsViewProps {
   dependentsMap: Map<string, string[]>;
   frontera?: Set<string>;
   sabidosSet?: Set<string>;
+  togglables?: Set<string>;
   onToggleSabido?: (slug: string) => void;
 }
 
@@ -51,6 +52,7 @@ export default function RoadmapCardsView({
   dependentsMap,
   frontera = new Set<string>(),
   sabidosSet = new Set<string>(),
+  togglables = new Set<string>(),
   onToggleSabido,
 }: RoadmapCardsViewProps) {
   // Stepper level filter: null means 'all', or number 0..11
@@ -397,7 +399,7 @@ export default function RoadmapCardsView({
                           Podés arrancar acá
                         </span>
                       )}
-                      {onToggleSabido && (
+                      {onToggleSabido && togglables.has(inspectedNode.slug) && (
                         <BotonSabido sabido={sabidosSet.has(inspectedNode.slug)} onClick={() => onToggleSabido(inspectedNode.slug)} />
                       )}
                     </div>

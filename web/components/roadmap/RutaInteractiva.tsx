@@ -4,7 +4,7 @@ import { useCallback, useMemo } from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { CheckCircle2, Flag, RotateCcw } from 'lucide-react'
 import {
-  agruparPorNivel, aplicarSabidos, frontera, parsearProveedor, parsearSlugs,
+  agruparPorNivel, aplicarSabidos, clausuraPrerequisitos, frontera, parsearProveedor, parsearSlugs,
   priorizarProveedor, tieneNubes, type Proveedor, type RoadmapNode,
 } from '@/lib/roadmap'
 import RoadmapSection from '@/components/RoadmapSection'
@@ -13,6 +13,8 @@ import ProveedorSelector from './ProveedorSelector'
 type Props = {
   /** En orden topológico, tal como sale de subgrafo() o de ordenarTopologico(). */
   ruta: RoadmapNode[]
+  /** Sabidos base del wizard (fuera de `ruta`), solo para resolver nombres de prerequisitos. */
+  sabidosBase?: RoadmapNode[]
   notas?: Record<string, string>
   encabezado?: boolean
 }
@@ -23,7 +25,7 @@ type Props = {
  * Se monta dentro de <Suspense> porque useSearchParams lo exige en páginas
  * estáticas (Next 16); el fallback es la ruta completa, idéntica a la Fase 2.
  */
-export default function RutaInteractiva({ ruta, notas = {}, encabezado = false }: Props) {
+export default function RutaInteractiva({ ruta, sabidosBase = [], notas = {}, encabezado = false }: Props) {
   const params = useSearchParams()
   const router = useRouter()
   const pathname = usePathname()
@@ -55,10 +57,14 @@ export default function RutaInteractiva({ ruta, notas = {}, encabezado = false }
     [params, pathname, router, validos],
   )
 
-  const toggle = useCallback(
-    (slug: string) => escribir({ ya: ya.includes(slug) ? ya.filter(s => s !== slug) : [...ya, slug] }),
-    [ya, escribir],
-  )
+  const toggle = useCallback((slug: string) => {
+    const yaSabido = sabidos.some(n => n.slug === slug)
+    escribir({
+      ya: yaSabido
+        ? ya.filter(s => !clausuraPrerequisitos(ruta, [s]).has(slug))
+        : [...ya, slug],
+    })
+  }, [ya, sabidos, ruta, escribir])
 
   return (
     <>
@@ -96,8 +102,9 @@ export default function RutaInteractiva({ ruta, notas = {}, encabezado = false }
           grupos={grupos}
           notas={notas}
           encabezado={encabezado}
-          sabidos={sabidos}
+          sabidos={[...sabidosBase, ...sabidos]}
           frontera={front}
+          togglables={validos}
           onToggleSabido={toggle}
         />
       )}
