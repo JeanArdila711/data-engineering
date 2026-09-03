@@ -26,6 +26,12 @@ export default function RoadmapSection({
   grupos: { nivel: number; nodes: RoadmapNode[] }[];
   notas?: Record<string, string>;
   encabezado?: boolean;
+  /** Nodos de la ruta dados por sabidos (vía wizard o ?ya=). Sirven para resolver nombres de prerequisitos. */
+  sabidos?: RoadmapNode[];
+  /** Slugs que se pueden arrancar ya: sin prerequisitos pendientes. */
+  frontera?: Set<string>;
+  /** Si viene, las vistas muestran el toggle "Ya sé esto". */
+  onToggleSabido?: (slug: string) => void;
 }) {
   // 1. View Mode State: 'ide' (Folder tree), 'graph' (Obsidian canvas), 'cards' (Classic bento)
   const [viewMode, setViewMode] = useState<'ide' | 'graph' | 'cards'>('ide');
