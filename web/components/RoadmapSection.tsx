@@ -28,13 +28,15 @@ function Implementacion({ impl }: { impl: RoadmapNode['implementaciones'][number
   )
 }
 
-function Nodo({ node }: { node: RoadmapNode }) {
+function Nodo({ node, nota }: { node: RoadmapNode; nota?: string }) {
   return (
     <article className="rounded-xl border border-neutral-800 bg-neutral-950/60 p-5 transition-shadow hover:shadow-[0_0_28px_rgba(16,185,129,0.10)]">
       <header className="mb-3 flex items-baseline justify-between gap-3">
         <h3 className="font-semibold text-neutral-100">{node.nombre}</h3>
         <span className="shrink-0 text-[11px] uppercase tracking-wide text-neutral-500">{node.tipo}</span>
       </header>
+
+      {nota && <p className="mb-3 text-xs text-neutral-500">{nota}</p>}
 
       <p className="mb-4 text-sm leading-relaxed text-neutral-300">{node.resuelve}</p>
 
@@ -83,8 +85,10 @@ function Nodo({ node }: { node: RoadmapNode }) {
 
 export default function RoadmapSection({
   grupos,
+  notas = {},
 }: {
   grupos: { nivel: number; nodes: RoadmapNode[] }[]
+  notas?: Record<string, string>
 }) {
   return (
     <section id="rumbo" className="mx-auto max-w-5xl px-4 py-16">
@@ -101,7 +105,7 @@ export default function RoadmapSection({
           </h2>
           <div className="grid gap-4 md:grid-cols-2">
             {nodes.map(node => (
-              <Nodo key={node.slug} node={node} />
+              <Nodo key={node.slug} node={node} nota={notas[node.slug]} />
             ))}
           </div>
         </div>
