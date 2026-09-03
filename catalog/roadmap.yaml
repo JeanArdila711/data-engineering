@@ -938,3 +938,119 @@ nodes:
         por_que: la versión concreta de "quién puede ver qué filas", aplicada en la base y no en la aplicación
       - url: https://docs.aws.amazon.com/AmazonS3/latest/userguide/object-lifecycle-mgmt.html
         por_que: la retención como configuración del almacenamiento, que es donde hay que implementarla para que se cumpla sola
+
+# ---------- Wizard (Fase 2) ----------
+# Un objetivo declara metas; la ruta es la clausura de prerequisitos de esas
+# metas. Un punto de partida declara nodos conocidos; se resta su clausura.
+# El orden de cada lista es el orden en que se muestran.
+
+objetivos:
+  - slug: pipelines-batch
+    nombre: Construir pipelines batch confiables
+    descripcion: >
+      Ingesta, transformación y orquestación de datos que llegan por lotes,
+      con reintentos que no duplican y backfills que no corrompen.
+    metas:
+      - backfill-y-reprocesamiento
+      - carga-incremental
+      - salud-de-fuentes
+      - calidad-y-tests-de-datos
+      - observabilidad
+      - git
+
+  - slug: modelado-analitico
+    nombre: Modelar datos para analítica
+    descripcion: >
+      Del dato crudo a tablas que una analista puede consultar sin sorpresas:
+      grano, dimensiones, historial y tests.
+    metas:
+      - historizacion-scd
+      - calidad-y-tests-de-datos
+      - lake-vs-warehouse-vs-lakehouse
+      - warehouse-gestionado
+      - git
+
+  - slug: streaming
+    nombre: Trabajar con datos en tiempo real
+    descripcion: >
+      Eventos que no esperan al lote de la noche: mensajería, garantías de
+      entrega y procesamiento a escala.
+    metas:
+      - garantias-de-entrega
+      - procesamiento-distribuido
+      - observabilidad
+      - git
+
+  - slug: plataforma-cloud
+    nombre: Operar una plataforma de datos en la nube
+    descripcion: >
+      Las capacidades que se contratan a un proveedor —almacenamiento, cómputo,
+      orquestación— y lo que cuesta cada una.
+    metas:
+      - object-storage
+      - computo-serverless
+      - contenedores-gestionados
+      - orquestacion-gestionada
+      - warehouse-gestionado
+      - costo
+      - gobernanza-y-datos-personales
+      - git
+      - linea-de-comandos
+
+  - slug: ruta-completa
+    nombre: Todo el rumbo
+    descripcion: >
+      Los 34 nodos, en el orden en que uno depende del otro.
+    metas:
+      - backfill-y-reprocesamiento
+      - carga-incremental
+      - salud-de-fuentes
+      - historizacion-scd
+      - calidad-y-tests-de-datos
+      - lake-vs-warehouse-vs-lakehouse
+      - garantias-de-entrega
+      - procesamiento-distribuido
+      - computo-serverless
+      - contenedores-gestionados
+      - orquestacion-gestionada
+      - observabilidad
+      - costo
+      - gobernanza-y-datos-personales
+      - git
+
+puntos_de_partida:
+  - slug: desde-cero
+    nombre: Desde cero
+    descripcion: >
+      Todavía no programo, o programo poco. Quiero la ruta entera.
+    conocidos: []
+
+  - slug: ya-programo
+    nombre: Ya programo
+    descripcion: >
+      SQL, Python, Git y la terminal me resultan familiares. Nunca armé un
+      pipeline.
+    conocidos:
+      - sql
+      - python-para-datos
+      - git
+      - linea-de-comandos
+
+  - slug: ya-muevo-datos
+    nombre: Ya muevo datos
+    descripcion: >
+      Tengo pipelines corriendo y una base analítica. Quiero saber qué me
+      falta para hacerlo bien.
+    conocidos:
+      - sql
+      - python-para-datos
+      - git
+      - linea-de-comandos
+      - contenedores
+      - ingesta-desacoplada
+      - idempotencia
+      - carga-incremental
+      - zonas-y-capas
+      - oltp-vs-olap
+      - elt-y-capas-de-transformacion
+      - orquestacion
