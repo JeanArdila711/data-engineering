@@ -124,7 +124,7 @@ def clausura_prerequisitos(nodes: list[RoadmapNode], semillas: Iterable[str]) ->
         if slug in vistos:
             continue
         vistos.add(slug)
-        pila.extend(prereqs[slug])
+        pila.extend(p for p in prereqs[slug] if p in prereqs)
     return vistos
 
 

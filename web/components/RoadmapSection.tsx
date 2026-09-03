@@ -86,17 +86,23 @@ function Nodo({ node, nota }: { node: RoadmapNode; nota?: string }) {
 export default function RoadmapSection({
   grupos,
   notas = {},
+  encabezado = true,
 }: {
   grupos: { nivel: number; nodes: RoadmapNode[] }[]
   notas?: Record<string, string>
+  encabezado?: boolean
 }) {
   return (
     <section id="rumbo" className="mx-auto max-w-5xl px-4 py-16">
-      <h1 className="mb-2 text-3xl font-semibold text-neutral-100">Rumbo</h1>
-      <p className="mb-12 max-w-2xl text-neutral-400">
-        El concepto es el nodo; las herramientas son formas de practicarlo. Los datos de
-        cada herramienta salen del mismo pipeline que alimenta el resto del sitio.
-      </p>
+      {encabezado && (
+        <>
+          <h1 className="mb-2 text-3xl font-semibold text-neutral-100">Rumbo</h1>
+          <p className="mb-12 max-w-2xl text-neutral-400">
+            El concepto es el nodo; las herramientas son formas de practicarlo. Los datos de
+            cada herramienta salen del mismo pipeline que alimenta el resto del sitio.
+          </p>
+        </>
+      )}
 
       {grupos.map(({ nivel, nodes }) => (
         <div key={nivel} className="mb-14">

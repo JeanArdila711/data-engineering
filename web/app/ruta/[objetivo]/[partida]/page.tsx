@@ -56,7 +56,7 @@ export default async function RutaPersonalPage({ params }: { params: Params }) {
             Con lo que ya sabés, esta ruta no tiene nodos pendientes. Probá un objetivo más amplio.
           </p>
         ) : (
-          <RoadmapSection grupos={agruparPorNivel(ruta)} notas={notas} />
+          <RoadmapSection grupos={agruparPorNivel(ruta)} notas={notas} encabezado={false} />
         )}
       </main>
     </>

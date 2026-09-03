@@ -234,3 +234,12 @@ def test_clausura_incluye_prerequisitos_transitivos():
     ]
     assert clausura_prerequisitos(nodes, ["c"]) == {"a", "b", "c"}
     assert clausura_prerequisitos(nodes, []) == set()
+
+
+def test_la_clausura_no_truena_con_un_prerequisito_huerfano():
+    from pipeline.roadmap import RoadmapNode, clausura_prerequisitos
+
+    nodes = [RoadmapNode(**_nodo("a", prerequisitos=["zzz"]))]
+    resultado = clausura_prerequisitos(nodes, ["a"])
+    assert resultado == {"a"}
+    assert "zzz" not in resultado
