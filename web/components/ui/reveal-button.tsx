@@ -11,14 +11,18 @@ interface RevealButtonProps {
   onClick?: () => void;
   className?: string;
   size?: 'sm' | 'md' | 'lg';
+  type?: 'button' | 'submit' | 'reset';
+  disabled?: boolean;
 }
 
 export function RevealButton({
   children,
-  href = '#ecosystem',
+  href,
   onClick,
   className = '',
   size = 'sm',
+  type = 'button',
+  disabled = false,
 }: RevealButtonProps) {
   const containerRef = useRef<HTMLSpanElement>(null);
 
@@ -124,7 +128,7 @@ export function RevealButton({
   }
 
   return (
-    <button onClick={onClick} className="inline-flex focus-visible:outline-none">
+    <button type={type} disabled={disabled} onClick={onClick} className="inline-flex focus-visible:outline-none">
       {content}
     </button>
   );

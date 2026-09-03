@@ -5,6 +5,7 @@ import { agruparPorNivel, metasAlcanzadas, subgrafo } from '@/lib/roadmap'
 import RoadmapSection from '@/components/RoadmapSection'
 import RoadmapRouteHeader from '@/components/roadmap/RoadmapRouteHeader'
 import Navbar from '@/components/layout/Navbar'
+import Footer from '@/components/layout/Footer'
 
 type Params = Promise<{ objetivo: string; partida: string }>
 
@@ -49,7 +50,7 @@ export default async function RutaPersonalPage({ params }: { params: Params }) {
   return (
     <>
       <Navbar />
-      <main className="min-h-screen">
+      <main className="min-h-screen bg-black text-white relative">
         <RoadmapRouteHeader objetivo={r.o} partida={r.p} total={ruta.length} sabidos={sabidos} />
         {ruta.length === 0 ? (
           <p className="mx-auto max-w-3xl px-6 py-16 text-neutral-400">
@@ -58,6 +59,7 @@ export default async function RutaPersonalPage({ params }: { params: Params }) {
         ) : (
           <RoadmapSection grupos={agruparPorNivel(ruta)} notas={notas} encabezado={false} />
         )}
+        <Footer />
       </main>
     </>
   )
