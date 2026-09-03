@@ -106,6 +106,9 @@ def sync_roadmap(conn: psycopg.Connection, roadmap: Roadmap) -> None:
     cuando una arista se corrige, la versión vieja estaba mal. Git ya guarda
     ese historial. Borrar los nodos que salieron del YAML arrastra aristas,
     experiencias, fuentes e implementaciones por ON DELETE CASCADE.
+
+    También sincroniza las opciones del wizard (Fase 2), con el mismo
+    criterio de reemplazo.
     """
     slugs = [node.slug for node in roadmap.nodes]
 
@@ -157,6 +160,42 @@ def sync_roadmap(conn: psycopg.Connection, roadmap: Roadmap) -> None:
                     "VALUES (%s, %s, %s, %s, %s, %s)",
                     (node.slug, impl.nombre, impl.tool_slug,
                      impl.proveedor, impl.equivalencia, impl.nota),
+                )
+
+        # Las opciones del wizard. El orden del YAML es el orden de la UI:
+        # no hace falta otro campo para expresarlo.
+        opciones = [
+            ("objetivo", o.slug, o.nombre, o.descripcion, i, o.metas)
+            for i, o in enumerate(roadmap.objetivos)
+        ] + [
+            ("partida", p.slug, p.nombre, p.descripcion, i, p.conocidos)
+            for i, p in enumerate(roadmap.puntos_de_partida)
+        ]
+        for kind in ("objetivo", "partida"):
+            vigentes = [slug for k, slug, *_ in opciones if k == kind]
+            # ::text[] explícito: `vigentes` puede ser una lista vacía (un grafo
+            # sin objetivos, como en los fixtures de la Fase 1) y Postgres no
+            # puede inferir el tipo de un array vacío sin ayuda.
+            cur.execute(
+                "DELETE FROM roadmap_wizard_option WHERE kind = %s AND NOT (slug = ANY(%s::text[]))",
+                (kind, vigentes),
+            )
+        for kind, slug, nombre, descripcion, orden, nodos in opciones:
+            cur.execute(
+                "INSERT INTO roadmap_wizard_option (kind, slug, nombre, descripcion, orden) "
+                "VALUES (%s, %s, %s, %s, %s) "
+                "ON CONFLICT (kind, slug) DO UPDATE SET nombre = EXCLUDED.nombre, "
+                "descripcion = EXCLUDED.descripcion, orden = EXCLUDED.orden",
+                (kind, slug, nombre, descripcion, orden),
+            )
+            cur.execute(
+                "DELETE FROM roadmap_wizard_option_node WHERE kind = %s AND slug = %s",
+                (kind, slug),
+            )
+            for node_slug in nodos:
+                cur.execute(
+                    "INSERT INTO roadmap_wizard_option_node (kind, slug, node_slug) VALUES (%s, %s, %s)",
+                    (kind, slug, node_slug),
                 )
 
 

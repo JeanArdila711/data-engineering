@@ -1,7 +1,15 @@
 """sync_roadmap borra y reescribe: el grafo no lleva historial (git ya lo tiene)."""
 
 from pipeline.db import sync_roadmap
-from pipeline.roadmap import Experience, Implementation, Roadmap, RoadmapNode, Source
+from pipeline.roadmap import (
+    Experience,
+    Implementation,
+    Objetivo,
+    PuntoDePartida,
+    Roadmap,
+    RoadmapNode,
+    Source,
+)
 
 
 def _grafo(*nodes: RoadmapNode) -> Roadmap:
@@ -71,3 +79,55 @@ def test_quitar_la_experiencia_la_borra(db_conn):
     with db_conn.cursor() as cur:
         cur.execute("SELECT count(*) FROM roadmap_experience")
         assert cur.fetchone()[0] == 0
+
+
+def test_sincroniza_opciones_del_wizard(db_conn):
+    grafo = Roadmap(
+        nodes=[_nodo("sql"), _nodo("dbt", nivel=1, prerequisitos=["sql"])],
+        objetivos=[Objetivo(slug="modelado", nombre="M", descripcion="d", metas=["dbt"])],
+        puntos_de_partida=[
+            PuntoDePartida(slug="cero", nombre="C", descripcion="d"),
+            PuntoDePartida(slug="ya-sql", nombre="S", descripcion="d", conocidos=["sql"]),
+        ],
+    )
+    sync_roadmap(db_conn, grafo)
+    with db_conn.cursor() as cur:
+        cur.execute("SELECT kind, slug, orden FROM roadmap_wizard_option ORDER BY kind, orden")
+        assert cur.fetchall() == [
+            ("objetivo", "modelado", 0), ("partida", "cero", 0), ("partida", "ya-sql", 1),
+        ]
+        cur.execute("SELECT kind, slug, node_slug FROM roadmap_wizard_option_node ORDER BY 1, 2, 3")
+        assert cur.fetchall() == [("objetivo", "modelado", "dbt"), ("partida", "ya-sql", "sql")]
+
+
+def test_borra_opciones_que_salieron_del_yaml(db_conn):
+    nodes = [_nodo("sql")]
+    sync_roadmap(db_conn, Roadmap(
+        nodes=nodes,
+        objetivos=[Objetivo(slug="a", nombre="A", descripcion="d", metas=["sql"]),
+                   Objetivo(slug="b", nombre="B", descripcion="d", metas=["sql"])],
+    ))
+    sync_roadmap(db_conn, Roadmap(
+        nodes=nodes,
+        objetivos=[Objetivo(slug="a", nombre="A", descripcion="d", metas=["sql"])],
+    ))
+    with db_conn.cursor() as cur:
+        cur.execute("SELECT slug FROM roadmap_wizard_option")
+        assert cur.fetchall() == [("a",)]
+        cur.execute("SELECT count(*) FROM roadmap_wizard_option_node")
+        assert cur.fetchone()[0] == 1
+
+
+def test_opciones_son_idempotentes(db_conn):
+    grafo = Roadmap(
+        nodes=[_nodo("sql")],
+        objetivos=[Objetivo(slug="a", nombre="A", descripcion="d", metas=["sql"])],
+        puntos_de_partida=[PuntoDePartida(slug="cero", nombre="C", descripcion="d")],
+    )
+    sync_roadmap(db_conn, grafo)
+    sync_roadmap(db_conn, grafo)
+    with db_conn.cursor() as cur:
+        cur.execute("SELECT count(*) FROM roadmap_wizard_option")
+        assert cur.fetchone()[0] == 2
+        cur.execute("SELECT count(*) FROM roadmap_wizard_option_node")
+        assert cur.fetchone()[0] == 1
