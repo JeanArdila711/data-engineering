@@ -13,10 +13,18 @@ from pipeline.roadmap import RoadmapError, load_roadmap
 CATALOGO = Catalog(tools=[Tool(slug="airflow", name="Apache Airflow", category="orchestration")])
 
 
-def _escribir(tmp_path: Path, nodes: list[dict]) -> Path:
+def _escribir(tmp_path: Path, nodes: list[dict], **extra) -> Path:
     path = tmp_path / "roadmap.yaml"
-    path.write_text(yaml.safe_dump({"nodes": nodes}, allow_unicode=True))
+    path.write_text(yaml.safe_dump({"nodes": nodes, **extra}, allow_unicode=True))
     return path
+
+
+def _objetivo(slug="batch", metas=("b",), **extra) -> dict:
+    return {"slug": slug, "nombre": slug, "descripcion": "d", "metas": list(metas), **extra}
+
+
+def _partida(slug="cero", conocidos=(), **extra) -> dict:
+    return {"slug": slug, "nombre": slug, "descripcion": "d", "conocidos": list(conocidos), **extra}
 
 
 def _nodo(slug: str, **extra) -> dict:
@@ -163,3 +171,66 @@ def test_rechaza_duplicados_dentro_de_un_nodo(tmp_path):
     ])
     with pytest.raises(RoadmapError, match="implementaci"):
         load_roadmap(path, CATALOGO)
+
+
+def test_carga_opciones_del_wizard(tmp_path):
+    path = _escribir(
+        tmp_path, [_nodo("a"), _nodo("b", nivel=1, prerequisitos=["a"])],
+        objetivos=[_objetivo()], puntos_de_partida=[_partida(), _partida("sabe-a", ["a"])],
+    )
+    roadmap = load_roadmap(path, CATALOGO)
+    assert [o.slug for o in roadmap.objetivos] == ["batch"]
+    assert [p.slug for p in roadmap.puntos_de_partida] == ["cero", "sabe-a"]
+
+
+def test_rechaza_meta_inexistente(tmp_path):
+    path = _escribir(tmp_path, [_nodo("a")], objetivos=[_objetivo(metas=["zzz"])])
+    with pytest.raises(RoadmapError, match="zzz"):
+        load_roadmap(path, CATALOGO)
+
+
+def test_rechaza_conocido_inexistente(tmp_path):
+    path = _escribir(tmp_path, [_nodo("a")], puntos_de_partida=[_partida(conocidos=["zzz"])])
+    with pytest.raises(RoadmapError, match="zzz"):
+        load_roadmap(path, CATALOGO)
+
+
+def test_rechaza_objetivo_sin_metas(tmp_path):
+    """Un objetivo sin metas produce una ruta vacía para todo el mundo."""
+    path = _escribir(tmp_path, [_nodo("a")], objetivos=[_objetivo(metas=[])])
+    with pytest.raises(RoadmapError, match="metas"):
+        load_roadmap(path, CATALOGO)
+
+
+def test_rechaza_slug_de_opcion_no_apto_para_url(tmp_path):
+    path = _escribir(tmp_path, [_nodo("a")], objetivos=[_objetivo(slug="Pipelines Batch", metas=["a"])])
+    with pytest.raises(RoadmapError, match="URL"):
+        load_roadmap(path, CATALOGO)
+
+
+def test_rechaza_slug_de_opcion_duplicado(tmp_path):
+    path = _escribir(
+        tmp_path, [_nodo("a")],
+        objetivos=[_objetivo(metas=["a"]), _objetivo(metas=["a"])],
+    )
+    with pytest.raises(RoadmapError, match="duplicado"):
+        load_roadmap(path, CATALOGO)
+
+
+def test_rechaza_meta_repetida_dentro_de_un_objetivo(tmp_path):
+    path = _escribir(tmp_path, [_nodo("a")], objetivos=[_objetivo(metas=["a", "a"])])
+    with pytest.raises(RoadmapError, match="repite"):
+        load_roadmap(path, CATALOGO)
+
+
+def test_clausura_incluye_prerequisitos_transitivos():
+    from pipeline.roadmap import RoadmapNode, clausura_prerequisitos
+
+    nodes = [
+        RoadmapNode(**_nodo("a")),
+        RoadmapNode(**_nodo("b", prerequisitos=["a"])),
+        RoadmapNode(**_nodo("c", prerequisitos=["b"])),
+        RoadmapNode(**_nodo("d")),
+    ]
+    assert clausura_prerequisitos(nodes, ["c"]) == {"a", "b", "c"}
+    assert clausura_prerequisitos(nodes, []) == set()

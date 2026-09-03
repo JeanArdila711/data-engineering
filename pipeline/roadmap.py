@@ -6,9 +6,10 @@ antes de escribir nada — un grafo a medias enseña mal, y el error se ve en
 vez de degradarse en silencio (decisión 8).
 """
 
+import re
 from collections import Counter
 from pathlib import Path
-from typing import Literal
+from typing import Iterable, Literal
 
 import yaml
 from pydantic import BaseModel, Field, ValidationError
@@ -18,6 +19,8 @@ from pipeline.config import Catalog
 Tipo = Literal["concepto", "herramienta", "capacidad-cloud"]
 Proveedor = Literal["aws", "gcp", "azure", "portable"]
 Equivalencia = Literal["alta", "media", "baja"]
+
+_SLUG_URL = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
 
 
 class RoadmapError(ValueError):
@@ -56,8 +59,27 @@ class RoadmapNode(BaseModel):
     implementaciones: list[Implementation] = Field(default_factory=list)
 
 
+class Objetivo(BaseModel):
+    """Hasta dónde llega la ruta. Las metas son nodos terminales; el subgrafo
+    es su clausura de prerequisitos, así que nunca queda un hueco."""
+    slug: str
+    nombre: str
+    descripcion: str
+    metas: list[str]
+
+
+class PuntoDePartida(BaseModel):
+    """Qué se da por sabido. Se resta la clausura: saber dbt implica saber SQL."""
+    slug: str
+    nombre: str
+    descripcion: str
+    conocidos: list[str] = Field(default_factory=list)
+
+
 class Roadmap(BaseModel):
     nodes: list[RoadmapNode]
+    objetivos: list[Objetivo] = Field(default_factory=list)
+    puntos_de_partida: list[PuntoDePartida] = Field(default_factory=list)
 
 
 def _detectar_ciclo(nodes: list[RoadmapNode]) -> list[str] | None:
@@ -86,6 +108,46 @@ def _detectar_ciclo(nodes: list[RoadmapNode]) -> list[str] | None:
             if ciclo:
                 return ciclo
     return None
+
+
+def clausura_prerequisitos(nodes: list[RoadmapNode], semillas: Iterable[str]) -> set[str]:
+    """Las semillas más todos sus prerequisitos, transitivamente.
+
+    Misma función que web/lib/roadmap.ts::clausuraPrerequisitos. Si cambia
+    una, cambia la otra: es la definición de qué es una ruta.
+    """
+    prereqs = {n.slug: n.prerequisitos for n in nodes}
+    vistos: set[str] = set()
+    pila = [s for s in semillas if s in prereqs]
+    while pila:
+        slug = pila.pop()
+        if slug in vistos:
+            continue
+        vistos.add(slug)
+        pila.extend(prereqs[slug])
+    return vistos
+
+
+def _validar_opciones(kind: str, opciones: list, campo: str, conocidos: set[str]) -> None:
+    duplicados = sorted(s for s, c in Counter(o.slug for o in opciones).items() if c > 1)
+    if duplicados:
+        raise RoadmapError(f"slug de {kind} duplicado: {', '.join(duplicados)}")
+
+    for opcion in opciones:
+        if not _SLUG_URL.match(opcion.slug):
+            raise RoadmapError(
+                f"el slug de {kind} '{opcion.slug}' no sirve como segmento de URL "
+                "(solo minúsculas, dígitos y guiones)"
+            )
+        nodos = getattr(opcion, campo)
+        repetidos = sorted(s for s, c in Counter(nodos).items() if c > 1)
+        if repetidos:
+            raise RoadmapError(f"{kind} '{opcion.slug}' repite nodos: {', '.join(repetidos)}")
+        faltantes = sorted(set(nodos) - conocidos)
+        if faltantes:
+            raise RoadmapError(
+                f"{kind} '{opcion.slug}' referencia nodos que no existen: {', '.join(faltantes)}"
+            )
 
 
 def _validar(roadmap: Roadmap, catalog: Catalog) -> None:
@@ -167,6 +229,12 @@ def _validar(roadmap: Roadmap, catalog: Catalog) -> None:
                     f"'{node.slug}' declara equivalencia '{impl.equivalencia}' para "
                     f"'{impl.nombre}' sin nota que explique la diferencia"
                 )
+
+    for objetivo in roadmap.objetivos:
+        if not objetivo.metas:
+            raise RoadmapError(f"el objetivo '{objetivo.slug}' no declara metas")
+    _validar_opciones("objetivo", roadmap.objetivos, "metas", conocidos)
+    _validar_opciones("punto de partida", roadmap.puntos_de_partida, "conocidos", conocidos)
 
 
 def load_roadmap(path: Path, catalog: Catalog) -> Roadmap:
