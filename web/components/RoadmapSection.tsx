@@ -22,6 +22,9 @@ export default function RoadmapSection({
   grupos,
   notas = {},
   encabezado = true,
+  sabidos = [],
+  frontera = new Set<string>(),
+  onToggleSabido,
 }: {
   grupos: { nivel: number; nodes: RoadmapNode[] }[];
   notas?: Record<string, string>;
@@ -46,9 +49,11 @@ export default function RoadmapSection({
   
   const nodeMap = useMemo(() => {
     const map = new Map<string, RoadmapNode>();
-    allNodes.forEach(n => map.set(n.slug, n));
+    [...allNodes, ...sabidos].forEach(n => map.set(n.slug, n));
     return map;
-  }, [allNodes]);
+  }, [allNodes, sabidos]);
+
+  const sabidosSet = useMemo(() => new Set(sabidos.map(n => n.slug)), [sabidos]);
 
   // Compute inverse dependencies (which nodes unlock/depend on slug)
   const dependentsMap = useMemo(() => {
@@ -263,7 +268,7 @@ export default function RoadmapSection({
             onClick={() => { setSearchQuery(''); setFilterType('all'); }}
             className="text-xs text-emerald-400 underline underline-offset-4"
           >
-            Limpiar filtros y ver todos los 34 nodos
+            Limpiar filtros y ver todos los {allNodes.length} nodos
           </button>
         </div>
       ) : viewMode === 'ide' ? (
@@ -273,6 +278,10 @@ export default function RoadmapSection({
           onSelectNode={setActiveSlug}
           dependentsMap={dependentsMap}
           nodeMap={nodeMap}
+          notas={notas}
+          frontera={frontera}
+          sabidosSet={sabidosSet}
+          onToggleSabido={onToggleSabido}
         />
       ) : viewMode === 'graph' ? (
         <RoadmapGraphView
@@ -289,6 +298,9 @@ export default function RoadmapSection({
           onOpenIde={handleOpenIdeWithNode}
           nodeMap={nodeMap}
           dependentsMap={dependentsMap}
+          frontera={frontera}
+          sabidosSet={sabidosSet}
+          onToggleSabido={onToggleSabido}
         />
       )}
 
