@@ -262,3 +262,17 @@ No re-verificar sin razón nueva:
 ## Listo para planear
 
 No quedan decisiones de diseño abiertas para la Fase 1. Lo único externo al código es contar herramientas en ~40 ofertas reales de DE para validar el filtro de empleabilidad de la decisión 8 — no bloquea la implementación, calibra el catálogo después.
+
+---
+
+## Addendum 2026-09-03 — decisiones al planear las Fases 2-4
+
+Escrito al armar los planes de las tres fases restantes, con el grafo real de 34 nodos delante. Donde contradice lo de arriba, manda esto. El razonamiento completo está en cada plan (`docs/superpowers/plans/2026-09-03-rumbo-fase-{2,3,4}.md`, sección "Decisiones de esta fase").
+
+1. **El wizard tiene dos preguntas, no "3-4".** Solo hay tres ejes que cambian la derivación sobre el grafo real: objetivo (clausura de metas), punto de partida (clausura de conocidos) y proveedor cloud (que no cambia la ruta, solo qué implementación se muestra — Fase 3). Una cuarta pregunta sería decoración.
+2. **Objetivo → metas → clausura de prerequisitos**, en vez de tags por nodo. La consistencia con las aristas queda garantizada por construcción. Semántica de "conocido": saber X implica saber sus prerequisitos.
+3. **URL legible, sin hash, sin persistencia:** `/ruta/<objetivo>/<partida>`. Con 15 combinaciones un hash no aporta nada, y persistir una ruta derivable violaría "la web nunca escribe". El "cache por hash" de la decisión 9 es del párrafo del LLM (Fase 4), y lo escribe el pipeline.
+4. **Ruta inversa y filtro por stack (Fase 3) = estado en la URL (`?ya=`, `?cloud=`) computado en el cliente** sobre el subgrafo ya renderizado. Las páginas siguen estáticas; el costo es un parpadeo post-hidratación en un estado personal.
+5. **El párrafo de "por qué esta ruta" (Fase 4) lo genera el pipeline**, una vez por combinación y por versión del grafo, con validación de anclaje que rechaza cualquier mención a un nodo fuera de la ruta. Cero llamadas si el grafo no cambió.
+6. **Mapeo de texto libre con LLM: recomendación de no implementarlo.** Costo por visitante, key en Vercel, no reproducible, y con cinco opciones descriptas aporta poco. Si se quiere, la forma es determinista (palabras clave en el YAML), sin LLM.
+7. **Hallazgo sobre el grafo:** `git` no es prerequisito de ningún nodo y `linea-de-comandos` solo entra vía `contenedores`. Por clausura nunca entrarían a una ruta; cada objetivo los lista como meta explícita. Las aristas faltantes se anotan y se deciden aparte, no dentro de la Fase 2.
