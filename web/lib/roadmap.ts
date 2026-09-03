@@ -103,7 +103,7 @@ export function clausuraPrerequisitos(nodes: RoadmapNode[], semillas: Iterable<s
     const slug = pila.pop()!
     if (vistos.has(slug)) continue
     vistos.add(slug)
-    pila.push(...prereqs.get(slug)!)
+    pila.push(...(prereqs.get(slug) ?? []).filter(p => prereqs.has(p)))
   }
   return vistos
 }

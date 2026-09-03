@@ -66,6 +66,11 @@ test('un nodo suelto solo entra si es meta', () => {
   assert.equal(subgrafo(GRAFO, ['c', 'd'], []).ruta.some(n => n.slug === 'd'), true)
 })
 
+test('la clausura no truena con un prerequisito huérfano (slug inexistente en el grafo)', () => {
+  const conHuerfano = [nodo('a', ['zzz'])]
+  assert.deepEqual([...clausuraPrerequisitos(conHuerfano, ['a'])].sort(), ['a'])
+})
+
 test('metasAlcanzadas dice para qué metas hace falta cada nodo', () => {
   const porQue = metasAlcanzadas(GRAFO, ['c', 'f'])
   assert.deepEqual(porQue.get('a'), ['c'])
