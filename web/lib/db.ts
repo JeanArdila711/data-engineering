@@ -1,5 +1,5 @@
 import postgres from 'postgres'
-import type { RoadmapNode } from './roadmap'
+import type { RoadmapNode, WizardOption } from './roadmap'
 
 export type ChangelogEntry = {
   release_id: number
@@ -200,6 +200,21 @@ export async function getRoadmap(): Promise<RoadmapNode[]> {
     `
   } catch (error) {
     console.warn('Postgres connection unavailable, falling back to static data:', error)
+    return []
+  }
+}
+
+export async function getRoadmapWizard(): Promise<WizardOption[]> {
+  try {
+    const client = getSqlClient()
+    if (!client) return []
+    return await client<WizardOption[]>`
+      select kind, slug, nombre, descripcion, orden, nodos
+      from mart_roadmap_wizard
+      order by kind, orden
+    `
+  } catch (error) {
+    console.warn('Postgres connection unavailable for wizard options:', error)
     return []
   }
 }

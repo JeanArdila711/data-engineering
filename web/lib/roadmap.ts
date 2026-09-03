@@ -80,3 +80,61 @@ export function agruparPorNivel(nodes: RoadmapNode[]): { nivel: number; nodes: R
     .sort(([a], [b]) => a - b)
     .map(([nivel, nodes]) => ({ nivel, nodes }))
 }
+
+export type WizardOption = {
+  kind: 'objetivo' | 'partida'
+  slug: string
+  nombre: string
+  descripcion: string
+  orden: number
+  nodos: string[]
+}
+
+/**
+ * Las semillas más todos sus prerequisitos, transitivamente. Ignora slugs
+ * que no están en el grafo. Misma función que pipeline/roadmap.py::
+ * clausura_prerequisitos — si cambia una, cambia la otra.
+ */
+export function clausuraPrerequisitos(nodes: RoadmapNode[], semillas: Iterable<string>): Set<string> {
+  const prereqs = new Map(nodes.map(n => [n.slug, n.prerequisitos]))
+  const vistos = new Set<string>()
+  const pila = [...semillas].filter(s => prereqs.has(s))
+  while (pila.length > 0) {
+    const slug = pila.pop()!
+    if (vistos.has(slug)) continue
+    vistos.add(slug)
+    pila.push(...prereqs.get(slug)!)
+  }
+  return vistos
+}
+
+/**
+ * La ruta es una consulta sobre el grafo (decisión 3): clausura de las metas
+ * menos clausura de lo conocido. `sabidos` son los nodos de la ruta que se
+ * dieron por sabidos, para poder mostrarlos: la ruta explica lo que quita.
+ */
+export function subgrafo(
+  nodes: RoadmapNode[],
+  metas: string[],
+  conocidos: string[],
+): { ruta: RoadmapNode[]; sabidos: RoadmapNode[] } {
+  const objetivo = clausuraPrerequisitos(nodes, metas)
+  const conocido = clausuraPrerequisitos(nodes, conocidos)
+  const dentro = nodes.filter(n => objetivo.has(n.slug))
+  return {
+    ruta: ordenarTopologico(dentro.filter(n => !conocido.has(n.slug))),
+    sabidos: ordenarTopologico(dentro.filter(n => conocido.has(n.slug))),
+  }
+}
+
+/** Para cada nodo, los nombres de las metas para las que es necesario. */
+export function metasAlcanzadas(nodes: RoadmapNode[], metas: string[]): Map<string, string[]> {
+  const nombre = new Map(nodes.map(n => [n.slug, n.nombre]))
+  const porQue = new Map<string, string[]>()
+  for (const meta of [...metas].sort()) {
+    for (const slug of clausuraPrerequisitos(nodes, [meta])) {
+      porQue.set(slug, [...(porQue.get(slug) ?? []), nombre.get(meta) ?? meta])
+    }
+  }
+  return porQue
+}
