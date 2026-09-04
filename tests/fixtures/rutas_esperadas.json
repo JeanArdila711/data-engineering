@@ -1,0 +1,738 @@
+{
+ "_nota": "Generado por `uv run python -m pipeline.roadmap --rutas-esperadas`. No editar a mano: regenerar y commitear con cualquier cambio a catalog/roadmap.yaml. tests/test_roadmap.py y web/lib/roadmap.test.ts lo leen los dos.",
+ "grafo": [
+  {
+   "slug": "sql",
+   "nivel": 0,
+   "orden_sugerido": 0,
+   "prerequisitos": []
+  },
+  {
+   "slug": "python-para-datos",
+   "nivel": 0,
+   "orden_sugerido": 0,
+   "prerequisitos": []
+  },
+  {
+   "slug": "git",
+   "nivel": 0,
+   "orden_sugerido": 0,
+   "prerequisitos": []
+  },
+  {
+   "slug": "linea-de-comandos",
+   "nivel": 0,
+   "orden_sugerido": 0,
+   "prerequisitos": []
+  },
+  {
+   "slug": "contenedores",
+   "nivel": 0,
+   "orden_sugerido": 0,
+   "prerequisitos": [
+    "linea-de-comandos"
+   ]
+  },
+  {
+   "slug": "ciclo-de-vida-del-dato",
+   "nivel": 1,
+   "orden_sugerido": 0,
+   "prerequisitos": []
+  },
+  {
+   "slug": "batch-vs-streaming",
+   "nivel": 1,
+   "orden_sugerido": 0,
+   "prerequisitos": [
+    "ciclo-de-vida-del-dato"
+   ]
+  },
+  {
+   "slug": "ingesta-desacoplada",
+   "nivel": 2,
+   "orden_sugerido": 0,
+   "prerequisitos": [
+    "ciclo-de-vida-del-dato",
+    "python-para-datos"
+   ]
+  },
+  {
+   "slug": "idempotencia",
+   "nivel": 2,
+   "orden_sugerido": 0,
+   "prerequisitos": [
+    "ingesta-desacoplada"
+   ]
+  },
+  {
+   "slug": "carga-incremental",
+   "nivel": 2,
+   "orden_sugerido": 0,
+   "prerequisitos": [
+    "idempotencia"
+   ]
+  },
+  {
+   "slug": "salud-de-fuentes",
+   "nivel": 2,
+   "orden_sugerido": 0,
+   "prerequisitos": [
+    "ingesta-desacoplada"
+   ]
+  },
+  {
+   "slug": "zonas-y-capas",
+   "nivel": 3,
+   "orden_sugerido": 0,
+   "prerequisitos": [
+    "ingesta-desacoplada"
+   ]
+  },
+  {
+   "slug": "particionamiento",
+   "nivel": 3,
+   "orden_sugerido": 0,
+   "prerequisitos": [
+    "zonas-y-capas"
+   ]
+  },
+  {
+   "slug": "formatos-columnares",
+   "nivel": 3,
+   "orden_sugerido": 0,
+   "prerequisitos": [
+    "zonas-y-capas"
+   ]
+  },
+  {
+   "slug": "table-formats",
+   "nivel": 3,
+   "orden_sugerido": 0,
+   "prerequisitos": [
+    "formatos-columnares",
+    "particionamiento"
+   ]
+  },
+  {
+   "slug": "oltp-vs-olap",
+   "nivel": 4,
+   "orden_sugerido": 0,
+   "prerequisitos": [
+    "sql",
+    "formatos-columnares"
+   ]
+  },
+  {
+   "slug": "lake-vs-warehouse-vs-lakehouse",
+   "nivel": 4,
+   "orden_sugerido": 0,
+   "prerequisitos": [
+    "oltp-vs-olap",
+    "table-formats"
+   ]
+  },
+  {
+   "slug": "modelado-dimensional",
+   "nivel": 5,
+   "orden_sugerido": 0,
+   "prerequisitos": [
+    "oltp-vs-olap"
+   ]
+  },
+  {
+   "slug": "historizacion-scd",
+   "nivel": 5,
+   "orden_sugerido": 0,
+   "prerequisitos": [
+    "modelado-dimensional"
+   ]
+  },
+  {
+   "slug": "elt-y-capas-de-transformacion",
+   "nivel": 5,
+   "orden_sugerido": 0,
+   "prerequisitos": [
+    "zonas-y-capas",
+    "oltp-vs-olap"
+   ]
+  },
+  {
+   "slug": "calidad-y-tests-de-datos",
+   "nivel": 5,
+   "orden_sugerido": 0,
+   "prerequisitos": [
+    "elt-y-capas-de-transformacion"
+   ]
+  },
+  {
+   "slug": "orquestacion",
+   "nivel": 6,
+   "orden_sugerido": 0,
+   "prerequisitos": [
+    "idempotencia"
+   ]
+  },
+  {
+   "slug": "backfill-y-reprocesamiento",
+   "nivel": 6,
+   "orden_sugerido": 0,
+   "prerequisitos": [
+    "orquestacion",
+    "particionamiento"
+   ]
+  },
+  {
+   "slug": "mensajeria-y-logs-de-eventos",
+   "nivel": 7,
+   "orden_sugerido": 0,
+   "prerequisitos": [
+    "batch-vs-streaming"
+   ]
+  },
+  {
+   "slug": "garantias-de-entrega",
+   "nivel": 8,
+   "orden_sugerido": 0,
+   "prerequisitos": [
+    "mensajeria-y-logs-de-eventos",
+    "idempotencia"
+   ]
+  },
+  {
+   "slug": "procesamiento-distribuido",
+   "nivel": 9,
+   "orden_sugerido": 0,
+   "prerequisitos": [
+    "particionamiento",
+    "python-para-datos"
+   ]
+  },
+  {
+   "slug": "object-storage",
+   "nivel": 10,
+   "orden_sugerido": 0,
+   "prerequisitos": [
+    "zonas-y-capas"
+   ]
+  },
+  {
+   "slug": "computo-serverless",
+   "nivel": 10,
+   "orden_sugerido": 0,
+   "prerequisitos": [
+    "python-para-datos"
+   ]
+  },
+  {
+   "slug": "contenedores-gestionados",
+   "nivel": 10,
+   "orden_sugerido": 0,
+   "prerequisitos": [
+    "contenedores"
+   ]
+  },
+  {
+   "slug": "orquestacion-gestionada",
+   "nivel": 10,
+   "orden_sugerido": 0,
+   "prerequisitos": [
+    "orquestacion"
+   ]
+  },
+  {
+   "slug": "warehouse-gestionado",
+   "nivel": 10,
+   "orden_sugerido": 0,
+   "prerequisitos": [
+    "oltp-vs-olap"
+   ]
+  },
+  {
+   "slug": "observabilidad",
+   "nivel": 11,
+   "orden_sugerido": 0,
+   "prerequisitos": [
+    "orquestacion",
+    "salud-de-fuentes"
+   ]
+  },
+  {
+   "slug": "costo",
+   "nivel": 11,
+   "orden_sugerido": 0,
+   "prerequisitos": [
+    "object-storage",
+    "warehouse-gestionado"
+   ]
+  },
+  {
+   "slug": "gobernanza-y-datos-personales",
+   "nivel": 11,
+   "orden_sugerido": 0,
+   "prerequisitos": [
+    "zonas-y-capas"
+   ]
+  }
+ ],
+ "objetivos": {
+  "pipelines-batch": [
+   "backfill-y-reprocesamiento",
+   "carga-incremental",
+   "salud-de-fuentes",
+   "calidad-y-tests-de-datos",
+   "observabilidad",
+   "git"
+  ],
+  "modelado-analitico": [
+   "historizacion-scd",
+   "calidad-y-tests-de-datos",
+   "lake-vs-warehouse-vs-lakehouse",
+   "warehouse-gestionado",
+   "git"
+  ],
+  "streaming": [
+   "garantias-de-entrega",
+   "procesamiento-distribuido",
+   "observabilidad",
+   "git"
+  ],
+  "plataforma-cloud": [
+   "object-storage",
+   "computo-serverless",
+   "contenedores-gestionados",
+   "orquestacion-gestionada",
+   "warehouse-gestionado",
+   "costo",
+   "gobernanza-y-datos-personales",
+   "git",
+   "linea-de-comandos"
+  ],
+  "ruta-completa": [
+   "backfill-y-reprocesamiento",
+   "carga-incremental",
+   "salud-de-fuentes",
+   "historizacion-scd",
+   "calidad-y-tests-de-datos",
+   "lake-vs-warehouse-vs-lakehouse",
+   "garantias-de-entrega",
+   "procesamiento-distribuido",
+   "computo-serverless",
+   "contenedores-gestionados",
+   "orquestacion-gestionada",
+   "observabilidad",
+   "costo",
+   "gobernanza-y-datos-personales",
+   "git"
+  ]
+ },
+ "partidas": {
+  "desde-cero": [],
+  "ya-programo": [
+   "sql",
+   "python-para-datos",
+   "git",
+   "linea-de-comandos"
+  ],
+  "ya-muevo-datos": [
+   "sql",
+   "python-para-datos",
+   "git",
+   "linea-de-comandos",
+   "contenedores",
+   "ingesta-desacoplada",
+   "idempotencia",
+   "carga-incremental",
+   "zonas-y-capas",
+   "oltp-vs-olap",
+   "elt-y-capas-de-transformacion",
+   "orquestacion"
+  ]
+ },
+ "rutas": {
+  "pipelines-batch/desde-cero": {
+   "ruta": [
+    "git",
+    "python-para-datos",
+    "sql",
+    "ciclo-de-vida-del-dato",
+    "ingesta-desacoplada",
+    "idempotencia",
+    "carga-incremental",
+    "salud-de-fuentes",
+    "zonas-y-capas",
+    "formatos-columnares",
+    "particionamiento",
+    "oltp-vs-olap",
+    "elt-y-capas-de-transformacion",
+    "calidad-y-tests-de-datos",
+    "orquestacion",
+    "backfill-y-reprocesamiento",
+    "observabilidad"
+   ],
+   "sabidos": []
+  },
+  "pipelines-batch/ya-programo": {
+   "ruta": [
+    "ciclo-de-vida-del-dato",
+    "ingesta-desacoplada",
+    "idempotencia",
+    "carga-incremental",
+    "salud-de-fuentes",
+    "zonas-y-capas",
+    "formatos-columnares",
+    "particionamiento",
+    "oltp-vs-olap",
+    "elt-y-capas-de-transformacion",
+    "calidad-y-tests-de-datos",
+    "orquestacion",
+    "backfill-y-reprocesamiento",
+    "observabilidad"
+   ],
+   "sabidos": [
+    "git",
+    "python-para-datos",
+    "sql"
+   ]
+  },
+  "pipelines-batch/ya-muevo-datos": {
+   "ruta": [
+    "salud-de-fuentes",
+    "particionamiento",
+    "calidad-y-tests-de-datos",
+    "backfill-y-reprocesamiento",
+    "observabilidad"
+   ],
+   "sabidos": [
+    "git",
+    "python-para-datos",
+    "sql",
+    "ciclo-de-vida-del-dato",
+    "ingesta-desacoplada",
+    "idempotencia",
+    "carga-incremental",
+    "zonas-y-capas",
+    "formatos-columnares",
+    "oltp-vs-olap",
+    "elt-y-capas-de-transformacion",
+    "orquestacion"
+   ]
+  },
+  "modelado-analitico/desde-cero": {
+   "ruta": [
+    "git",
+    "python-para-datos",
+    "sql",
+    "ciclo-de-vida-del-dato",
+    "ingesta-desacoplada",
+    "zonas-y-capas",
+    "formatos-columnares",
+    "particionamiento",
+    "table-formats",
+    "oltp-vs-olap",
+    "lake-vs-warehouse-vs-lakehouse",
+    "elt-y-capas-de-transformacion",
+    "calidad-y-tests-de-datos",
+    "modelado-dimensional",
+    "historizacion-scd",
+    "warehouse-gestionado"
+   ],
+   "sabidos": []
+  },
+  "modelado-analitico/ya-programo": {
+   "ruta": [
+    "ciclo-de-vida-del-dato",
+    "ingesta-desacoplada",
+    "zonas-y-capas",
+    "formatos-columnares",
+    "particionamiento",
+    "table-formats",
+    "oltp-vs-olap",
+    "lake-vs-warehouse-vs-lakehouse",
+    "elt-y-capas-de-transformacion",
+    "calidad-y-tests-de-datos",
+    "modelado-dimensional",
+    "historizacion-scd",
+    "warehouse-gestionado"
+   ],
+   "sabidos": [
+    "git",
+    "python-para-datos",
+    "sql"
+   ]
+  },
+  "modelado-analitico/ya-muevo-datos": {
+   "ruta": [
+    "particionamiento",
+    "table-formats",
+    "lake-vs-warehouse-vs-lakehouse",
+    "calidad-y-tests-de-datos",
+    "modelado-dimensional",
+    "historizacion-scd",
+    "warehouse-gestionado"
+   ],
+   "sabidos": [
+    "git",
+    "python-para-datos",
+    "sql",
+    "ciclo-de-vida-del-dato",
+    "ingesta-desacoplada",
+    "zonas-y-capas",
+    "formatos-columnares",
+    "oltp-vs-olap",
+    "elt-y-capas-de-transformacion"
+   ]
+  },
+  "streaming/desde-cero": {
+   "ruta": [
+    "git",
+    "python-para-datos",
+    "ciclo-de-vida-del-dato",
+    "batch-vs-streaming",
+    "ingesta-desacoplada",
+    "idempotencia",
+    "salud-de-fuentes",
+    "zonas-y-capas",
+    "particionamiento",
+    "orquestacion",
+    "mensajeria-y-logs-de-eventos",
+    "garantias-de-entrega",
+    "procesamiento-distribuido",
+    "observabilidad"
+   ],
+   "sabidos": []
+  },
+  "streaming/ya-programo": {
+   "ruta": [
+    "ciclo-de-vida-del-dato",
+    "batch-vs-streaming",
+    "ingesta-desacoplada",
+    "idempotencia",
+    "salud-de-fuentes",
+    "zonas-y-capas",
+    "particionamiento",
+    "orquestacion",
+    "mensajeria-y-logs-de-eventos",
+    "garantias-de-entrega",
+    "procesamiento-distribuido",
+    "observabilidad"
+   ],
+   "sabidos": [
+    "git",
+    "python-para-datos"
+   ]
+  },
+  "streaming/ya-muevo-datos": {
+   "ruta": [
+    "batch-vs-streaming",
+    "salud-de-fuentes",
+    "particionamiento",
+    "mensajeria-y-logs-de-eventos",
+    "garantias-de-entrega",
+    "procesamiento-distribuido",
+    "observabilidad"
+   ],
+   "sabidos": [
+    "git",
+    "python-para-datos",
+    "ciclo-de-vida-del-dato",
+    "ingesta-desacoplada",
+    "idempotencia",
+    "zonas-y-capas",
+    "orquestacion"
+   ]
+  },
+  "plataforma-cloud/desde-cero": {
+   "ruta": [
+    "git",
+    "linea-de-comandos",
+    "contenedores",
+    "python-para-datos",
+    "sql",
+    "ciclo-de-vida-del-dato",
+    "ingesta-desacoplada",
+    "idempotencia",
+    "zonas-y-capas",
+    "formatos-columnares",
+    "oltp-vs-olap",
+    "orquestacion",
+    "computo-serverless",
+    "contenedores-gestionados",
+    "object-storage",
+    "orquestacion-gestionada",
+    "warehouse-gestionado",
+    "costo",
+    "gobernanza-y-datos-personales"
+   ],
+   "sabidos": []
+  },
+  "plataforma-cloud/ya-programo": {
+   "ruta": [
+    "contenedores",
+    "ciclo-de-vida-del-dato",
+    "ingesta-desacoplada",
+    "idempotencia",
+    "zonas-y-capas",
+    "formatos-columnares",
+    "oltp-vs-olap",
+    "orquestacion",
+    "computo-serverless",
+    "contenedores-gestionados",
+    "object-storage",
+    "orquestacion-gestionada",
+    "warehouse-gestionado",
+    "costo",
+    "gobernanza-y-datos-personales"
+   ],
+   "sabidos": [
+    "git",
+    "linea-de-comandos",
+    "python-para-datos",
+    "sql"
+   ]
+  },
+  "plataforma-cloud/ya-muevo-datos": {
+   "ruta": [
+    "computo-serverless",
+    "contenedores-gestionados",
+    "object-storage",
+    "orquestacion-gestionada",
+    "warehouse-gestionado",
+    "costo",
+    "gobernanza-y-datos-personales"
+   ],
+   "sabidos": [
+    "git",
+    "linea-de-comandos",
+    "contenedores",
+    "python-para-datos",
+    "sql",
+    "ciclo-de-vida-del-dato",
+    "ingesta-desacoplada",
+    "idempotencia",
+    "zonas-y-capas",
+    "formatos-columnares",
+    "oltp-vs-olap",
+    "orquestacion"
+   ]
+  },
+  "ruta-completa/desde-cero": {
+   "ruta": [
+    "git",
+    "linea-de-comandos",
+    "contenedores",
+    "python-para-datos",
+    "sql",
+    "ciclo-de-vida-del-dato",
+    "batch-vs-streaming",
+    "ingesta-desacoplada",
+    "idempotencia",
+    "carga-incremental",
+    "salud-de-fuentes",
+    "zonas-y-capas",
+    "formatos-columnares",
+    "particionamiento",
+    "table-formats",
+    "oltp-vs-olap",
+    "lake-vs-warehouse-vs-lakehouse",
+    "elt-y-capas-de-transformacion",
+    "calidad-y-tests-de-datos",
+    "modelado-dimensional",
+    "historizacion-scd",
+    "orquestacion",
+    "backfill-y-reprocesamiento",
+    "mensajeria-y-logs-de-eventos",
+    "garantias-de-entrega",
+    "procesamiento-distribuido",
+    "computo-serverless",
+    "contenedores-gestionados",
+    "object-storage",
+    "orquestacion-gestionada",
+    "warehouse-gestionado",
+    "costo",
+    "gobernanza-y-datos-personales",
+    "observabilidad"
+   ],
+   "sabidos": []
+  },
+  "ruta-completa/ya-programo": {
+   "ruta": [
+    "contenedores",
+    "ciclo-de-vida-del-dato",
+    "batch-vs-streaming",
+    "ingesta-desacoplada",
+    "idempotencia",
+    "carga-incremental",
+    "salud-de-fuentes",
+    "zonas-y-capas",
+    "formatos-columnares",
+    "particionamiento",
+    "table-formats",
+    "oltp-vs-olap",
+    "lake-vs-warehouse-vs-lakehouse",
+    "elt-y-capas-de-transformacion",
+    "calidad-y-tests-de-datos",
+    "modelado-dimensional",
+    "historizacion-scd",
+    "orquestacion",
+    "backfill-y-reprocesamiento",
+    "mensajeria-y-logs-de-eventos",
+    "garantias-de-entrega",
+    "procesamiento-distribuido",
+    "computo-serverless",
+    "contenedores-gestionados",
+    "object-storage",
+    "orquestacion-gestionada",
+    "warehouse-gestionado",
+    "costo",
+    "gobernanza-y-datos-personales",
+    "observabilidad"
+   ],
+   "sabidos": [
+    "git",
+    "linea-de-comandos",
+    "python-para-datos",
+    "sql"
+   ]
+  },
+  "ruta-completa/ya-muevo-datos": {
+   "ruta": [
+    "batch-vs-streaming",
+    "salud-de-fuentes",
+    "particionamiento",
+    "table-formats",
+    "lake-vs-warehouse-vs-lakehouse",
+    "calidad-y-tests-de-datos",
+    "modelado-dimensional",
+    "historizacion-scd",
+    "backfill-y-reprocesamiento",
+    "mensajeria-y-logs-de-eventos",
+    "garantias-de-entrega",
+    "procesamiento-distribuido",
+    "computo-serverless",
+    "contenedores-gestionados",
+    "object-storage",
+    "orquestacion-gestionada",
+    "warehouse-gestionado",
+    "costo",
+    "gobernanza-y-datos-personales",
+    "observabilidad"
+   ],
+   "sabidos": [
+    "git",
+    "linea-de-comandos",
+    "contenedores",
+    "python-para-datos",
+    "sql",
+    "ciclo-de-vida-del-dato",
+    "ingesta-desacoplada",
+    "idempotencia",
+    "carga-incremental",
+    "zonas-y-capas",
+    "formatos-columnares",
+    "oltp-vs-olap",
+    "elt-y-capas-de-transformacion",
+    "orquestacion"
+   ]
+  }
+ }
+}

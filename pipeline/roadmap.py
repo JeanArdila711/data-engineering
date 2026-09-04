@@ -6,7 +6,10 @@ antes de escribir nada — un grafo a medias enseña mal, y el error se ve en
 vez de degradarse en silencio (decisión 8).
 """
 
+import heapq
+import json
 import re
+import sys
 from collections import Counter
 from pathlib import Path
 from typing import Iterable, Literal
@@ -14,7 +17,7 @@ from typing import Iterable, Literal
 import yaml
 from pydantic import BaseModel, Field, ValidationError
 
-from pipeline.config import Catalog
+from pipeline.config import Catalog, load_catalog
 
 Tipo = Literal["concepto", "herramienta", "capacidad-cloud"]
 Proveedor = Literal["aws", "gcp", "azure", "portable"]
@@ -247,3 +250,88 @@ def load_roadmap(path: Path, catalog: Catalog) -> Roadmap:
 
     _validar(roadmap, catalog)
     return roadmap
+
+
+def _ordenar_topologico(nodes: list[RoadmapNode]) -> list[RoadmapNode]:
+    """Kahn con desempate (nivel, orden_sugerido, slug). Prerequisitos fuera de
+    `nodes` se ignoran. Idéntico a web/lib/roadmap.ts::ordenarTopologico — el
+    comparador de TS es por codepoint justamente para que coincida con este."""
+    por_slug = {n.slug: n for n in nodes}
+    pendientes = {n.slug: sum(1 for p in n.prerequisitos if p in por_slug) for n in nodes}
+    dependientes: dict[str, list[str]] = {}
+    for n in nodes:
+        for p in n.prerequisitos:
+            if p in por_slug:
+                dependientes.setdefault(p, []).append(n.slug)
+
+    def clave(slug: str) -> tuple[int, int, str]:
+        n = por_slug[slug]
+        return (n.nivel, n.orden_sugerido, slug)
+
+    listos = [clave(s) for s, k in pendientes.items() if k == 0]
+    heapq.heapify(listos)
+    orden: list[RoadmapNode] = []
+    while listos:
+        _, _, slug = heapq.heappop(listos)
+        orden.append(por_slug[slug])
+        for hijo in dependientes.get(slug, []):
+            pendientes[hijo] -= 1
+            if pendientes[hijo] == 0:
+                heapq.heappush(listos, clave(hijo))
+
+    # Un ciclo no llega acá (el validador lo rechaza), pero si llegara, los
+    # nodos restantes van al final en vez de desaparecer — como en TS.
+    vistos = {n.slug for n in orden}
+    resto = sorted((n for n in nodes if n.slug not in vistos), key=lambda n: clave(n.slug))
+    return orden + resto
+
+
+def derivar_ruta(
+    roadmap: Roadmap, objetivo: Objetivo, partida: PuntoDePartida
+) -> tuple[list[RoadmapNode], list[RoadmapNode]]:
+    """(ruta, sabidos): clausura de las metas menos clausura de lo conocido, y la
+    intersección. Idéntica a web/lib/roadmap.ts::subgrafo; el contrato entre las
+    dos es tests/fixtures/rutas_esperadas.json."""
+    en_objetivo = clausura_prerequisitos(roadmap.nodes, objetivo.metas)
+    conocido = clausura_prerequisitos(roadmap.nodes, partida.conocidos)
+    dentro = [n for n in roadmap.nodes if n.slug in en_objetivo]
+    return (
+        _ordenar_topologico([n for n in dentro if n.slug not in conocido]),
+        _ordenar_topologico([n for n in dentro if n.slug in conocido]),
+    )
+
+
+def rutas_esperadas(roadmap: Roadmap) -> dict:
+    """El fixture dorado de D5: lo mínimo para que TS y Python deriven las mismas
+    rutas, y lo que cada uno tiene que obtener. Se regenera con
+    `python -m pipeline.roadmap --rutas-esperadas` cada vez que cambia el grafo
+    o las opciones del wizard."""
+    rutas = {}
+    for o in roadmap.objetivos:
+        for p in roadmap.puntos_de_partida:
+            ruta, sabidos = derivar_ruta(roadmap, o, p)
+            rutas[f"{o.slug}/{p.slug}"] = {
+                "ruta": [n.slug for n in ruta],
+                "sabidos": [n.slug for n in sabidos],
+            }
+    return {
+        "_nota": (
+            "Generado por `uv run python -m pipeline.roadmap --rutas-esperadas`. No editar a mano: "
+            "regenerar y commitear con cualquier cambio a catalog/roadmap.yaml. "
+            "tests/test_roadmap.py y web/lib/roadmap.test.ts lo leen los dos."
+        ),
+        "grafo": [
+            {"slug": n.slug, "nivel": n.nivel, "orden_sugerido": n.orden_sugerido, "prerequisitos": n.prerequisitos}
+            for n in roadmap.nodes
+        ],
+        "objetivos": {o.slug: o.metas for o in roadmap.objetivos},
+        "partidas": {p.slug: p.conocidos for p in roadmap.puntos_de_partida},
+        "rutas": rutas,
+    }
+
+
+if __name__ == "__main__":
+    if sys.argv[1:] != ["--rutas-esperadas"]:
+        raise SystemExit("uso: python -m pipeline.roadmap --rutas-esperadas")
+    _roadmap = load_roadmap(Path("catalog/roadmap.yaml"), load_catalog(Path("catalog/tools.yaml")))
+    print(json.dumps(rutas_esperadas(_roadmap), ensure_ascii=False, indent=1))

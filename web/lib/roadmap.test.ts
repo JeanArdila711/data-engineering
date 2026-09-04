@@ -1,5 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
 import { ordenarTopologico, agruparPorNivel, clausuraPrerequisitos, subgrafo, metasAlcanzadas, parsearSlugs, parsearProveedor, frontera, aplicarSabidos, priorizarProveedor, tieneNubes, type RoadmapNode, type RoadmapImplementation } from './roadmap.ts'
 
 const nodo = (slug: string, prerequisitos: string[] = [], nivel = 0): RoadmapNode => ({
@@ -138,4 +139,26 @@ test('priorizarProveedor pone el proveedor primero, conserva el resto en orden y
 test('tieneNubes ignora portable y nodos sin implementaciones', () => {
   assert.equal(tieneNubes([nodo('a'), { ...nodo('k'), implementaciones: [impl('K8s', 'portable')] }]), false)
   assert.equal(tieneNubes([{ ...nodo('s'), implementaciones: [impl('S3', 'aws')] }]), true)
+})
+
+// --- Fase 4: el fixture dorado que comparte con pipeline/roadmap.py ---
+
+test('subgrafo coincide con el fixture dorado generado por Python', () => {
+  const datos = JSON.parse(
+    readFileSync(new URL('../../tests/fixtures/rutas_esperadas.json', import.meta.url), 'utf8'),
+  ) as {
+    grafo: { slug: string; nivel: number; orden_sugerido: number; prerequisitos: string[] }[]
+    objetivos: Record<string, string[]>
+    partidas: Record<string, string[]>
+    rutas: Record<string, { ruta: string[]; sabidos: string[] }>
+  }
+  const nodes = datos.grafo.map(n => ({ ...nodo(n.slug, n.prerequisitos, n.nivel), orden_sugerido: n.orden_sugerido }))
+  const claves = Object.keys(datos.rutas)
+  assert.ok(claves.length > 0)
+  for (const clave of claves) {
+    const [o, p] = clave.split('/')
+    const { ruta, sabidos } = subgrafo(nodes, datos.objetivos[o], datos.partidas[p])
+    assert.deepEqual(ruta.map(n => n.slug), datos.rutas[clave].ruta, clave)
+    assert.deepEqual(sabidos.map(n => n.slug), datos.rutas[clave].sabidos, clave)
+  }
 })

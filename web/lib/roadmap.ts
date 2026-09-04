@@ -46,9 +46,12 @@ export function ordenarTopologico(nodes: RoadmapNode[]): RoadmapNode[] {
     }
   }
 
+  // Codepoint, no localeCompare: es el mismo orden que usa Python en
+  // pipeline/roadmap.py::derivar_ruta. tests/fixtures/rutas_esperadas.json
+  // es el contrato entre los dos.
   const comparar = (a: string, b: string) => {
     const x = porSlug.get(a)!, y = porSlug.get(b)!
-    return x.nivel - y.nivel || x.orden_sugerido - y.orden_sugerido || a.localeCompare(b)
+    return x.nivel - y.nivel || x.orden_sugerido - y.orden_sugerido || (a < b ? -1 : a > b ? 1 : 0)
   }
 
   const listos = nodes.filter(n => pendientes.get(n.slug) === 0).map(n => n.slug).sort(comparar)
