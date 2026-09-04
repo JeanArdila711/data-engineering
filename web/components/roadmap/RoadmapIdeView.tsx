@@ -2,22 +2,25 @@
 
 import React, { useState, useMemo } from 'react';
 import type { RoadmapNode } from '@/lib/roadmap';
-import { 
-  Folder, 
-  FolderOpen, 
-  ChevronRight, 
-  ChevronDown, 
-  FileCode, 
-  FileText, 
-  ShieldAlert, 
-  CheckCircle2, 
-  ExternalLink, 
-  ArrowRight, 
+import {
+  Folder,
+  FolderOpen,
+  ChevronRight,
+  ChevronDown,
+  FileCode,
+  FileText,
+  ShieldAlert,
+  CheckCircle2,
+  ExternalLink,
+  ArrowRight,
   Terminal,
   Layers,
   Sparkles,
-  Search
+  Search,
+  Flag,
+  Check
 } from 'lucide-react';
+import BotonSabido from '@/components/roadmap/BotonSabido';
 
 const NIVELES: Record<number, string> = {
   0: 'Base', 1: 'Modelo mental', 2: 'Ingesta', 3: 'Almacenamiento',
@@ -59,6 +62,11 @@ interface RoadmapIdeViewProps {
   onSelectNode: (slug: string) => void;
   dependentsMap: Map<string, string[]>;
   nodeMap: Map<string, RoadmapNode>;
+  notas?: Record<string, string>;
+  frontera?: Set<string>;
+  sabidosSet?: Set<string>;
+  togglables?: Set<string>;
+  onToggleSabido?: (slug: string) => void;
 }
 
 export default function RoadmapIdeView({
@@ -67,6 +75,11 @@ export default function RoadmapIdeView({
   onSelectNode,
   dependentsMap,
   nodeMap,
+  notas = {},
+  frontera = new Set<string>(),
+  sabidosSet = new Set<string>(),
+  togglables = new Set<string>(),
+  onToggleSabido,
 }: RoadmapIdeViewProps) {
   // Folders open state: default all open or open current node's folder
   const activeNode = nodeMap.get(activeSlug) || grupos[0]?.nodes[0];
@@ -95,7 +108,9 @@ export default function RoadmapIdeView({
             <Terminal size={13} className="text-emerald-400" />
             <span>Explorador // Grafo</span>
           </div>
-          <span className="text-[10px] text-neutral-500 font-mono">34 Nodos</span>
+          <span className="text-[10px] text-neutral-500 font-mono">
+            {grupos.reduce((n, g) => n + g.nodes.length, 0)} Nodos
+          </span>
         </div>
 
         {/* Tree Root */}
@@ -154,11 +169,17 @@ export default function RoadmapIdeView({
                             <FileCode size={13} className={color} />
                             <span className="truncate text-xs font-mono">{name}</span>
 
+                            {frontera.has(node.slug) && (
+                              <span
+                                title="Podés arrancar acá: no tiene prerequisitos pendientes"
+                                className="ml-auto shrink-0 size-1.5 rounded-full bg-emerald-400"
+                              />
+                            )}
                             {/* Badge if it has "Lo vi romperse" evidence */}
                             {hasBreakage && (
-                              <span 
+                              <span
                                 title="Tiene caso real 'Lo vi romperse' documentado"
-                                className="ml-auto shrink-0 size-1.5 rounded-full bg-amber-400" 
+                                className={`shrink-0 size-1.5 rounded-full bg-amber-400 ${frontera.has(node.slug) ? '' : 'ml-auto'}`}
                               />
                             )}
                           </button>
@@ -212,6 +233,22 @@ export default function RoadmapIdeView({
             <h3 className="text-2xl sm:text-3xl font-bold tracking-tight text-white uppercase font-sans">
               {activeNode?.nombre}
             </h3>
+            {activeNode && (
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                {frontera.has(activeNode.slug) && (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full border border-emerald-800/60 bg-emerald-950/40 text-emerald-300 text-[10px] font-mono uppercase">
+                    <Flag size={10} />
+                    Podés arrancar acá
+                  </span>
+                )}
+                {onToggleSabido && togglables.has(activeNode.slug) && (
+                  <BotonSabido sabido={sabidosSet.has(activeNode.slug)} onClick={() => onToggleSabido(activeNode.slug)} />
+                )}
+              </div>
+            )}
+            {activeNode && notas[activeNode.slug] && (
+              <p className="mt-2 text-xs font-mono text-neutral-500">// {notas[activeNode.slug]}</p>
+            )}
           </div>
 
           {/* Section 1: Qué Resuelve */}
@@ -287,12 +324,19 @@ export default function RoadmapIdeView({
                   <div className="flex flex-wrap gap-1.5">
                     {prereqs.map(reqSlug => {
                       const reqNode = nodeMap.get(reqSlug);
+                      const sabido = sabidosSet.has(reqSlug);
                       return (
                         <button
                           key={reqSlug}
                           onClick={() => onSelectNode(reqSlug)}
-                          className="px-2.5 py-1 rounded-md border border-neutral-700/80 bg-neutral-800/80 hover:bg-neutral-700 hover:text-emerald-400 transition-colors text-xs font-mono text-neutral-200 flex items-center gap-1 group"
+                          title={sabido ? 'Ya lo sabés' : undefined}
+                          className={`px-2.5 py-1 rounded-md border transition-colors text-xs font-mono flex items-center gap-1 group ${
+                            sabido
+                              ? 'border-neutral-800 bg-neutral-900/40 text-neutral-500 line-through hover:text-neutral-300'
+                              : 'border-neutral-700/80 bg-neutral-800/80 hover:bg-neutral-700 hover:text-emerald-400 text-neutral-200'
+                          }`}
                         >
+                          {sabido && <Check size={10} className="text-emerald-500" />}
                           <span>{reqNode?.nombre || reqSlug}</span>
                           <ArrowRight size={10} className="text-neutral-500 group-hover:text-emerald-400 transition-transform group-hover:translate-x-0.5" />
                         </button>

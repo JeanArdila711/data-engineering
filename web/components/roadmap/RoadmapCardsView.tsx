@@ -3,24 +3,27 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import type { RoadmapNode } from '@/lib/roadmap';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  ShieldAlert, 
-  CheckCircle2, 
-  ExternalLink, 
-  ArrowRight, 
+import {
+  ShieldAlert,
+  CheckCircle2,
+  ExternalLink,
+  ArrowRight,
   ArrowLeft,
   ChevronLeft,
   ChevronRight,
-  X, 
-  Layers, 
-  Cpu, 
-  Sparkles, 
+  X,
+  Layers,
+  Cpu,
+  Sparkles,
   FileCode,
   FolderTree,
   Terminal,
-  Activity
+  Activity,
+  Flag,
+  Check
 } from 'lucide-react';
 import { getNodeFileName } from '@/components/roadmap/RoadmapIdeView';
+import BotonSabido from '@/components/roadmap/BotonSabido';
 
 const NIVELES: Record<number, string> = {
   0: 'Base', 1: 'Modelo mental', 2: 'Ingesta', 3: 'Almacenamiento',
@@ -35,6 +38,10 @@ interface RoadmapCardsViewProps {
   onOpenIde: (slug: string) => void;
   nodeMap: Map<string, RoadmapNode>;
   dependentsMap: Map<string, string[]>;
+  frontera?: Set<string>;
+  sabidosSet?: Set<string>;
+  togglables?: Set<string>;
+  onToggleSabido?: (slug: string) => void;
 }
 
 export default function RoadmapCardsView({
@@ -43,6 +50,10 @@ export default function RoadmapCardsView({
   onOpenIde,
   nodeMap,
   dependentsMap,
+  frontera = new Set<string>(),
+  sabidosSet = new Set<string>(),
+  togglables = new Set<string>(),
+  onToggleSabido,
 }: RoadmapCardsViewProps) {
   // Stepper level filter: null means 'all', or number 0..11
   const [selectedLevel, setSelectedLevel] = useState<number | null>(null);
@@ -233,12 +244,20 @@ export default function RoadmapCardsView({
                           [0{node.nivel}.{node.orden_sugerido || 1}]
                         </span>
 
-                        <span className={`text-[9.5px] uppercase px-2 py-0.5 rounded-full border ${
-                          isConcept
-                            ? 'border-emerald-800/60 bg-emerald-950/40 text-emerald-300'
-                            : 'border-cyan-800/60 bg-cyan-950/40 text-cyan-300'
-                        }`}>
-                          {node.tipo}
+                        <span className="flex items-center gap-1.5">
+                          {frontera.has(node.slug) && (
+                            <span title="Podés arrancar acá" className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full border border-emerald-800/60 bg-emerald-950/40 text-emerald-300 text-[9.5px] uppercase">
+                              <Flag size={9} />
+                              Arrancá acá
+                            </span>
+                          )}
+                          <span className={`text-[9.5px] uppercase px-2 py-0.5 rounded-full border ${
+                            isConcept
+                              ? 'border-emerald-800/60 bg-emerald-950/40 text-emerald-300'
+                              : 'border-cyan-800/60 bg-cyan-950/40 text-cyan-300'
+                          }`}>
+                            {node.tipo}
+                          </span>
                         </span>
                       </div>
 
@@ -374,7 +393,19 @@ export default function RoadmapCardsView({
                       }`}>
                         {inspectedNode.tipo}
                       </span>
+                      {frontera.has(inspectedNode.slug) && (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full border border-emerald-800/60 bg-emerald-950/40 text-emerald-300 text-[10px] font-mono uppercase">
+                          <Flag size={10} />
+                          Podés arrancar acá
+                        </span>
+                      )}
+                      {onToggleSabido && togglables.has(inspectedNode.slug) && (
+                        <BotonSabido sabido={sabidosSet.has(inspectedNode.slug)} onClick={() => onToggleSabido(inspectedNode.slug)} />
+                      )}
                     </div>
+                    {notas[inspectedNode.slug] && (
+                      <p className="mt-1.5 text-xs font-mono text-neutral-500">// {notas[inspectedNode.slug]}</p>
+                    )}
                   </div>
                 </div>
 
@@ -491,15 +522,19 @@ export default function RoadmapCardsView({
                         <div className="flex flex-wrap gap-1.5">
                           {prereqs.map(reqSlug => {
                             const reqNode = nodeMap.get(reqSlug);
+                            const sabido = sabidosSet.has(reqSlug);
                             return (
                               <button
                                 key={reqSlug}
-                                onClick={() => {
-                                  setDirection(-1);
-                                  setInspectedSlug(reqSlug);
-                                }}
-                                className="px-2.5 py-1 rounded-md bg-neutral-800 hover:bg-neutral-700 text-neutral-300 hover:text-emerald-400 text-xs font-mono transition-colors flex items-center gap-1 group"
+                                onClick={() => { setDirection(-1); setInspectedSlug(reqSlug); }}
+                                title={sabido ? 'Ya lo sabés' : undefined}
+                                className={`px-2.5 py-1 rounded-md text-xs font-mono transition-colors flex items-center gap-1 group ${
+                                  sabido
+                                    ? 'bg-neutral-900/40 text-neutral-500 line-through hover:text-neutral-300'
+                                    : 'bg-neutral-800 hover:bg-neutral-700 text-neutral-300 hover:text-emerald-400'
+                                }`}
                               >
+                                {sabido && <Check size={10} className="text-emerald-500" />}
                                 <span>{reqNode?.nombre || reqSlug}</span>
                                 <ArrowRight size={10} className="text-neutral-500 group-hover:text-emerald-400 transition-transform group-hover:translate-x-0.5" />
                               </button>

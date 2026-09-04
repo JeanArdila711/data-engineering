@@ -22,10 +22,22 @@ export default function RoadmapSection({
   grupos,
   notas = {},
   encabezado = true,
+  sabidos = [],
+  frontera = new Set<string>(),
+  togglables = new Set<string>(),
+  onToggleSabido,
 }: {
   grupos: { nivel: number; nodes: RoadmapNode[] }[];
   notas?: Record<string, string>;
   encabezado?: boolean;
+  /** Nodos de la ruta dados por sabidos (vía wizard o ?ya=). Sirven para resolver nombres de prerequisitos. */
+  sabidos?: RoadmapNode[];
+  /** Slugs que se pueden arrancar ya: sin prerequisitos pendientes. */
+  frontera?: Set<string>;
+  /** Slugs sobre los que el toggle "Ya sé esto" puede actuar (dentro de la ruta actual). */
+  togglables?: Set<string>;
+  /** Si viene, las vistas muestran el toggle "Ya sé esto". */
+  onToggleSabido?: (slug: string) => void;
 }) {
   // 1. View Mode State: 'ide' (Folder tree), 'graph' (Obsidian canvas), 'cards' (Classic bento)
   const [viewMode, setViewMode] = useState<'ide' | 'graph' | 'cards'>('ide');
@@ -40,9 +52,11 @@ export default function RoadmapSection({
   
   const nodeMap = useMemo(() => {
     const map = new Map<string, RoadmapNode>();
-    allNodes.forEach(n => map.set(n.slug, n));
+    [...allNodes, ...sabidos].forEach(n => map.set(n.slug, n));
     return map;
-  }, [allNodes]);
+  }, [allNodes, sabidos]);
+
+  const sabidosSet = useMemo(() => new Set(sabidos.map(n => n.slug)), [sabidos]);
 
   // Compute inverse dependencies (which nodes unlock/depend on slug)
   const dependentsMap = useMemo(() => {
@@ -117,7 +131,7 @@ export default function RoadmapSection({
           />
 
           <p className="text-sm md:text-base text-neutral-400 font-light max-w-3xl leading-relaxed">
-            Los 34 nodos ordenados topológicamente por nivel y prerequisitos, conectados a los datos vivos del pipeline.
+            Los {allNodes.length} nodos ordenados topológicamente por nivel y prerequisitos, conectados a los datos vivos del pipeline.
             Explora la ruta en formato de <strong className="text-neutral-200 font-medium">IDE con árbol de archivos</strong>, navega el <strong className="text-neutral-200 font-medium">Grafo interactivo de Obsidian</strong> o inspecciona las fichas técnicas.
           </p>
         </div>
@@ -257,7 +271,7 @@ export default function RoadmapSection({
             onClick={() => { setSearchQuery(''); setFilterType('all'); }}
             className="text-xs text-emerald-400 underline underline-offset-4"
           >
-            Limpiar filtros y ver todos los 34 nodos
+            Limpiar filtros y ver todos los {allNodes.length} nodos
           </button>
         </div>
       ) : viewMode === 'ide' ? (
@@ -267,6 +281,11 @@ export default function RoadmapSection({
           onSelectNode={setActiveSlug}
           dependentsMap={dependentsMap}
           nodeMap={nodeMap}
+          notas={notas}
+          frontera={frontera}
+          sabidosSet={sabidosSet}
+          togglables={togglables}
+          onToggleSabido={onToggleSabido}
         />
       ) : viewMode === 'graph' ? (
         <RoadmapGraphView
@@ -283,6 +302,10 @@ export default function RoadmapSection({
           onOpenIde={handleOpenIdeWithNode}
           nodeMap={nodeMap}
           dependentsMap={dependentsMap}
+          frontera={frontera}
+          sabidosSet={sabidosSet}
+          togglables={togglables}
+          onToggleSabido={onToggleSabido}
         />
       )}
 

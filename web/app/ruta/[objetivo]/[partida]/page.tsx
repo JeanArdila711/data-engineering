@@ -1,9 +1,11 @@
 import type { Metadata } from 'next'
+import { Suspense } from 'react'
 import { notFound } from 'next/navigation'
 import { getRoadmap, getRoadmapWizard } from '@/lib/db'
 import { agruparPorNivel, metasAlcanzadas, subgrafo } from '@/lib/roadmap'
 import RoadmapSection from '@/components/RoadmapSection'
 import RoadmapRouteHeader from '@/components/roadmap/RoadmapRouteHeader'
+import RutaInteractiva from '@/components/roadmap/RutaInteractiva'
 import Navbar from '@/components/layout/Navbar'
 import Footer from '@/components/layout/Footer'
 
@@ -57,7 +59,9 @@ export default async function RutaPersonalPage({ params }: { params: Params }) {
             Con lo que ya sabés, esta ruta no tiene nodos pendientes. Probá un objetivo más amplio.
           </p>
         ) : (
-          <RoadmapSection grupos={agruparPorNivel(ruta)} notas={notas} encabezado={false} />
+          <Suspense fallback={<RoadmapSection grupos={agruparPorNivel(ruta)} notas={notas} encabezado={false} sabidos={sabidos} />}>
+            <RutaInteractiva ruta={ruta} sabidosBase={sabidos} notas={notas} encabezado={false} />
+          </Suspense>
         )}
         <Footer />
       </main>

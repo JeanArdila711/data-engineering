@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { ordenarTopologico, agruparPorNivel, clausuraPrerequisitos, subgrafo, metasAlcanzadas, type RoadmapNode } from './roadmap.ts'
+import { ordenarTopologico, agruparPorNivel, clausuraPrerequisitos, subgrafo, metasAlcanzadas, parsearSlugs, parsearProveedor, frontera, aplicarSabidos, priorizarProveedor, tieneNubes, type RoadmapNode, type RoadmapImplementation } from './roadmap.ts'
 
 const nodo = (slug: string, prerequisitos: string[] = [], nivel = 0): RoadmapNode => ({
   slug, tipo: 'concepto', nombre: slug, resuelve: '', dominado_cuando: '',
@@ -77,4 +77,65 @@ test('metasAlcanzadas dice para qué metas hace falta cada nodo', () => {
   assert.deepEqual(porQue.get('c'), ['c'])
   assert.deepEqual(porQue.get('e'), ['f'])
   assert.equal(porQue.has('d'), false)
+})
+
+// --- Fase 3 ---
+
+test('parsearSlugs descarta lo que no está en la ruta, deduplica y ordena', () => {
+  assert.deepEqual(parsearSlugs('c,a,zzz,a', new Set(['a', 'b', 'c'])), ['a', 'c'])
+  assert.deepEqual(parsearSlugs(null, new Set(['a'])), [])
+  assert.deepEqual(parsearSlugs('', new Set(['a'])), [])
+})
+
+test('parsearProveedor acepta solo aws/gcp/azure', () => {
+  assert.equal(parsearProveedor('gcp'), 'gcp')
+  assert.equal(parsearProveedor('oracle'), null)
+  assert.equal(parsearProveedor('portable'), null)
+  assert.equal(parsearProveedor(null), null)
+})
+
+test('la frontera son los nodos sin prerequisitos pendientes, en el orden de la ruta', () => {
+  // a <- b <- c ; e <- f ; d suelto — la ruta completa sale a, d, e, b, f, c
+  const ruta = subgrafo(GRAFO, ['c', 'f', 'd'], []).ruta
+  assert.deepEqual(frontera(ruta).map(n => n.slug), ['a', 'd', 'e'])
+})
+
+test('la frontera avanza al dar por sabido un nodo', () => {
+  const ruta = subgrafo(GRAFO, ['c'], []).ruta
+  const { pendientes } = aplicarSabidos(ruta, ['a'])
+  assert.deepEqual(frontera(pendientes).map(n => n.slug), ['b'])
+})
+
+test('dar por sabido un nodo arrastra a sus prerequisitos', () => {
+  const ruta = subgrafo(GRAFO, ['c'], []).ruta
+  const { pendientes, sabidos } = aplicarSabidos(ruta, ['b'])
+  assert.deepEqual(pendientes.map(n => n.slug), ['c'])
+  assert.deepEqual(sabidos.map(n => n.slug), ['a', 'b'])
+})
+
+test('aplicarSabidos con lista vacía devuelve la ruta intacta', () => {
+  const ruta = subgrafo(GRAFO, ['c'], []).ruta
+  const { pendientes, sabidos } = aplicarSabidos(ruta, [])
+  assert.deepEqual(pendientes, ruta)
+  assert.deepEqual(sabidos, [])
+})
+
+const impl = (nombre: string, proveedor: RoadmapImplementation['proveedor']): RoadmapImplementation => ({
+  nombre, proveedor, tool_slug: null, equivalencia: 'alta', nota: null,
+  release_count: null, last_version: null, last_published_at: null, article_count: null,
+})
+
+test('priorizarProveedor pone el proveedor primero, conserva el resto en orden y no toca la ruta', () => {
+  const cloud = { ...nodo('x'), implementaciones: [impl('K8s', 'portable'), impl('EKS', 'aws'), impl('GKE', 'gcp'), impl('AKS', 'azure')] }
+  const [out] = priorizarProveedor([cloud], 'gcp')
+  assert.deepEqual(out.implementaciones.map(i => i.nombre), ['GKE', 'K8s', 'EKS', 'AKS'])
+  assert.deepEqual(priorizarProveedor([cloud], null), [cloud])
+  assert.deepEqual(priorizarProveedor([cloud, nodo('y')], 'aws').map(n => n.slug), ['x', 'y'])
+  // no muta el original
+  assert.equal(cloud.implementaciones[0].nombre, 'K8s')
+})
+
+test('tieneNubes ignora portable y nodos sin implementaciones', () => {
+  assert.equal(tieneNubes([nodo('a'), { ...nodo('k'), implementaciones: [impl('K8s', 'portable')] }]), false)
+  assert.equal(tieneNubes([{ ...nodo('s'), implementaciones: [impl('S3', 'aws')] }]), true)
 })

@@ -31,7 +31,7 @@ export default function RoadmapRouteHeader({
         </div>
         <div className="flex items-center gap-2 text-emerald-400">
           <span className="size-1.5 rounded-full bg-emerald-400 animate-pulse" />
-          <span className="font-semibold">{total} nodos por recorrer</span>
+          <span className="font-semibold">{total} nodos en esta ruta</span>
         </div>
       </div>
 

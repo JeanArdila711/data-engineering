@@ -138,3 +138,60 @@ export function metasAlcanzadas(nodes: RoadmapNode[], metas: string[]): Map<stri
   }
   return porQue
 }
+
+// --- Fase 3: ruta inversa y filtro por stack. Todo puro, todo sobre la ruta ya derivada. ---
+
+export type Proveedor = 'aws' | 'gcp' | 'azure'
+export const PROVEEDORES: readonly Proveedor[] = ['aws', 'gcp', 'azure']
+
+/** Forma canónica de `?ya=`: solo slugs de la ruta, sin repetidos, ordenados. */
+export function parsearSlugs(param: string | null, validos: Set<string>): string[] {
+  return [...new Set((param ?? '').split(',').filter(s => validos.has(s)))].sort()
+}
+
+/** `?cloud=`: cualquier valor fuera del enum equivale a ausente. */
+export function parsearProveedor(param: string | null): Proveedor | null {
+  return (PROVEEDORES as readonly string[]).includes(param ?? '') ? (param as Proveedor) : null
+}
+
+/**
+ * Nodos de `ruta` sin prerequisitos pendientes: por dónde se puede arrancar ya.
+ * Un prerequisito que no está en la ruta se dio por sabido (ver D1 del plan).
+ */
+export function frontera(ruta: RoadmapNode[]): RoadmapNode[] {
+  const enRuta = new Set(ruta.map(n => n.slug))
+  return ruta.filter(n => n.prerequisitos.every(p => !enRuta.has(p)))
+}
+
+/**
+ * Resta de `ruta` la clausura de `ya` (saber X implica saber sus prerequisitos).
+ * `ruta` ya viene en orden topológico; filtrar lo conserva.
+ */
+export function aplicarSabidos(
+  ruta: RoadmapNode[],
+  ya: string[],
+): { pendientes: RoadmapNode[]; sabidos: RoadmapNode[] } {
+  const sabido = clausuraPrerequisitos(ruta, ya)
+  return {
+    pendientes: ruta.filter(n => !sabido.has(n.slug)),
+    sabidos: ruta.filter(n => sabido.has(n.slug)),
+  }
+}
+
+/**
+ * Copia de los nodos con las implementaciones del proveedor primero; las demás
+ * conservan su orden. La lista de nodos no cambia: es presentación (D4).
+ */
+export function priorizarProveedor(nodes: RoadmapNode[], proveedor: Proveedor | null): RoadmapNode[] {
+  if (!proveedor) return nodes
+  return nodes.map(n => {
+    const primero = n.implementaciones.filter(i => i.proveedor === proveedor)
+    if (primero.length === 0) return n
+    return { ...n, implementaciones: [...primero, ...n.implementaciones.filter(i => i.proveedor !== proveedor)] }
+  })
+}
+
+/** Si la ruta tiene alguna implementación atada a una nube (portable no cuenta). */
+export function tieneNubes(nodes: RoadmapNode[]): boolean {
+  return nodes.some(n => n.implementaciones.some(i => i.proveedor !== null && i.proveedor !== 'portable'))
+}
