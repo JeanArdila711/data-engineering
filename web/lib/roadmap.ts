@@ -46,9 +46,12 @@ export function ordenarTopologico(nodes: RoadmapNode[]): RoadmapNode[] {
     }
   }
 
+  // Codepoint, no localeCompare: es el mismo orden que usa Python en
+  // pipeline/roadmap.py::derivar_ruta. tests/fixtures/rutas_esperadas.json
+  // es el contrato entre los dos.
   const comparar = (a: string, b: string) => {
     const x = porSlug.get(a)!, y = porSlug.get(b)!
-    return x.nivel - y.nivel || x.orden_sugerido - y.orden_sugerido || a.localeCompare(b)
+    return x.nivel - y.nivel || x.orden_sugerido - y.orden_sugerido || (a < b ? -1 : a > b ? 1 : 0)
   }
 
   const listos = nodes.filter(n => pendientes.get(n.slug) === 0).map(n => n.slug).sort(comparar)
@@ -194,4 +197,26 @@ export function priorizarProveedor(nodes: RoadmapNode[], proveedor: Proveedor | 
 /** Si la ruta tiene alguna implementación atada a una nube (portable no cuenta). */
 export function tieneNubes(nodes: RoadmapNode[]): boolean {
   return nodes.some(n => n.implementaciones.some(i => i.proveedor !== null && i.proveedor !== 'portable'))
+}
+
+// --- Fase 4: progreso local. Puro; el acceso a localStorage vive en useSabidosGuardados. ---
+
+/** Lo que haya en localStorage → slugs. Cualquier cosa que no sea un array de strings es []. */
+export function parsearGuardados(raw: string): string[] {
+  try {
+    const v: unknown = JSON.parse(raw)
+    return Array.isArray(v) ? v.filter((s): s is string => typeof s === 'string') : []
+  } catch {
+    return []
+  }
+}
+
+/** Los guardados que pertenecen a esta ruta, en forma canónica: lo que "Aplicar" escribiría en ?ya=. */
+export function guardadosAplicables(guardados: string[], validos: Set<string>): string[] {
+  return parsearSlugs(guardados.join(','), validos)
+}
+
+/** Lo que se guarda al actuar en esta ruta: `ya` reemplaza a los guardados de esta ruta, los de otras se conservan. */
+export function fusionarGuardados(guardados: string[], validos: Set<string>, ya: string[]): string[] {
+  return [...new Set([...guardados.filter(s => !validos.has(s)), ...ya])].sort()
 }

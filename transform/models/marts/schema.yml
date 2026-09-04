@@ -96,3 +96,15 @@ models:
         tests: [not_null]
       - name: orden
         tests: [not_null]
+
+  - name: mart_roadmap_blurb
+    description: El párrafo "por qué este orden" de cada ruta personalizada de Rumbo, si tiene uno vigente.
+    columns:
+      - name: objetivo
+        tests: [not_null]
+      - name: partida
+        tests: [not_null]
+      - name: texto
+        tests: [not_null]
+      - name: generated_at
+        tests: [not_null]

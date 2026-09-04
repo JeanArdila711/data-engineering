@@ -2,13 +2,14 @@
 cada caso inválido de acá debe hacer fallar la carga (decisión 17 de DE Radar).
 """
 
+import json
 from pathlib import Path
 
 import pytest
 import yaml
 
-from pipeline.config import Catalog, Tool
-from pipeline.roadmap import RoadmapError, load_roadmap
+from pipeline.config import Catalog, Tool, load_catalog
+from pipeline.roadmap import Objetivo, PuntoDePartida, Roadmap, RoadmapError, RoadmapNode, derivar_ruta, load_roadmap, rutas_esperadas
 
 CATALOGO = Catalog(tools=[Tool(slug="airflow", name="Apache Airflow", category="orchestration")])
 
@@ -243,3 +244,56 @@ def test_la_clausura_no_truena_con_un_prerequisito_huerfano():
     resultado = clausura_prerequisitos(nodes, ["a"])
     assert resultado == {"a"}
     assert "zzz" not in resultado
+
+
+# --- Fase 4: derivación en Python, atada a TS por el fixture dorado ---
+
+FIXTURE = Path("tests/fixtures/rutas_esperadas.json")
+
+
+def _roadmap_del_fixture(datos: dict) -> Roadmap:
+    nodes = [
+        RoadmapNode(slug=n["slug"], tipo="concepto", nombre=n["slug"], resuelve="", dominado_cuando="",
+                    nivel=n["nivel"], orden_sugerido=n["orden_sugerido"], prerequisitos=n["prerequisitos"])
+        for n in datos["grafo"]
+    ]
+    objetivos = [Objetivo(slug=s, nombre=s, descripcion="", metas=m) for s, m in datos["objetivos"].items()]
+    partidas = [PuntoDePartida(slug=s, nombre=s, descripcion="", conocidos=c) for s, c in datos["partidas"].items()]
+    return Roadmap(nodes=nodes, objetivos=objetivos, puntos_de_partida=partidas)
+
+
+def test_derivar_ruta_coincide_con_el_fixture():
+    datos = json.loads(FIXTURE.read_text())
+    roadmap = _roadmap_del_fixture(datos)
+    objetivos = {o.slug: o for o in roadmap.objetivos}
+    partidas = {p.slug: p for p in roadmap.puntos_de_partida}
+    assert datos["rutas"], "el fixture no tiene combinaciones"
+    for clave, esperado in datos["rutas"].items():
+        o, p = clave.split("/")
+        ruta, sabidos = derivar_ruta(roadmap, objetivos[o], partidas[p])
+        assert [n.slug for n in ruta] == esperado["ruta"], clave
+        assert [n.slug for n in sabidos] == esperado["sabidos"], clave
+
+
+def test_el_fixture_esta_al_dia_con_el_yaml_real():
+    roadmap = load_roadmap(Path("catalog/roadmap.yaml"), load_catalog(Path("catalog/tools.yaml")))
+    assert rutas_esperadas(roadmap) == json.loads(FIXTURE.read_text()), (
+        "el grafo cambió y el fixture no: "
+        "uv run python -m pipeline.roadmap --rutas-esperadas > tests/fixtures/rutas_esperadas.json"
+    )
+
+
+def test_derivar_ruta_pone_prerequisitos_antes_y_resta_lo_sabido():
+    # a <- b <- c ; e <- f ; d suelto — mismo grafo que web/lib/roadmap.test.ts
+    nodes = [
+        RoadmapNode(slug=s, tipo="concepto", nombre=s, resuelve="", dominado_cuando="", nivel=nv, prerequisitos=pr)
+        for s, pr, nv in [("a", [], 0), ("b", ["a"], 1), ("c", ["b"], 2), ("d", [], 0), ("e", [], 0), ("f", ["e"], 1)]
+    ]
+    roadmap = Roadmap(nodes=nodes)
+    ruta, sabidos = derivar_ruta(
+        roadmap,
+        Objetivo(slug="o", nombre="o", descripcion="", metas=["c", "f"]),
+        PuntoDePartida(slug="p", nombre="p", descripcion="", conocidos=["b"]),
+    )
+    assert [n.slug for n in ruta] == ["e", "f", "c"]
+    assert [n.slug for n in sabidos] == ["a", "b"]

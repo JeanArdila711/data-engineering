@@ -218,3 +218,19 @@ export async function getRoadmapWizard(): Promise<WizardOption[]> {
     return []
   }
 }
+
+export async function getRoadmapBlurb(objetivo: string, partida: string): Promise<string | null> {
+  try {
+    const client = getSqlClient()
+    if (!client) return null
+    const rows = await client<{ texto: string }[]>`
+      select texto
+      from mart_roadmap_blurb
+      where objetivo = ${objetivo} and partida = ${partida}
+    `
+    return rows[0]?.texto ?? null
+  } catch (error) {
+    console.warn('Postgres connection unavailable for roadmap blurb:', error)
+    return null
+  }
+}

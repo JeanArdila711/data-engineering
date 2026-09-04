@@ -44,6 +44,26 @@ Devolvé JSON: {{"candidates": ["nombre1", "nombre2"]}}
 Artículo:
 {document}"""
 
+_BLURB_PROMPT = """Sos el autor de una ruta de aprendizaje de ingeniería de datos. Explicale a la persona, \
+en segunda persona y en español rioplatense neutro (voseo), por qué esta ruta tiene este orden \
+para este objetivo desde este punto de partida.
+
+Objetivo: {objetivo} — {descripcion}
+Punto de partida: {partida}
+Ya sabe (no hace falta enseñárselo): {sabidos}
+
+La ruta, en orden, con lo que resuelve cada paso:
+{nodos}
+
+Reglas:
+- 3 o 4 oraciones, máximo 600 caracteres.
+- Explicá el porqué del orden (qué desbloquea qué), no lo describas paso por paso.
+- Nombrá como mucho 3 conceptos, y SOLO de la lista de arriba, escritos exactamente igual.
+- No nombres herramientas, productos ni conceptos que no estén en la lista.
+- Sin saludos, sin títulos, sin viñetas.
+
+Devolvé JSON: {{"texto": "..."}}"""
+
 
 class GeminiClient:
     def __init__(self, api_key: str, summary_model: str, judge_model: str):
@@ -92,3 +112,19 @@ class GeminiClient:
         )
         payload = json.loads(response.text)
         return payload.get("candidates", [])
+
+    def draft_route_blurb(
+        self, objetivo: str, descripcion: str, partida: str,
+        nodos: list[tuple[str, str]], sabidos: list[str],
+    ) -> str:
+        response = self._client.models.generate_content(
+            model=self._summary_model,
+            contents=_BLURB_PROMPT.format(
+                objetivo=objetivo, descripcion=descripcion, partida=partida,
+                sabidos=", ".join(sabidos) or "nada todavía",
+                nodos="\n".join(f"- {nombre}: {resuelve}" for nombre, resuelve in nodos),
+            ),
+            config=types.GenerateContentConfig(response_mime_type="application/json"),
+        )
+        payload = json.loads(response.text)
+        return str(payload["texto"]).strip()

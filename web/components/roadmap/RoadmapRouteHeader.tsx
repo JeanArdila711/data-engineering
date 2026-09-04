@@ -4,8 +4,8 @@ import { Target, ArrowLeft, CheckCircle2 } from 'lucide-react'
 import ShareButton from './ShareButton'
 
 export default function RoadmapRouteHeader({
-  objetivo, partida, total, sabidos,
-}: { objetivo: WizardOption; partida: WizardOption; total: number; sabidos: RoadmapNode[] }) {
+  objetivo, partida, total, sabidos, parrafo,
+}: { objetivo: WizardOption; partida: WizardOption; total: number; sabidos: RoadmapNode[]; parrafo?: string | null }) {
   return (
     <header className="mx-auto max-w-5xl px-5 md:px-6 pt-28 md:pt-36 pb-8">
       {/* Eyebrow Badge */}
@@ -20,6 +20,15 @@ export default function RoadmapRouteHeader({
       <p className="mt-3 text-neutral-400 text-sm md:text-base font-light leading-relaxed max-w-3xl">
         {objetivo.descripcion.trim()}
       </p>
+
+      {parrafo && (
+        <div className="mt-5 rounded-xl border border-emerald-900/40 bg-emerald-950/15 p-4">
+          <div className="text-[11px] font-mono uppercase tracking-wider text-emerald-400 mb-1.5">
+            {'// Por qué este orden'}
+          </div>
+          <p className="text-sm md:text-base text-neutral-300 font-light leading-relaxed">{parrafo}</p>
+        </div>
+      )}
 
       {/* Telemetry Status Strip */}
       <div className="mt-5 p-4 rounded-xl border border-neutral-800/80 bg-neutral-950/70 flex flex-wrap items-center justify-between gap-4 text-xs font-mono shadow-[inset_0_1px_0_0_rgba(255,255,255,0.03)]">

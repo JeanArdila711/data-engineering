@@ -2,11 +2,12 @@
 
 import { useCallback, useMemo } from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
-import { CheckCircle2, Flag, RotateCcw } from 'lucide-react'
+import { CheckCircle2, Flag, History, RotateCcw, X } from 'lucide-react'
 import {
-  agruparPorNivel, aplicarSabidos, clausuraPrerequisitos, frontera, parsearProveedor, parsearSlugs,
-  priorizarProveedor, tieneNubes, type Proveedor, type RoadmapNode,
+  agruparPorNivel, aplicarSabidos, clausuraPrerequisitos, frontera, fusionarGuardados, guardadosAplicables,
+  parsearProveedor, parsearSlugs, priorizarProveedor, tieneNubes, type Proveedor, type RoadmapNode,
 } from '@/lib/roadmap'
+import { useSabidosGuardados } from '@/lib/useSabidosGuardados'
 import RoadmapSection from '@/components/RoadmapSection'
 import ProveedorSelector from './ProveedorSelector'
 
@@ -34,6 +35,10 @@ export default function RutaInteractiva({ ruta, sabidosBase = [], notas = {}, en
   const ya = useMemo(() => parsearSlugs(params.get('ya'), validos), [params, validos])
   const cloud = parsearProveedor(params.get('cloud'))
 
+  const { guardados, guardar, limpiar } = useSabidosGuardados()
+  const aplicables = useMemo(() => guardadosAplicables(guardados, validos), [guardados, validos])
+  const ofrecerGuardados = ya.length === 0 && aplicables.length > 0
+
   const { pendientes, sabidos } = useMemo(() => aplicarSabidos(ruta, ya), [ruta, ya])
   const front = useMemo(() => new Set(frontera(pendientes).map(n => n.slug)), [pendientes])
   const vista = useMemo(() => priorizarProveedor(pendientes, cloud), [pendientes, cloud])
@@ -46,6 +51,7 @@ export default function RutaInteractiva({ ruta, sabidosBase = [], notas = {}, en
         const canonico = parsearSlugs(cambios.ya.join(','), validos)
         if (canonico.length === 0) q.delete('ya')
         else q.set('ya', canonico.join(','))
+        guardar(fusionarGuardados(guardados, validos, canonico))
       }
       if (cambios.cloud !== undefined) {
         if (cambios.cloud === null) q.delete('cloud')
@@ -54,20 +60,48 @@ export default function RutaInteractiva({ ruta, sabidosBase = [], notas = {}, en
       const qs = q.toString()
       router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false })
     },
-    [params, pathname, router, validos],
+    [params, pathname, router, validos, guardados, guardar],
   )
 
   const toggle = useCallback((slug: string) => {
+    const base = ofrecerGuardados ? aplicables : ya
     const yaSabido = sabidos.some(n => n.slug === slug)
     escribir({
       ya: yaSabido
-        ? ya.filter(s => !clausuraPrerequisitos(ruta, [s]).has(slug))
-        : [...ya, slug],
+        ? base.filter(s => !clausuraPrerequisitos(ruta, [s]).has(slug))
+        : [...base, slug],
     })
-  }, [ya, sabidos, ruta, escribir])
+  }, [ya, aplicables, ofrecerGuardados, sabidos, ruta, escribir])
 
   return (
     <>
+      {ofrecerGuardados && (
+        <div className="mx-auto max-w-6xl px-4 sm:px-6 pt-8">
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-neutral-800 bg-neutral-950/70 px-4 py-3 text-xs font-mono">
+            <span className="inline-flex items-center gap-2 text-neutral-300">
+              <History size={14} className="text-emerald-400" />
+              Tenés {aplicables.length} {aplicables.length === 1 ? 'nodo marcado' : 'nodos marcados'} de antes en esta ruta.
+            </span>
+            <span className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => escribir({ ya: aplicables })}
+                className="rounded-lg border border-emerald-800/60 bg-emerald-950/40 px-3 py-1.5 text-emerald-300 hover:bg-emerald-900/50 transition-colors"
+              >
+                Aplicar
+              </button>
+              <button
+                type="button"
+                onClick={limpiar}
+                className="inline-flex items-center gap-1 rounded-lg border border-neutral-800 px-3 py-1.5 text-neutral-400 hover:text-white transition-colors"
+              >
+                <X size={12} />
+                Descartar todo
+              </button>
+            </span>
+          </div>
+        </div>
+      )}
       <div className="mx-auto max-w-6xl px-4 sm:px-6 pt-8 flex flex-wrap items-center justify-between gap-3 text-xs font-mono">
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-neutral-400">
           <span className="text-emerald-400 font-semibold">{pendientes.length} pendientes</span>
