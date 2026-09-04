@@ -198,3 +198,25 @@ export function priorizarProveedor(nodes: RoadmapNode[], proveedor: Proveedor | 
 export function tieneNubes(nodes: RoadmapNode[]): boolean {
   return nodes.some(n => n.implementaciones.some(i => i.proveedor !== null && i.proveedor !== 'portable'))
 }
+
+// --- Fase 4: progreso local. Puro; el acceso a localStorage vive en useSabidosGuardados. ---
+
+/** Lo que haya en localStorage → slugs. Cualquier cosa que no sea un array de strings es []. */
+export function parsearGuardados(raw: string): string[] {
+  try {
+    const v: unknown = JSON.parse(raw)
+    return Array.isArray(v) ? v.filter((s): s is string => typeof s === 'string') : []
+  } catch {
+    return []
+  }
+}
+
+/** Los guardados que pertenecen a esta ruta, en forma canónica: lo que "Aplicar" escribiría en ?ya=. */
+export function guardadosAplicables(guardados: string[], validos: Set<string>): string[] {
+  return parsearSlugs(guardados.join(','), validos)
+}
+
+/** Lo que se guarda al actuar en esta ruta: `ya` reemplaza a los guardados de esta ruta, los de otras se conservan. */
+export function fusionarGuardados(guardados: string[], validos: Set<string>, ya: string[]): string[] {
+  return [...new Set([...guardados.filter(s => !validos.has(s)), ...ya])].sort()
+}

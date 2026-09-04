@@ -1,7 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
-import { ordenarTopologico, agruparPorNivel, clausuraPrerequisitos, subgrafo, metasAlcanzadas, parsearSlugs, parsearProveedor, frontera, aplicarSabidos, priorizarProveedor, tieneNubes, type RoadmapNode, type RoadmapImplementation } from './roadmap.ts'
+import { ordenarTopologico, agruparPorNivel, clausuraPrerequisitos, subgrafo, metasAlcanzadas, parsearSlugs, parsearProveedor, frontera, aplicarSabidos, priorizarProveedor, tieneNubes, parsearGuardados, guardadosAplicables, fusionarGuardados, type RoadmapNode, type RoadmapImplementation } from './roadmap.ts'
 
 const nodo = (slug: string, prerequisitos: string[] = [], nivel = 0): RoadmapNode => ({
   slug, tipo: 'concepto', nombre: slug, resuelve: '', dominado_cuando: '',
@@ -161,4 +161,26 @@ test('subgrafo coincide con el fixture dorado generado por Python', () => {
     assert.deepEqual(ruta.map(n => n.slug), datos.rutas[clave].ruta, clave)
     assert.deepEqual(sabidos.map(n => n.slug), datos.rutas[clave].sabidos, clave)
   }
+})
+
+// --- Fase 4: progreso local (la parte pura; el hook se verifica a mano) ---
+
+test('parsearGuardados tolera basura y solo devuelve strings', () => {
+  assert.deepEqual(parsearGuardados('["b","a"]'), ['b', 'a'])
+  assert.deepEqual(parsearGuardados(''), [])
+  assert.deepEqual(parsearGuardados('{no es json'), [])
+  assert.deepEqual(parsearGuardados('[1, "a", null]'), ['a'])
+  assert.deepEqual(parsearGuardados('"a"'), [])
+})
+
+test('guardadosAplicables se queda con los de esta ruta, canónicos', () => {
+  assert.deepEqual(guardadosAplicables(['zzz', 'b', 'a', 'a'], new Set(['a', 'b'])), ['a', 'b'])
+  assert.deepEqual(guardadosAplicables([], new Set(['a'])), [])
+})
+
+test('fusionarGuardados reemplaza lo de esta ruta y conserva lo de las otras', () => {
+  // guardado desde /ruta: a, b, x. En una ruta que solo tiene a y b, el usuario deja solo b.
+  assert.deepEqual(fusionarGuardados(['a', 'b', 'x'], new Set(['a', 'b']), ['b']), ['b', 'x'])
+  // limpiar en esta ruta no toca x
+  assert.deepEqual(fusionarGuardados(['a', 'x'], new Set(['a']), []), ['x'])
 })
