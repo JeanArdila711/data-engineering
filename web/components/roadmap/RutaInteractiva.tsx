@@ -64,13 +64,14 @@ export default function RutaInteractiva({ ruta, sabidosBase = [], notas = {}, en
   )
 
   const toggle = useCallback((slug: string) => {
+    const base = ofrecerGuardados ? aplicables : ya
     const yaSabido = sabidos.some(n => n.slug === slug)
     escribir({
       ya: yaSabido
-        ? ya.filter(s => !clausuraPrerequisitos(ruta, [s]).has(slug))
-        : [...ya, slug],
+        ? base.filter(s => !clausuraPrerequisitos(ruta, [s]).has(slug))
+        : [...base, slug],
     })
-  }, [ya, sabidos, ruta, escribir])
+  }, [ya, aplicables, ofrecerGuardados, sabidos, ruta, escribir])
 
   return (
     <>
