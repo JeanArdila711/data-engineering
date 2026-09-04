@@ -96,7 +96,7 @@ export default function RutaInteractiva({ ruta, sabidosBase = [], notas = {}, en
                 className="inline-flex items-center gap-1 rounded-lg border border-neutral-800 px-3 py-1.5 text-neutral-400 hover:text-white transition-colors"
               >
                 <X size={12} />
-                Descartar
+                Descartar todo
               </button>
             </span>
           </div>

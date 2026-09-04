@@ -85,8 +85,8 @@ def generar(conn: psycopg.Connection, roadmap: Roadmap, llm) -> dict[str, int]:
     todos_los_nombres = [n.nombre for n in roadmap.nodes]
 
     with conn.cursor() as cur:
-        cur.execute("SELECT objetivo, partida, ruta_hash FROM roadmap_route_blurb")
-        existentes = {(o, p): h for o, p, h in cur.fetchall()}
+        cur.execute("SELECT objetivo, partida, ruta_hash, texto FROM roadmap_route_blurb")
+        existentes = {(o, p): (h, t) for o, p, h, t in cur.fetchall()}
         vigentes: set[tuple[str, str]] = set()
 
         for objetivo in roadmap.objetivos:
@@ -100,9 +100,15 @@ def generar(conn: psycopg.Connection, roadmap: Roadmap, llm) -> dict[str, int]:
                     continue
 
                 ruta_hash = hash_ruta(ruta, sabidos, objetivo, partida)
-                if existentes.get(clave) == ruta_hash:
-                    stats["reutilizados"] += 1
-                    continue
+                vieja = existentes.get(clave)
+                if vieja and vieja[0] == ruta_hash:
+                    permitidos = [n.nombre for n in ruta + sabidos]
+                    if validar_anclaje(vieja[1], permitidos, todos_los_nombres) is None:
+                        stats["reutilizados"] += 1
+                        continue
+                    # El grafo cambió en otro lado y el párrafo publicado ya no
+                    # ancla contra el conjunto de nombres actual: regenerar en
+                    # vez de reutilizar, aunque el hash de la ruta no cambió.
 
                 try:
                     texto = llm.draft_route_blurb(

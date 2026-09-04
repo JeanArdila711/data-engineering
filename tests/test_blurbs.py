@@ -75,6 +75,25 @@ def test_genera_una_vez_y_reutiliza_si_el_grafo_no_cambio(db_conn):
         assert cur.fetchall() == [("batch", "cero"), ("batch", "sql")]
 
 
+def test_revalida_el_anclaje_al_reutilizar_y_regenera_si_el_grafo_cambio_en_otro_lado(db_conn):
+    # El párrafo publicado nombra "costo" (todavía no es un nodo). Más tarde el
+    # grafo gana un nodo con ese nombre en otro lado: el hash de la ruta no
+    # cambia, pero el párrafo ya publicado deja de anclar contra el conjunto
+    # de nombres actual y debe regenerarse en vez de reutilizarse.
+    texto_con_costo = "Arrancás por SQL, seguís con Ingesta desacoplada, cerrás con Orquestación sin perder de vista el costo."
+    generar(db_conn, GRAFO, _LLM(texto_con_costo))
+
+    con_nodo_nuevo = GRAFO.model_copy(deep=True)
+    con_nodo_nuevo.nodes = con_nodo_nuevo.nodes + [_nodo("costo", "Costo")]
+    llm_limpio = _LLM()
+    stats = generar(db_conn, con_nodo_nuevo, llm_limpio)
+    assert stats == {"generados": 2, "reutilizados": 0, "rechazados": 0, "fallidos": 0}
+    assert llm_limpio.llamadas == 2
+    with db_conn.cursor() as cur:
+        cur.execute("SELECT texto FROM roadmap_route_blurb")
+        assert all("costo" not in texto.lower() for (texto,) in cur.fetchall())
+
+
 def test_regenera_solo_las_rutas_cuyo_contenido_cambio(db_conn):
     llm = _LLM()
     generar(db_conn, GRAFO, llm)
