@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import { Suspense } from 'react'
 import { notFound } from 'next/navigation'
-import { getRoadmap, getRoadmapWizard } from '@/lib/db'
+import { getRoadmap, getRoadmapWizard, getRoadmapBlurb } from '@/lib/db'
 import { agruparPorNivel, metasAlcanzadas, subgrafo } from '@/lib/roadmap'
 import RoadmapSection from '@/components/RoadmapSection'
 import RoadmapRouteHeader from '@/components/roadmap/RoadmapRouteHeader'
@@ -42,7 +42,7 @@ export default async function RutaPersonalPage({ params }: { params: Params }) {
   const r = await resolver(params)
   if (!r) notFound()
 
-  const nodes = await getRoadmap()
+  const [nodes, parrafo] = await Promise.all([getRoadmap(), getRoadmapBlurb(r.o.slug, r.p.slug)])
   const { ruta, sabidos } = subgrafo(nodes, r.o.nodos, r.p.nodos)
   const porQue = metasAlcanzadas(nodes, r.o.nodos)
   const notas = Object.fromEntries(
@@ -53,7 +53,7 @@ export default async function RutaPersonalPage({ params }: { params: Params }) {
     <>
       <Navbar />
       <main className="min-h-screen bg-black text-white relative">
-        <RoadmapRouteHeader objetivo={r.o} partida={r.p} total={ruta.length} sabidos={sabidos} />
+        <RoadmapRouteHeader objetivo={r.o} partida={r.p} total={ruta.length} sabidos={sabidos} parrafo={parrafo} />
         {ruta.length === 0 ? (
           <p className="mx-auto max-w-3xl px-6 py-16 text-neutral-400">
             Con lo que ya sabés, esta ruta no tiene nodos pendientes. Probá un objetivo más amplio.

@@ -17,6 +17,7 @@ sources:
       - name: roadmap_implementation
       - name: roadmap_wizard_option
       - name: roadmap_wizard_option_node
+      - name: roadmap_route_blurb
 
 models:
   - name: stg_tools
