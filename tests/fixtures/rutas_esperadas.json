@@ -4,31 +4,31 @@
   {
    "slug": "sql",
    "nivel": 0,
-   "orden_sugerido": 0,
+   "orden_sugerido": 1,
    "prerequisitos": []
   },
   {
    "slug": "python-para-datos",
    "nivel": 0,
-   "orden_sugerido": 0,
+   "orden_sugerido": 2,
    "prerequisitos": []
   },
   {
    "slug": "git",
    "nivel": 0,
-   "orden_sugerido": 0,
+   "orden_sugerido": 3,
    "prerequisitos": []
   },
   {
    "slug": "linea-de-comandos",
    "nivel": 0,
-   "orden_sugerido": 0,
+   "orden_sugerido": 4,
    "prerequisitos": []
   },
   {
    "slug": "contenedores",
    "nivel": 0,
-   "orden_sugerido": 0,
+   "orden_sugerido": 5,
    "prerequisitos": [
     "linea-de-comandos"
    ]
@@ -36,13 +36,13 @@
   {
    "slug": "ciclo-de-vida-del-dato",
    "nivel": 1,
-   "orden_sugerido": 0,
+   "orden_sugerido": 1,
    "prerequisitos": []
   },
   {
    "slug": "batch-vs-streaming",
    "nivel": 1,
-   "orden_sugerido": 0,
+   "orden_sugerido": 2,
    "prerequisitos": [
     "ciclo-de-vida-del-dato"
    ]
@@ -50,7 +50,7 @@
   {
    "slug": "ingesta-desacoplada",
    "nivel": 2,
-   "orden_sugerido": 0,
+   "orden_sugerido": 1,
    "prerequisitos": [
     "ciclo-de-vida-del-dato",
     "python-para-datos"
@@ -59,7 +59,7 @@
   {
    "slug": "idempotencia",
    "nivel": 2,
-   "orden_sugerido": 0,
+   "orden_sugerido": 2,
    "prerequisitos": [
     "ingesta-desacoplada"
    ]
@@ -67,7 +67,7 @@
   {
    "slug": "carga-incremental",
    "nivel": 2,
-   "orden_sugerido": 0,
+   "orden_sugerido": 3,
    "prerequisitos": [
     "idempotencia"
    ]
@@ -75,7 +75,7 @@
   {
    "slug": "salud-de-fuentes",
    "nivel": 2,
-   "orden_sugerido": 0,
+   "orden_sugerido": 4,
    "prerequisitos": [
     "ingesta-desacoplada"
    ]
@@ -83,7 +83,7 @@
   {
    "slug": "zonas-y-capas",
    "nivel": 3,
-   "orden_sugerido": 0,
+   "orden_sugerido": 1,
    "prerequisitos": [
     "ingesta-desacoplada"
    ]
@@ -91,7 +91,7 @@
   {
    "slug": "particionamiento",
    "nivel": 3,
-   "orden_sugerido": 0,
+   "orden_sugerido": 2,
    "prerequisitos": [
     "zonas-y-capas"
    ]
@@ -99,7 +99,7 @@
   {
    "slug": "formatos-columnares",
    "nivel": 3,
-   "orden_sugerido": 0,
+   "orden_sugerido": 3,
    "prerequisitos": [
     "zonas-y-capas"
    ]
@@ -107,7 +107,7 @@
   {
    "slug": "table-formats",
    "nivel": 3,
-   "orden_sugerido": 0,
+   "orden_sugerido": 4,
    "prerequisitos": [
     "formatos-columnares",
     "particionamiento"
@@ -116,7 +116,7 @@
   {
    "slug": "oltp-vs-olap",
    "nivel": 4,
-   "orden_sugerido": 0,
+   "orden_sugerido": 1,
    "prerequisitos": [
     "sql",
     "formatos-columnares"
@@ -125,7 +125,7 @@
   {
    "slug": "lake-vs-warehouse-vs-lakehouse",
    "nivel": 4,
-   "orden_sugerido": 0,
+   "orden_sugerido": 2,
    "prerequisitos": [
     "oltp-vs-olap",
     "table-formats"
@@ -134,7 +134,7 @@
   {
    "slug": "modelado-dimensional",
    "nivel": 5,
-   "orden_sugerido": 0,
+   "orden_sugerido": 1,
    "prerequisitos": [
     "oltp-vs-olap"
    ]
@@ -142,7 +142,7 @@
   {
    "slug": "historizacion-scd",
    "nivel": 5,
-   "orden_sugerido": 0,
+   "orden_sugerido": 2,
    "prerequisitos": [
     "modelado-dimensional"
    ]
@@ -150,7 +150,7 @@
   {
    "slug": "elt-y-capas-de-transformacion",
    "nivel": 5,
-   "orden_sugerido": 0,
+   "orden_sugerido": 3,
    "prerequisitos": [
     "zonas-y-capas",
     "oltp-vs-olap"
@@ -159,7 +159,7 @@
   {
    "slug": "calidad-y-tests-de-datos",
    "nivel": 5,
-   "orden_sugerido": 0,
+   "orden_sugerido": 4,
    "prerequisitos": [
     "elt-y-capas-de-transformacion"
    ]
@@ -167,7 +167,7 @@
   {
    "slug": "orquestacion",
    "nivel": 6,
-   "orden_sugerido": 0,
+   "orden_sugerido": 1,
    "prerequisitos": [
     "idempotencia"
    ]
@@ -175,7 +175,7 @@
   {
    "slug": "backfill-y-reprocesamiento",
    "nivel": 6,
-   "orden_sugerido": 0,
+   "orden_sugerido": 2,
    "prerequisitos": [
     "orquestacion",
     "particionamiento"
@@ -210,7 +210,7 @@
   {
    "slug": "object-storage",
    "nivel": 10,
-   "orden_sugerido": 0,
+   "orden_sugerido": 1,
    "prerequisitos": [
     "zonas-y-capas"
    ]
@@ -218,7 +218,7 @@
   {
    "slug": "computo-serverless",
    "nivel": 10,
-   "orden_sugerido": 0,
+   "orden_sugerido": 2,
    "prerequisitos": [
     "python-para-datos"
    ]
@@ -226,7 +226,7 @@
   {
    "slug": "contenedores-gestionados",
    "nivel": 10,
-   "orden_sugerido": 0,
+   "orden_sugerido": 3,
    "prerequisitos": [
     "contenedores"
    ]
@@ -234,7 +234,7 @@
   {
    "slug": "orquestacion-gestionada",
    "nivel": 10,
-   "orden_sugerido": 0,
+   "orden_sugerido": 4,
    "prerequisitos": [
     "orquestacion"
    ]
@@ -242,7 +242,7 @@
   {
    "slug": "warehouse-gestionado",
    "nivel": 10,
-   "orden_sugerido": 0,
+   "orden_sugerido": 5,
    "prerequisitos": [
     "oltp-vs-olap"
    ]
@@ -250,7 +250,7 @@
   {
    "slug": "observabilidad",
    "nivel": 11,
-   "orden_sugerido": 0,
+   "orden_sugerido": 1,
    "prerequisitos": [
     "orquestacion",
     "salud-de-fuentes"
@@ -259,7 +259,7 @@
   {
    "slug": "costo",
    "nivel": 11,
-   "orden_sugerido": 0,
+   "orden_sugerido": 2,
    "prerequisitos": [
     "object-storage",
     "warehouse-gestionado"
@@ -268,7 +268,7 @@
   {
    "slug": "gobernanza-y-datos-personales",
    "nivel": 11,
-   "orden_sugerido": 0,
+   "orden_sugerido": 3,
    "prerequisitos": [
     "zonas-y-capas"
    ]
@@ -351,17 +351,17 @@
  "rutas": {
   "pipelines-batch/desde-cero": {
    "ruta": [
-    "git",
-    "python-para-datos",
     "sql",
+    "python-para-datos",
+    "git",
     "ciclo-de-vida-del-dato",
     "ingesta-desacoplada",
     "idempotencia",
     "carga-incremental",
     "salud-de-fuentes",
     "zonas-y-capas",
-    "formatos-columnares",
     "particionamiento",
+    "formatos-columnares",
     "oltp-vs-olap",
     "elt-y-capas-de-transformacion",
     "calidad-y-tests-de-datos",
@@ -379,8 +379,8 @@
     "carga-incremental",
     "salud-de-fuentes",
     "zonas-y-capas",
-    "formatos-columnares",
     "particionamiento",
+    "formatos-columnares",
     "oltp-vs-olap",
     "elt-y-capas-de-transformacion",
     "calidad-y-tests-de-datos",
@@ -389,9 +389,9 @@
     "observabilidad"
    ],
    "sabidos": [
-    "git",
+    "sql",
     "python-para-datos",
-    "sql"
+    "git"
    ]
   },
   "pipelines-batch/ya-muevo-datos": {
@@ -403,9 +403,9 @@
     "observabilidad"
    ],
    "sabidos": [
-    "git",
-    "python-para-datos",
     "sql",
+    "python-para-datos",
+    "git",
     "ciclo-de-vida-del-dato",
     "ingesta-desacoplada",
     "idempotencia",
@@ -419,21 +419,21 @@
   },
   "modelado-analitico/desde-cero": {
    "ruta": [
-    "git",
-    "python-para-datos",
     "sql",
+    "python-para-datos",
+    "git",
     "ciclo-de-vida-del-dato",
     "ingesta-desacoplada",
     "zonas-y-capas",
-    "formatos-columnares",
     "particionamiento",
+    "formatos-columnares",
     "table-formats",
     "oltp-vs-olap",
     "lake-vs-warehouse-vs-lakehouse",
-    "elt-y-capas-de-transformacion",
-    "calidad-y-tests-de-datos",
     "modelado-dimensional",
     "historizacion-scd",
+    "elt-y-capas-de-transformacion",
+    "calidad-y-tests-de-datos",
     "warehouse-gestionado"
    ],
    "sabidos": []
@@ -443,21 +443,21 @@
     "ciclo-de-vida-del-dato",
     "ingesta-desacoplada",
     "zonas-y-capas",
-    "formatos-columnares",
     "particionamiento",
+    "formatos-columnares",
     "table-formats",
     "oltp-vs-olap",
     "lake-vs-warehouse-vs-lakehouse",
-    "elt-y-capas-de-transformacion",
-    "calidad-y-tests-de-datos",
     "modelado-dimensional",
     "historizacion-scd",
+    "elt-y-capas-de-transformacion",
+    "calidad-y-tests-de-datos",
     "warehouse-gestionado"
    ],
    "sabidos": [
-    "git",
+    "sql",
     "python-para-datos",
-    "sql"
+    "git"
    ]
   },
   "modelado-analitico/ya-muevo-datos": {
@@ -465,15 +465,15 @@
     "particionamiento",
     "table-formats",
     "lake-vs-warehouse-vs-lakehouse",
-    "calidad-y-tests-de-datos",
     "modelado-dimensional",
     "historizacion-scd",
+    "calidad-y-tests-de-datos",
     "warehouse-gestionado"
    ],
    "sabidos": [
-    "git",
-    "python-para-datos",
     "sql",
+    "python-para-datos",
+    "git",
     "ciclo-de-vida-del-dato",
     "ingesta-desacoplada",
     "zonas-y-capas",
@@ -484,8 +484,8 @@
   },
   "streaming/desde-cero": {
    "ruta": [
-    "git",
     "python-para-datos",
+    "git",
     "ciclo-de-vida-del-dato",
     "batch-vs-streaming",
     "ingesta-desacoplada",
@@ -517,8 +517,8 @@
     "observabilidad"
    ],
    "sabidos": [
-    "git",
-    "python-para-datos"
+    "python-para-datos",
+    "git"
    ]
   },
   "streaming/ya-muevo-datos": {
@@ -532,8 +532,8 @@
     "observabilidad"
    ],
    "sabidos": [
-    "git",
     "python-para-datos",
+    "git",
     "ciclo-de-vida-del-dato",
     "ingesta-desacoplada",
     "idempotencia",
@@ -543,11 +543,11 @@
   },
   "plataforma-cloud/desde-cero": {
    "ruta": [
+    "sql",
+    "python-para-datos",
     "git",
     "linea-de-comandos",
     "contenedores",
-    "python-para-datos",
-    "sql",
     "ciclo-de-vida-del-dato",
     "ingesta-desacoplada",
     "idempotencia",
@@ -555,9 +555,9 @@
     "formatos-columnares",
     "oltp-vs-olap",
     "orquestacion",
+    "object-storage",
     "computo-serverless",
     "contenedores-gestionados",
-    "object-storage",
     "orquestacion-gestionada",
     "warehouse-gestionado",
     "costo",
@@ -575,37 +575,37 @@
     "formatos-columnares",
     "oltp-vs-olap",
     "orquestacion",
+    "object-storage",
     "computo-serverless",
     "contenedores-gestionados",
-    "object-storage",
     "orquestacion-gestionada",
     "warehouse-gestionado",
     "costo",
     "gobernanza-y-datos-personales"
    ],
    "sabidos": [
-    "git",
-    "linea-de-comandos",
+    "sql",
     "python-para-datos",
-    "sql"
+    "git",
+    "linea-de-comandos"
    ]
   },
   "plataforma-cloud/ya-muevo-datos": {
    "ruta": [
+    "object-storage",
     "computo-serverless",
     "contenedores-gestionados",
-    "object-storage",
     "orquestacion-gestionada",
     "warehouse-gestionado",
     "costo",
     "gobernanza-y-datos-personales"
    ],
    "sabidos": [
+    "sql",
+    "python-para-datos",
     "git",
     "linea-de-comandos",
     "contenedores",
-    "python-para-datos",
-    "sql",
     "ciclo-de-vida-del-dato",
     "ingesta-desacoplada",
     "idempotencia",
@@ -617,11 +617,11 @@
   },
   "ruta-completa/desde-cero": {
    "ruta": [
+    "sql",
+    "python-para-datos",
     "git",
     "linea-de-comandos",
     "contenedores",
-    "python-para-datos",
-    "sql",
     "ciclo-de-vida-del-dato",
     "batch-vs-streaming",
     "ingesta-desacoplada",
@@ -629,28 +629,28 @@
     "carga-incremental",
     "salud-de-fuentes",
     "zonas-y-capas",
-    "formatos-columnares",
     "particionamiento",
+    "formatos-columnares",
     "table-formats",
     "oltp-vs-olap",
     "lake-vs-warehouse-vs-lakehouse",
-    "elt-y-capas-de-transformacion",
-    "calidad-y-tests-de-datos",
     "modelado-dimensional",
     "historizacion-scd",
+    "elt-y-capas-de-transformacion",
+    "calidad-y-tests-de-datos",
     "orquestacion",
     "backfill-y-reprocesamiento",
     "mensajeria-y-logs-de-eventos",
     "garantias-de-entrega",
     "procesamiento-distribuido",
+    "object-storage",
     "computo-serverless",
     "contenedores-gestionados",
-    "object-storage",
     "orquestacion-gestionada",
     "warehouse-gestionado",
+    "observabilidad",
     "costo",
-    "gobernanza-y-datos-personales",
-    "observabilidad"
+    "gobernanza-y-datos-personales"
    ],
    "sabidos": []
   },
@@ -664,34 +664,34 @@
     "carga-incremental",
     "salud-de-fuentes",
     "zonas-y-capas",
-    "formatos-columnares",
     "particionamiento",
+    "formatos-columnares",
     "table-formats",
     "oltp-vs-olap",
     "lake-vs-warehouse-vs-lakehouse",
-    "elt-y-capas-de-transformacion",
-    "calidad-y-tests-de-datos",
     "modelado-dimensional",
     "historizacion-scd",
+    "elt-y-capas-de-transformacion",
+    "calidad-y-tests-de-datos",
     "orquestacion",
     "backfill-y-reprocesamiento",
     "mensajeria-y-logs-de-eventos",
     "garantias-de-entrega",
     "procesamiento-distribuido",
+    "object-storage",
     "computo-serverless",
     "contenedores-gestionados",
-    "object-storage",
     "orquestacion-gestionada",
     "warehouse-gestionado",
+    "observabilidad",
     "costo",
-    "gobernanza-y-datos-personales",
-    "observabilidad"
+    "gobernanza-y-datos-personales"
    ],
    "sabidos": [
-    "git",
-    "linea-de-comandos",
+    "sql",
     "python-para-datos",
-    "sql"
+    "git",
+    "linea-de-comandos"
    ]
   },
   "ruta-completa/ya-muevo-datos": {
@@ -701,28 +701,28 @@
     "particionamiento",
     "table-formats",
     "lake-vs-warehouse-vs-lakehouse",
-    "calidad-y-tests-de-datos",
     "modelado-dimensional",
     "historizacion-scd",
+    "calidad-y-tests-de-datos",
     "backfill-y-reprocesamiento",
     "mensajeria-y-logs-de-eventos",
     "garantias-de-entrega",
     "procesamiento-distribuido",
+    "object-storage",
     "computo-serverless",
     "contenedores-gestionados",
-    "object-storage",
     "orquestacion-gestionada",
     "warehouse-gestionado",
+    "observabilidad",
     "costo",
-    "gobernanza-y-datos-personales",
-    "observabilidad"
+    "gobernanza-y-datos-personales"
    ],
    "sabidos": [
+    "sql",
+    "python-para-datos",
     "git",
     "linea-de-comandos",
     "contenedores",
-    "python-para-datos",
-    "sql",
     "ciclo-de-vida-del-dato",
     "ingesta-desacoplada",
     "idempotencia",

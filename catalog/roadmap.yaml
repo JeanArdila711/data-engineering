@@ -13,6 +13,7 @@ nodes:
     tipo: herramienta
     nombre: SQL
     nivel: 0
+    orden_sugerido: 1
     resuelve: >
       Es el lenguaje en el que se hacen las preguntas a los datos. Todo lo
       demás de la ruta asume que ya podés expresar un join, una agregación
@@ -41,6 +42,7 @@ nodes:
     tipo: herramienta
     nombre: Python para datos
     nivel: 0
+    orden_sugerido: 2
     resuelve: >
       Es el pegamento del pipeline: pedirle datos a una API, normalizarlos,
       escribirlos a una base y fallar de forma legible cuando algo no sale.
@@ -74,6 +76,7 @@ nodes:
     tipo: herramienta
     nombre: Git
     nivel: 0
+    orden_sugerido: 3
     resuelve: >
       El historial del proyecto también es dato: qué cambió, cuándo y por
       qué. En un pipeline pesa doble, porque la configuración —el catálogo,
@@ -100,6 +103,7 @@ nodes:
     tipo: herramienta
     nombre: Línea de comandos
     nivel: 0
+    orden_sugerido: 4
     resuelve: >
       Casi todo lo que corre un pipeline vive detrás de una shell: variables
       de entorno, códigos de salida, tuberías, cron. Sin esto no podés leer
@@ -119,6 +123,7 @@ nodes:
     tipo: herramienta
     nombre: Contenedores
     nivel: 0
+    orden_sugerido: 5
     prerequisitos: [linea-de-comandos]
     resuelve: >
       Empaquetar el entorno junto con el código para que "en mi máquina
@@ -139,6 +144,7 @@ nodes:
     tipo: concepto
     nombre: Ciclo de vida del dato
     nivel: 1
+    orden_sugerido: 1
     resuelve: >
       El mapa del oficio: generación, almacenamiento, ingesta, transformación
       y servido, cruzados por corrientes que aparecen en todas las etapas
@@ -156,6 +162,7 @@ nodes:
     tipo: concepto
     nombre: Batch y streaming
     nivel: 1
+    orden_sugerido: 2
     prerequisitos: [ciclo-de-vida-del-dato]
     resuelve: >
       Procesar en lotes acotados o evento por evento a medida que llegan. La
@@ -181,6 +188,7 @@ nodes:
     tipo: concepto
     nombre: Ingesta desacoplada
     nivel: 2
+    orden_sugerido: 1
     prerequisitos: [ciclo-de-vida-del-dato, python-para-datos]
     resuelve: >
       El worker no sabe qué fuentes existen: recibe una configuración y la
@@ -211,6 +219,7 @@ nodes:
     tipo: concepto
     nombre: Idempotencia
     nivel: 2
+    orden_sugerido: 2
     prerequisitos: [ingesta-desacoplada]
     resuelve: >
       Correr el mismo proceso dos veces tiene que dejar el mismo estado.
@@ -238,6 +247,7 @@ nodes:
     tipo: concepto
     nombre: Carga incremental
     nivel: 2
+    orden_sugerido: 3
     prerequisitos: [idempotencia]
     resuelve: >
       Traer solo lo que cambió desde la última corrida en vez de recargar
@@ -272,6 +282,7 @@ nodes:
     tipo: concepto
     nombre: Salud de fuentes
     nivel: 2
+    orden_sugerido: 4
     prerequisitos: [ingesta-desacoplada]
     resuelve: >
       Una fuente externa se cae, cambia de formato o responde 200 con basura.
@@ -298,6 +309,7 @@ nodes:
     tipo: concepto
     nombre: Zonas y capas
     nivel: 3
+    orden_sugerido: 1
     prerequisitos: [ingesta-desacoplada]
     resuelve: >
       Guardar la respuesta cruda antes de tocarla y separar las capas por lo
@@ -327,6 +339,7 @@ nodes:
     tipo: concepto
     nombre: Particionamiento
     nivel: 3
+    orden_sugerido: 2
     prerequisitos: [zonas-y-capas]
     resuelve: >
       Partir el dato por una columna para no escanearlo entero en cada
@@ -355,6 +368,7 @@ nodes:
     tipo: concepto
     nombre: Formatos columnares
     nivel: 3
+    orden_sugerido: 3
     prerequisitos: [zonas-y-capas]
     resuelve: >
       Guardar por columna en vez de por fila. Una consulta que pide tres
@@ -378,6 +392,7 @@ nodes:
     tipo: concepto
     nombre: Formatos de tabla
     nivel: 3
+    orden_sugerido: 4
     prerequisitos: [formatos-columnares, particionamiento]
     resuelve: >
       Una capa de metadatos sobre archivos columnares que agrega lo que un
@@ -401,6 +416,7 @@ nodes:
     tipo: concepto
     nombre: OLTP y OLAP
     nivel: 4
+    orden_sugerido: 1
     prerequisitos: [sql, formatos-columnares]
     resuelve: >
       Dos formas de organizar el mismo dato para cargas opuestas: muchas
@@ -431,6 +447,7 @@ nodes:
     tipo: concepto
     nombre: Lake, warehouse y lakehouse
     nivel: 4
+    orden_sugerido: 2
     prerequisitos: [oltp-vs-olap, table-formats]
     resuelve: >
       Tres formas de ubicar el almacenamiento analítico: archivos sobre object
@@ -450,6 +467,7 @@ nodes:
     tipo: concepto
     nombre: Modelado dimensional
     nivel: 5
+    orden_sugerido: 1
     prerequisitos: [oltp-vs-olap]
     resuelve: >
       Separar hechos —lo que pasó, medible, con un grano declarado— de
@@ -482,6 +500,7 @@ nodes:
     tipo: concepto
     nombre: Historización (SCD)
     nivel: 5
+    orden_sugerido: 2
     prerequisitos: [modelado-dimensional]
     resuelve: >
       Los atributos de una dimensión cambian. Sobrescribirlos pierde la
@@ -511,6 +530,7 @@ nodes:
     tipo: concepto
     nombre: ELT y capas de transformación
     nivel: 5
+    orden_sugerido: 3
     prerequisitos: [zonas-y-capas, oltp-vs-olap]
     resuelve: >
       Cargar primero y transformar adentro del almacén, en capas con
@@ -541,6 +561,7 @@ nodes:
     tipo: concepto
     nombre: Calidad y tests de datos
     nivel: 5
+    orden_sugerido: 4
     prerequisitos: [elt-y-capas-de-transformacion]
     resuelve: >
       Chequeos que corren con el pipeline y no en la cabeza de alguien: no
@@ -575,6 +596,7 @@ nodes:
     tipo: concepto
     nombre: Orquestación
     nivel: 6
+    orden_sugerido: 1
     prerequisitos: [idempotencia]
     resuelve: >
       Decidir qué corre, cuándo, en qué orden y qué pasa cuando algo falla,
@@ -610,6 +632,7 @@ nodes:
     tipo: concepto
     nombre: Backfill y reprocesamiento
     nivel: 6
+    orden_sugerido: 2
     prerequisitos: [orquestacion, particionamiento]
     resuelve: >
       Volver a correr el pasado: para llenar un hueco de historia que nunca se
@@ -704,6 +727,7 @@ nodes:
     tipo: capacidad-cloud
     nombre: Object storage
     nivel: 10
+    orden_sugerido: 1
     prerequisitos: [zonas-y-capas]
     resuelve: >
       Almacenamiento de objetos por clave, barato y prácticamente sin límite,
@@ -734,6 +758,7 @@ nodes:
     tipo: capacidad-cloud
     nombre: Cómputo serverless
     nivel: 10
+    orden_sugerido: 2
     prerequisitos: [python-para-datos]
     resuelve: >
       Correr una función sin administrar el servidor: el proveedor arranca el
@@ -762,6 +787,7 @@ nodes:
     tipo: capacidad-cloud
     nombre: Contenedores gestionados
     nivel: 10
+    orden_sugerido: 3
     prerequisitos: [contenedores]
     resuelve: >
       Kubernetes operado por el proveedor. La plataforma es la misma en las
@@ -793,6 +819,7 @@ nodes:
     tipo: capacidad-cloud
     nombre: Orquestación gestionada
     nivel: 10
+    orden_sugerido: 4
     prerequisitos: [orquestacion]
     resuelve: >
       Airflow operado por el proveedor: el mismo DAG y la misma API, con el
@@ -827,6 +854,7 @@ nodes:
     tipo: capacidad-cloud
     nombre: Warehouse gestionado
     nivel: 10
+    orden_sugerido: 5
     prerequisitos: [oltp-vs-olap]
     resuelve: >
       Un almacén analítico operado por el proveedor: escala y mantenimiento
@@ -863,6 +891,7 @@ nodes:
     tipo: concepto
     nombre: Observabilidad
     nivel: 11
+    orden_sugerido: 1
     prerequisitos: [orquestacion, salud-de-fuentes]
     resuelve: >
       Saber qué hizo el pipeline sin volver a correrlo: logs con contexto,
@@ -895,6 +924,7 @@ nodes:
     tipo: concepto
     nombre: Costo
     nivel: 11
+    orden_sugerido: 2
     prerequisitos: [object-storage, warehouse-gestionado]
     resuelve: >
       En la nube cada decisión de diseño tiene precio: cuánto escanea una
@@ -925,6 +955,7 @@ nodes:
     tipo: concepto
     nombre: Gobernanza y datos personales
     nivel: 11
+    orden_sugerido: 3
     prerequisitos: [zonas-y-capas]
     resuelve: >
       Quién puede ver qué, cuánto tiempo se guarda y qué pasa cuando alguien
