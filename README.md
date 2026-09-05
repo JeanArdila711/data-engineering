@@ -22,6 +22,8 @@ Todos los días, sin intervención humana:
 
 El resultado se sirve en cuatro vistas: **Changelog** (línea de tiempo de releases), **Ecosistema** (estado acumulado por herramienta), **Artículos** (deep-dives técnicos, bilingüe EN/ES) y **Digest** (actividad de los últimos 7 días).
 
+El mismo repo también aloja **Rumbo** (`/ruta`), una ruta de aprendizaje de Data Engineering construida sobre ese mismo pipeline — ver la sección dedicada más abajo.
+
 ## Arquitectura
 
 ```mermaid
@@ -75,12 +77,27 @@ flowchart LR
 | **Tests contra Postgres real, no mocks** | `tests/conftest.py` levanta un schema real y corre las migraciones reales en cada test. Los bugs de integración (JSON inválido de Gemini, un feed dado de baja) solo aparecen así. |
 | **Versión mostrada ≠ versión de dedup** | `fct_release` guarda el tag crudo (`raw_version`) además del semver normalizado — una herramienta que no usa semver (Trino tagea `483`, no `483.0.0`) se muestra tal cual la fuente la publicó, no forzada a una forma que miente. |
 
+## Rumbo — ruta de aprendizaje de Data Engineering
+
+**[/ruta](https://web-roan-seven-27.vercel.app/ruta)** — el concepto es el nodo del grafo; las herramientas son formas de practicarlo, no el temario. La estructura sigue el ciclo de vida del dato (Reis & Housley), no la secuencia de ningún curso. 34 nodos curados a mano, la mayoría con un caso real de producción documentado (`lo_vi_romperse`) en vez de teoría genérica.
+
+Cuatro fases, cada una desplegable y verificable sola:
+
+| Fase | Qué agrega |
+|---|---|
+| **1 — Grafo navegable** | `catalog/roadmap.yaml` validado (ciclos, prerequisitos, huérfanos) y sincronizado a Postgres; orden topológico determinístico; datos vivos del pipeline (versión y actividad) unidos a cada nodo por `tool_slug`. |
+| **2 — Ruta personalizada** | Wizard de dos preguntas (objetivo, punto de partida) que mapean a clausura de prerequisitos sobre el grafo — nunca a un LLM. URL legible y compartible (`/ruta/<objetivo>/<partida>`), sin hash. |
+| **3 — Ruta inversa y filtro por stack** | *"Ya sé X, Y, Z — ¿qué me falta?"* vía `?ya=` en la URL: la frontera alcanzable se deriva en el cliente sobre el subgrafo ya renderizado, sin queries nuevas. Filtro de proveedor cloud (`?cloud=`) que reordena implementaciones sin ocultar ni cambiar la ruta. |
+| **4 — Párrafo anclado por LLM y progreso local** | Un párrafo de "por qué este orden" por cada una de las 15 combinaciones del wizard, redactado por el pipeline (nunca por la web) y anclado: el código rechaza y descarta cualquier texto que nombre un nodo fuera de la ruta. Se genera una vez por versión del grafo, cacheado por hash — cero llamadas al LLM en una corrida sin cambios. Progreso marcado por el usuario persistido en `localStorage`, sin pisar nunca un link compartido. |
+
+Mismas garantías que el resto del repo: `derivar_ruta` vive en Python y en TypeScript a la vez, atadas por un fixture dorado que falla si dejan de coincidir; el LLM nunca decide qué nodos entran a una ruta ni en qué orden — solo redacta sobre una lista ya cerrada.
+
 ## Stack
 
 | Capa | Tecnología |
 |---|---|
 | Ingesta (E+L) | Python 3.12, psycopg3, Pydantic, `uv` |
-| LLM | Gemini (`google-genai`) — resumen anclado, traducción, descubrimiento |
+| LLM | Gemini (`google-genai`) — resumen anclado, traducción, descubrimiento, párrafo anclado de Rumbo |
 | Transformación (T) | dbt-core 1.12.3 (`raw → staging → marts`) |
 | Almacenamiento | Postgres (Neon) |
 | Orquestación | GitHub Actions, cron diario |
@@ -97,6 +114,7 @@ uv sync
 uv run python -m pipeline.run           # releases (aplica migraciones)
 uv run python -m pipeline.run_articles  # artículos
 uv run python -m pipeline.alerts        # salud de fuentes + candidatos
+uv run python -m pipeline.run_roadmap   # Rumbo: sincroniza el grafo + párrafos por LLM
 
 cd transform && uv run dbt run && uv run dbt test
 
@@ -115,19 +133,25 @@ Sin mocks de base de datos: cada test corre las migraciones reales contra un sch
 ## Estructura
 
 ```
-pipeline/           # ingesta, dedup, scoring, LLM, salud de fuentes
-  sources/          # adaptadores GitHub / RSS
-transform/          # dbt: staging → marts
-migrations/         # DDL versionado, aplicado por el propio pipeline
-catalog/tools.yaml  # qué herramientas se rastrean — dato, no código
-web/                # Next.js, solo lectura sobre los marts
-tests/              # contra Postgres real, sin mocks
-.github/workflows/  # cron diario: ingesta → dbt → revalidar → alertas
+pipeline/             # ingesta, dedup, scoring, LLM, salud de fuentes
+  sources/            # adaptadores GitHub / RSS
+  roadmap.py          # grafo de Rumbo: validación, orden topológico, derivación de rutas
+  blurbs.py           # párrafo anclado por LLM de cada ruta de Rumbo
+transform/            # dbt: staging → marts (incluye los marts de Rumbo)
+migrations/           # DDL versionado, aplicado por el propio pipeline
+catalog/tools.yaml    # qué herramientas se rastrean — dato, no código
+catalog/roadmap.yaml  # el grafo de Rumbo — dato, no código
+web/                  # Next.js, solo lectura sobre los marts
+  app/ruta/           # Rumbo: grafo, wizard, rutas personalizadas
+tests/                # contra Postgres real, sin mocks
+.github/workflows/    # cron diario: ingesta → dbt → revalidar → alertas
 ```
 
 ## Estado
 
-Cuatro fases implementadas y desplegadas: changelog de releases, artículos con validación de anclaje y traducción, digest + mapa del ecosistema, y descubrimiento automático + salud de fuentes. Corriendo en producción contra datos reales — 10 herramientas rastreadas, más de mil releases indexados.
+**DE Radar:** cuatro fases implementadas y desplegadas — changelog de releases, artículos con validación de anclaje y traducción, digest + mapa del ecosistema, y descubrimiento automático + salud de fuentes. Corriendo en producción contra datos reales — 10 herramientas rastreadas, más de mil releases indexados.
+
+**Rumbo:** cuatro fases implementadas y desplegadas — grafo navegable, ruta personalizada por wizard, ruta inversa con filtro por stack, y párrafo anclado por LLM con progreso local. 34 nodos curados, 15 combinaciones de ruta generadas y verificadas en producción.
 
 ---
 
