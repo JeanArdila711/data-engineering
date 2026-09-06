@@ -102,11 +102,10 @@ export default function StreamingStudio() {
           onClick={handleTriggerSpike}
           disabled={isSpiking}
           size="sm"
-          variant={isSpiking ? 'rose' : 'violet'}
           hideArrow
-          className="text-[11px] font-mono py-1 px-3"
+          className="text-[11px] font-mono py-1 px-3 shadow-[0_0_20px_rgba(255,255,255,0.12)]"
         >
-          <Zap size={12} className={isSpiking ? 'text-white animate-bounce shrink-0' : 'fill-current shrink-0'} />
+          <Zap size={12} className={isSpiking ? 'text-neutral-950 animate-bounce shrink-0' : 'fill-current shrink-0'} />
           <span>{isSpiking ? 'Drenando Backpressure...' : 'Inyectar Spike de Tráfico'}</span>
         </RevealButton>
       </div>

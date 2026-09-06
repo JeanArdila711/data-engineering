@@ -187,9 +187,8 @@ export default function BatchPipelineStudio() {
           onClick={handleTriggerDagRun}
           disabled={isRunning}
           size="sm"
-          variant="amber"
           hideArrow
-          className="text-[11px] font-mono py-1 px-3"
+          className="text-[11px] font-mono py-1 px-3 shadow-[0_0_20px_rgba(255,255,255,0.12)]"
         >
           {isRunning ? (
             <>

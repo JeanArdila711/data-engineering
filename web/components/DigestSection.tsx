@@ -326,8 +326,7 @@ function DigestCard({ entry, lang, isLead = false }: DigestCardProps) {
         <RevealButton
           onClick={handleOpenToolModal}
           size="sm"
-          variant={hasBreaking ? 'rose' : 'emerald'}
-          className="text-[11px] px-3 py-1.5"
+          className="text-[11px] px-3 py-1.5 shadow-[0_0_20px_rgba(255,255,255,0.12)]"
         >
           Ver en Radar
         </RevealButton>

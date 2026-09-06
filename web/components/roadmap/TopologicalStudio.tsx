@@ -122,9 +122,8 @@ export default function TopologicalStudio() {
           onClick={handleRunKahnSort}
           disabled={isRunningKahn}
           size="sm"
-          variant="gradient"
           hideArrow
-          className="text-[11px] font-mono py-1 px-3"
+          className="text-[11px] font-mono py-1 px-3 shadow-[0_0_20px_rgba(255,255,255,0.12)]"
         >
           {isRunningKahn ? (
             <>
