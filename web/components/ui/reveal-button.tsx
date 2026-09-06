@@ -13,6 +13,8 @@ interface RevealButtonProps {
   size?: 'sm' | 'md' | 'lg';
   type?: 'button' | 'submit' | 'reset';
   disabled?: boolean;
+  variant?: 'default' | 'amber' | 'violet' | 'emerald' | 'rose' | 'gradient';
+  hideArrow?: boolean;
 }
 
 export function RevealButton({
@@ -23,6 +25,8 @@ export function RevealButton({
   size = 'sm',
   type = 'button',
   disabled = false,
+  variant = 'default',
+  hideArrow = false,
 }: RevealButtonProps) {
   const containerRef = useRef<HTMLSpanElement>(null);
 
@@ -68,6 +72,25 @@ export function RevealButton({
 
   const iconSize = size === 'sm' ? 13 : size === 'lg' ? 17 : 14;
 
+  const variantClasses = {
+    default:
+      'bg-white text-neutral-950 border-white/60 shadow-[0_0_20px_rgba(255,255,255,0.16),inset_0_1px_0_0_rgba(255,255,255,1)] hover:shadow-[0_0_32px_rgba(255,255,255,0.32),inset_0_1px_0_0_rgba(255,255,255,1)]',
+    amber:
+      'bg-amber-400 text-neutral-950 border-amber-300 shadow-[0_0_20px_rgba(245,158,11,0.25),inset_0_1px_0_0_rgba(255,255,255,0.7)] hover:shadow-[0_0_32px_rgba(245,158,11,0.45),inset_0_1px_0_0_rgba(255,255,255,0.9)]',
+    violet:
+      'bg-violet-500 text-white border-violet-300 shadow-[0_0_20px_rgba(139,92,246,0.3),inset_0_1px_0_0_rgba(255,255,255,0.4)] hover:shadow-[0_0_32px_rgba(139,92,246,0.5),inset_0_1px_0_0_rgba(255,255,255,0.6)]',
+    emerald:
+      'bg-emerald-500 text-neutral-950 border-emerald-300 shadow-[0_0_20px_rgba(16,185,129,0.3),inset_0_1px_0_0_rgba(255,255,255,0.7)] hover:shadow-[0_0_32px_rgba(16,185,129,0.5),inset_0_1px_0_0_rgba(255,255,255,0.9)]',
+    rose:
+      'bg-rose-500 text-white border-rose-300 shadow-[0_0_20px_rgba(244,63,94,0.3),inset_0_1px_0_0_rgba(255,255,255,0.4)] hover:shadow-[0_0_32px_rgba(244,63,94,0.5),inset_0_1px_0_0_rgba(255,255,255,0.6)]',
+    gradient:
+      'bg-gradient-to-r from-cyan-400 via-emerald-400 to-amber-400 text-neutral-950 border-white/60 shadow-[0_0_20px_rgba(52,211,153,0.35),inset_0_1px_0_0_rgba(255,255,255,0.8)] hover:shadow-[0_0_32px_rgba(52,211,153,0.55),inset_0_1px_0_0_rgba(255,255,255,1)]',
+  }[variant] || 'bg-white text-neutral-950 border-white/60';
+
+  const disabledClasses = disabled
+    ? 'opacity-60 cursor-not-allowed pointer-events-none'
+    : 'cursor-pointer';
+
   const content = (
     <motion.span
       ref={containerRef}
@@ -77,9 +100,9 @@ export function RevealButton({
         x: magneticX,
         y: magneticY,
       }}
-      whileTap={{ scale: 0.94 }}
+      whileTap={{ scale: disabled ? 1 : 0.94 }}
       transition={{ type: 'spring', stiffness: 500, damping: 25 }}
-      className={`group relative inline-flex items-center justify-center rounded-full font-semibold overflow-hidden bg-white text-neutral-950 border border-white/60 shadow-[0_0_20px_rgba(255,255,255,0.16),inset_0_1px_0_0_rgba(255,255,255,1)] hover:shadow-[0_0_32px_rgba(255,255,255,0.32),inset_0_1px_0_0_rgba(255,255,255,1)] transition-shadow duration-300 cursor-pointer select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2 focus-visible:ring-offset-black ${sizeClasses} ${className}`}
+      className={`group relative inline-flex items-center justify-center rounded-full font-semibold overflow-hidden border transition-shadow duration-300 select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2 focus-visible:ring-offset-black ${variantClasses} ${disabledClasses} ${sizeClasses} ${className}`}
     >
       {/* Dynamic Top Border Spotlight Tracker (agent-10) */}
       <motion.span
@@ -97,25 +120,27 @@ export function RevealButton({
       />
 
       {/* High-Contrast Stable Text */}
-      <span className="relative z-20 font-medium tracking-tight">
+      <span className="relative z-20 font-medium tracking-tight flex items-center gap-1.5">
         {children}
       </span>
 
       {/* Infinite Arrow Loop Reveal (Stripe / Vercel pattern) */}
-      <span className="relative z-20 overflow-hidden flex items-center justify-center size-3.5">
-        {/* Primary Arrow: Exits to the right */}
-        <ArrowRight 
-          size={iconSize}
-          strokeWidth={2}
-          className="absolute inset-0 transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)] group-hover:translate-x-full group-hover:opacity-0" 
-        />
-        {/* Secondary Arrow: Enters seamlessly from the left */}
-        <ArrowRight 
-          size={iconSize}
-          strokeWidth={2}
-          className="absolute inset-0 -translate-x-full opacity-0 transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)] group-hover:translate-x-0 group-hover:opacity-100 text-neutral-950" 
-        />
-      </span>
+      {!hideArrow && (
+        <span className="relative z-20 overflow-hidden flex items-center justify-center size-3.5">
+          {/* Primary Arrow: Exits to the right */}
+          <ArrowRight 
+            size={iconSize}
+            strokeWidth={2}
+            className="absolute inset-0 transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)] group-hover:translate-x-full group-hover:opacity-0" 
+          />
+          {/* Secondary Arrow: Enters seamlessly from the left */}
+          <ArrowRight 
+            size={iconSize}
+            strokeWidth={2}
+            className="absolute inset-0 -translate-x-full opacity-0 transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)] group-hover:translate-x-0 group-hover:opacity-100 text-current" 
+          />
+        </span>
+      )}
     </motion.span>
   );
 
