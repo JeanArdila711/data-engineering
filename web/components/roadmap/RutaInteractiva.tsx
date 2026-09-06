@@ -76,7 +76,7 @@ export default function RutaInteractiva({ ruta, sabidosBase = [], notas = {}, en
   return (
     <>
       {ofrecerGuardados && (
-        <div className="mx-auto max-w-6xl px-4 sm:px-6 pt-8">
+        <div className="mx-auto max-w-[1440px] px-4 sm:px-6 lg:px-8 pt-8">
           <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-neutral-800 bg-neutral-950/70 px-4 py-3 text-xs font-mono">
             <span className="inline-flex items-center gap-2 text-neutral-300">
               <History size={14} className="text-emerald-400" />
@@ -102,7 +102,7 @@ export default function RutaInteractiva({ ruta, sabidosBase = [], notas = {}, en
           </div>
         </div>
       )}
-      <div className="mx-auto max-w-6xl px-4 sm:px-6 pt-8 flex flex-wrap items-center justify-between gap-3 text-xs font-mono">
+      <div className="mx-auto max-w-[1440px] px-4 sm:px-6 lg:px-8 pt-8 flex flex-wrap items-center justify-between gap-3 text-xs font-mono">
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-neutral-400">
           <span className="text-emerald-400 font-semibold">{pendientes.length} pendientes</span>
           <span className="inline-flex items-center gap-1.5">
@@ -128,7 +128,7 @@ export default function RutaInteractiva({ ruta, sabidosBase = [], notas = {}, en
       </div>
 
       {pendientes.length === 0 ? (
-        <p className="mx-auto max-w-6xl px-4 sm:px-6 py-16 text-neutral-400">
+        <p className="mx-auto max-w-[1440px] px-4 sm:px-6 lg:px-8 py-16 text-neutral-400">
           Con lo que marcaste, esta ruta no tiene nodos pendientes.
         </p>
       ) : (

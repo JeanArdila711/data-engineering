@@ -115,7 +115,7 @@ export default function RoadmapSection({
   const incidentCount = useMemo(() => allNodes.filter(n => n.experiencia_texto).length, [allNodes]);
 
   return (
-    <section id="rumbo" className="mx-auto max-w-6xl px-4 sm:px-6 py-16">
+    <section id="rumbo" className="mx-auto max-w-[1440px] px-4 sm:px-6 lg:px-8 py-16">
       
       {/* Encabezado Principal */}
       {encabezado && (
