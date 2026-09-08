@@ -1,0 +1,348 @@
+# Jerga granular de Data Engineering que Rumbo no cubre a propósito (decisión
+# 8 de Rumbo: la poda deja afuera términos sin peso pedagógico propio). Cada
+# uno pasa los dos filtros de la regla de curación: evidencia de uso real y
+# fuente primaria verificada. Ver docs/superpowers/specs/2026-09-05-glosario-design.md.
+
+terminos:
+  - slug: xcom
+    termino: XCom
+    nivel: 6
+    nodo_relacionado: orquestacion
+    definicion: >
+      El mecanismo de Airflow para pasar valores chicos entre tareas de un
+      mismo DAG. Se identifica por clave, task_id y dag_id, y se guarda en la
+      base de metadatos del orquestador — no está pensado para mover datos:
+      la documentación es explícita en que no hay que usarlo para dataframes
+      ni valores grandes.
+    fuentes:
+      - url: https://airflow.apache.org/docs/apache-airflow/stable/core-concepts/xcoms.html
+        por_que: la documentación oficial es explícita sobre el límite de tamaño y por qué existe
+    uso_texto: >
+      No se usó en este proyecto: la orquestación es GitHub Actions, sin
+      concepto de XCom, y el paso de estado entre pasos del pipeline es
+      Postgres, no el orquestador.
+
+  - slug: sensor-vs-operator
+    termino: Sensor vs. Operator
+    nivel: 6
+    nodo_relacionado: orquestacion
+    definicion: >
+      En Airflow, un Operator ejecuta una acción; un Sensor solo espera a que
+      algo pase y recién ahí deja correr a las tareas siguientes. Un Sensor
+      puede ocupar un worker todo el tiempo que espera (modo poke) o liberarlo
+      entre chequeos (modo reschedule) — la diferencia importa para no gastar
+      capacidad de cómputo esperando.
+    fuentes:
+      - url: https://airflow.apache.org/docs/apache-airflow/stable/core-concepts/sensors.html
+        por_que: documentación oficial de Airflow sobre los dos modos de espera y su costo de recursos
+    uso_texto: >
+      No se usó: el pipeline no espera eventos externos, corre una vez por
+      cron. El análogo más cercano es is_degraded en sources, que se
+      consulta, no se espera.
+
+  - slug: generacion-dinamica-de-dags
+    termino: Generación dinámica de DAGs (DAG Factory)
+    nivel: 6
+    nodo_relacionado: orquestacion
+    definicion: >
+      Generar varios DAGs desde una configuración central en vez de escribir
+      cada uno a mano — en la comunidad de Airflow se lo conoce como "DAG
+      Factory". La documentación oficial recomienda variables de entorno o
+      archivos de configuración (JSON/YAML) en la carpeta de DAGs en vez de
+      leer Airflow Variables en cada parseo, porque eso golpea la base de
+      metadatos en cada ciclo del scheduler.
+    fuentes:
+      - url: https://airflow.apache.org/docs/apache-airflow/stable/howto/dynamic-dag-generation.html
+        por_que: guía oficial de Airflow sobre generación dinámica y sus trade-offs de performance
+    uso_texto: >
+      Es el mismo patrón que sigue este proyecto fuera de Airflow: el worker
+      no conoce las herramientas, catalog/tools.yaml es la configuración que
+      decide qué se ingiere (decisión 7 de DE Radar).
+    uso_link: https://github.com/JeanArdila711/data-engineering/blob/main/README.md#decisiones-de-diseño-que-vale-la-pena-señalar
+
+  - slug: broadcast-join
+    termino: Broadcast join
+    nivel: 9
+    nodo_relacionado: procesamiento-distribuido
+    definicion: >
+      Un join en el que Spark envía la tabla más chica entera a todos los
+      nodos, en vez de repartir (shuffle) las dos tablas grandes por la red.
+      Se activa cuando el tamaño de la tabla chica está bajo un umbral
+      configurable (10 MB por defecto).
+    fuentes:
+      - url: https://spark.apache.org/docs/latest/sql-performance-tuning.html
+        por_que: documentación oficial de Spark con el umbral exacto y el hint SQL para forzarlo
+    uso_texto: >
+      No se usó: el proyecto no corre Spark. Con 10 herramientas y Postgres
+      como único almacén, ningún join necesita evitar un shuffle distribuido.
+
+  - slug: predicate-pushdown
+    termino: Predicate pushdown
+    nivel: 3
+    nodo_relacionado: formatos-columnares
+    definicion: >
+      Empujar el filtro de una consulta hasta el lector del archivo columnar,
+      para descartar filas y row groups enteros antes de traerlos a memoria,
+      en vez de leer todo y filtrar después. En Spark sobre Parquet está
+      activado por defecto desde la versión 1.2.
+    fuentes:
+      - url: https://spark.apache.org/docs/latest/sql-data-sources-parquet.html
+        por_que: documentación oficial de Spark, con el nombre exacto del flag y desde qué versión está activo
+    uso_texto: >
+      No se usó directamente (el proyecto no escribe Parquet). El filtro
+      determinista de la decisión 15 de DE Radar cumple un rol parecido en
+      otro punto del pipeline: descartar antes de gastar el recurso caro
+      (ahí, el LLM; acá, la lectura de disco).
+
+  - slug: manifest-file
+    termino: Manifest file
+    nivel: 3
+    nodo_relacionado: table-formats
+    definicion: >
+      En Iceberg, un archivo (Avro) que lista un subconjunto de los data
+      files de un snapshot, con estadísticas por columna (conteos, nulos,
+      rangos de valores) que el motor de consultas usa para descartar
+      archivos enteros sin abrirlos. Un manifest list, un nivel arriba,
+      agrupa los manifests que forman un snapshot.
+    fuentes:
+      - url: https://iceberg.apache.org/spec/
+        por_que: la especificación es la fuente primaria de qué guarda un manifest y cómo se arma el árbol de metadatos
+    uso_texto: >
+      No se usó: el proyecto ingiere releases de Iceberg como una herramienta
+      más del catálogo, pero no escribe tablas Iceberg — Postgres es el único
+      almacén analítico (decisión 6 de DE Radar).
+
+  - slug: time-travel
+    termino: Time travel
+    nivel: 3
+    nodo_relacionado: table-formats
+    definicion: >
+      Consultar una tabla Iceberg tal como estaba en un snapshot o una fecha
+      pasada, sin backups aparte — cada commit crea un snapshot nuevo y los
+      anteriores quedan disponibles para consulta hasta que un proceso de
+      expiración los borra.
+    fuentes:
+      - url: https://iceberg.apache.org/docs/latest/spark-queries/
+        por_que: documentación oficial con la sintaxis SQL de time travel sobre Spark
+    uso_texto: >
+      El proyecto no escribe tablas Iceberg, pero depende del mismo tipo de
+      consulta histórica sobre catalog/roadmap.yaml: git guarda cada versión
+      del grafo, y volver a un estado pasado es un git show sobre un commit
+      — mismo problema, otra herramienta.
+
+  - slug: consumer-group
+    termino: Consumer group
+    nivel: 7
+    nodo_relacionado: mensajeria-y-logs-de-eventos
+    definicion: >
+      Un conjunto de consumidores identificados por el mismo group id que se
+      reparten las particiones de un topic: cada partición la lee un solo
+      consumidor del grupo a la vez. Dos grupos distintos leyendo el mismo
+      topic no compiten entre sí — cada uno recibe una copia completa de los
+      mensajes, con su propio avance independiente.
+    fuentes:
+      - url: https://kafka.apache.org/documentation/#intro_consumers
+        por_que: documentación oficial de Kafka sobre el modelo de consumer groups
+    uso_texto: >
+      No se usó: el pipeline no tiene consumidores paralelos, corre como un
+      único proceso secuencial por cron (documentado como la razón por la
+      que dim_tool.tool_key autoincremental no es un problema hoy).
+
+  - slug: offset-de-consumidor
+    termino: Offset de consumidor
+    nivel: 7
+    nodo_relacionado: mensajeria-y-logs-de-eventos
+    definicion: >
+      La posición de un consumidor dentro de una partición: hasta qué
+      mensaje ya leyó. Kafka la guarda por (consumer group, partición), no
+      el consumidor en memoria, así que un consumidor puede reiniciar y
+      retomar donde quedó en vez de releer todo desde el principio.
+    fuentes:
+      - url: https://kafka.apache.org/documentation/#design_consumerposition
+        por_que: documentación oficial de Kafka sobre cómo se guarda y avanza la posición de lectura
+    uso_texto: >
+      El análogo real en este proyecto es sources.last_success_at y
+      raw_fetches.last_seen_ds: cada fuente guarda su propia posición, así
+      que una corrida nueva sabe desde dónde seguir sin releer todo.
+
+  - slug: backpressure
+    termino: Backpressure (contrapresión)
+    nivel: 7
+    nodo_relacionado: mensajeria-y-logs-de-eventos
+    definicion: >
+      Cuando un operador de streaming produce datos más rápido de lo que el
+      siguiente puede consumirlos, la contrapresión se propaga hacia atrás
+      en el pipeline y frena a los productores anteriores — evita que la
+      cola crezca sin límite en vez de que el sistema explote en memoria.
+    fuentes:
+      - url: https://nightlies.apache.org/flink/flink-docs-stable/docs/ops/monitoring/back_pressure/
+        por_que: documentación oficial de Flink, con las métricas exactas que miden contrapresión por subtarea
+    uso_texto: >
+      No se usó: sin streaming, no hay un consumidor más lento que frenar.
+      El límite de tasa contra la API de GitHub cumple un rol distinto (no
+      saturar la fuente), no evitar que el propio pipeline se ahogue.
+
+  - slug: surrogate-key
+    termino: Surrogate key
+    nivel: 5
+    nodo_relacionado: modelado-dimensional
+    definicion: >
+      Una clave artificial que identifica una fila de una dimensión, en vez
+      de usar la clave natural del sistema de origen. Hace falta en cuanto
+      una dimensión tiene más de una fila vigente por entidad (SCD Tipo 2):
+      la clave natural ya no identifica una fila única, la surrogate key sí.
+    fuentes:
+      - url: https://www.kimballgroup.com/data-warehouse-business-intelligence-resources/kimball-techniques/dimensional-modeling-techniques/
+        por_que: el índice de técnicas del grupo que define el vocabulario de surrogate keys en modelado dimensional
+    uso_texto: >
+      dim_tool.tool_key es una surrogate key autoincremental, documentada
+      como deuda: funciona con un solo escritor secuencial, pero no sería
+      determinista con dos procesos cargando en paralelo. Con un hash de la
+      clave natural no habría existido la discusión.
+
+  - slug: grano
+    termino: Grano (grain)
+    nivel: 5
+    nodo_relacionado: modelado-dimensional
+    definicion: >
+      Qué representa exactamente una fila de una tabla de hechos. Declararlo
+      es el paso del modelado dimensional que más se salta y el que más caro
+      sale saltarse: sin un grano explícito, cruzar dos hechos de granos
+      distintos duplica importes en silencio.
+    fuentes:
+      - url: https://www.kimballgroup.com/data-warehouse-business-intelligence-resources/kimball-techniques/dimensional-modeling-techniques/
+        por_que: la fuente que define "grain" como el segundo de los cuatro pasos del modelado dimensional
+    uso_texto: >
+      El grano de fct_release es "un release por herramienta", forzado por
+      el UNIQUE(tool_slug, version) que además es lo que hace idempotente al
+      pipeline.
+
+  - slug: snapshot-dbt
+    termino: Snapshot (dbt)
+    nivel: 5
+    nodo_relacionado: historizacion-scd
+    definicion: >
+      El feature nativo de dbt para implementar SCD Tipo 2: detecta cambios
+      por timestamp o comparando columnas, e inserta una fila nueva con
+      dbt_valid_from/dbt_valid_to en vez de sobrescribir. Solo captura
+      historial desde la primera vez que corre — no reconstruye lo que pasó
+      antes.
+    fuentes:
+      - url: https://docs.getdbt.com/docs/build/snapshots
+        por_que: documentación oficial de dbt sobre snapshots, estrategias de detección y sus columnas generadas
+    uso_texto: >
+      Este proyecto no usa el feature snapshot de dbt: implementa SCD Tipo 2
+      a mano en Python (sync_catalog, pipeline/db.py), porque necesita
+      decidir la vigencia en el mismo paso que hace el upsert contra la
+      fuente, antes de que dbt corra.
+
+  - slug: hash-de-contenido
+    termino: Hash de contenido
+    nivel: 2
+    nodo_relacionado: idempotencia
+    definicion: >
+      Identificar un dato por el hash de su propio contenido en vez de por
+      cuándo llegó. Dos fetches con el mismo contenido producen el mismo
+      hash y colapsan a una sola fila; el más mínimo cambio produce un hash
+      distinto. Es el mismo principio detrás del almacenamiento
+      direccionable por contenido de git.
+    fuentes:
+      - url: https://git-scm.com/book/en/v2/Git-Internals-Git-Objects
+        por_que: Pro Git explica el almacenamiento por hash de contenido desde el modelo de datos, no como receta
+    uso_texto: >
+      raw_fetches particiona por content_hash. El bug real: el JSON crudo de
+      GitHub trae download_count, que cambia sin que haya release nuevo — el
+      hash había que calcularlo sobre el payload normalizado, no el crudo
+      tal cual llegaba.
+    uso_link: https://github.com/JeanArdila711/data-engineering/commit/cbc7d18
+
+  - slug: circuit-breaker
+    termino: Circuit breaker
+    nivel: 2
+    nodo_relacionado: salud-de-fuentes
+    definicion: >
+      Un patrón que deja de llamar a un recurso que está fallando en vez de
+      reintentarlo sin límite: tras cruzar un umbral de fallos, el circuito
+      se "abre" y las llamadas fallan rápido sin gastar el recurso, hasta
+      que un tiempo de espera permite probar de nuevo.
+    fuentes:
+      - url: https://learn.microsoft.com/en-us/azure/architecture/patterns/circuit-breaker
+        por_que: describe los tres estados (cerrado, abierto, semiabierto), el vocabulario estándar del patrón
+    uso_texto: >
+      record_source_failure implementa la versión simple del patrón: tras 3
+      corridas seguidas fallando, la fuente se marca is_degraded y deja de
+      bloquear al resto — sin estado "semiabierto", porque acá "probar de
+      nuevo" es, sencillamente, la corrida del día siguiente.
+    uso_link: https://github.com/JeanArdila711/data-engineering/blob/main/pipeline/db.py
+
+  - slug: dead-man-switch
+    termino: Dead-man switch
+    nivel: 11
+    nodo_relacionado: observabilidad
+    definicion: >
+      Un monitor que espera un heartbeat periódico y alerta cuando deja de
+      llegar, en vez de esperar que algo reporte una falla activamente. Es
+      la única forma de detectar que un proceso programado dejó de
+      dispararse por completo — un cron que no corre no genera ningún error
+      que atrapar.
+    fuentes:
+      - url: https://healthchecks.io/docs/
+        por_que: documentación del servicio que implementa exactamente este mecanismo con un curl al final de la corrida
+    uso_texto: >
+      Todavía no implementado: sigue pendiente que el usuario cree la
+      cuenta en healthchecks.io y se agregue el heartbeat a ingest.yml (una
+      línea). Documentado como hueco abierto, no tapado — es el hueco que el
+      nodo de observabilidad describe explícitamente.
+
+  - slug: cu-hrs
+    termino: CU-hrs (Compute Unit hours)
+    nivel: 11
+    nodo_relacionado: costo
+    definicion: >
+      La unidad de cómputo de Neon: tamaño del cómputo (en CUs, ~4 GB de RAM
+      cada uno) multiplicado por las horas que estuvo activo. El free tier
+      da 100 CU-hrs por proyecto al mes y 0.5 GB de storage; al agotarlos,
+      el cómputo se suspende hasta el siguiente período.
+    fuentes:
+      - url: https://neon.com/docs/introduction/plans
+        por_que: documentación oficial de Neon con la fórmula exacta y los límites del free tier
+    uso_texto: >
+      raw_fetches particiona por content_hash justamente para caber en los
+      0.5 GB del free tier — verificado contra estos límites antes de
+      escribir código (decisión 15 de DE Radar).
+    uso_link: https://github.com/JeanArdila711/data-engineering/blob/main/pipeline/db.py
+
+  - slug: canonical-url
+    termino: URL canónica
+    nivel: 2
+    definicion: >
+      La versión preferida de una URL cuando el mismo contenido es
+      accesible por varias (por ejemplo, con parámetros de tracking
+      distintos). Sirve para no tratar como artículos distintos lo que en
+      realidad es la misma publicación vista con dos query strings.
+    fuentes:
+      - url: https://developers.google.com/search/docs/crawling-indexing/consolidate-duplicate-urls
+        por_que: documentación oficial de Google Search Central sobre cuándo y por qué declarar una URL canónica
+    uso_texto: >
+      La deduplicación de artículos normaliza la URL (sin parámetros de
+      tracking ni barra final) antes de comparar — es el mismo problema que
+      resuelve rel=canonical, aplicado en código propio en vez de en HTML.
+    uso_link: https://github.com/JeanArdila711/data-engineering/blob/main/pipeline/dedup.py
+
+  - slug: trigramas
+    termino: Trigramas (pg_trgm)
+    nivel: 2
+    definicion: >
+      Grupos de tres caracteres consecutivos de un texto. La extensión
+      pg_trgm de Postgres los usa para medir similitud entre dos strings con
+      la función similarity(), que devuelve un número entre 0 (totalmente
+      distintos) y 1 (idénticos) — útil para encontrar casi-duplicados que
+      un hash exacto no atraparía.
+    fuentes:
+      - url: https://www.postgresql.org/docs/current/pgtrgm.html
+        por_que: documentación oficial de la extensión, con la definición exacta de trigrama y la firma de similarity()
+    uso_texto: >
+      find_duplicate_article cae a similitud por trigramas cuando el hash
+      exacto no encuentra nada: atrapa republicaciones casi-idénticas del
+      mismo artículo en dominios distintos, con un umbral de 0.85.
+    uso_link: https://github.com/JeanArdila711/data-engineering/blob/main/pipeline/db.py
