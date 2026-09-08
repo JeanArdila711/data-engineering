@@ -81,6 +81,7 @@ class PuntoDePartida(BaseModel):
 
 class Roadmap(BaseModel):
     nodes: list[RoadmapNode]
+    niveles: dict[int, str] = Field(default_factory=dict)
     objetivos: list[Objetivo] = Field(default_factory=list)
     puntos_de_partida: list[PuntoDePartida] = Field(default_factory=list)
 
@@ -213,6 +214,16 @@ def _validar(roadmap: Roadmap, catalog: Catalog) -> None:
                 raise RoadmapError(
                     f"'{node.slug}' (nivel {node.nivel}) declara como prerequisito a "
                     f"'{previo}', que esta en nivel {niveles[previo]}"
+                )
+
+    # Si el YAML declara niveles, todo nodo tiene que vivir en uno de ellos.
+    # Vacío (los tests unitarios que no lo declaran) no bloquea: la garantía
+    # real la impone catalog/roadmap.yaml en producción, que sí lo declara.
+    if roadmap.niveles:
+        for node in roadmap.nodes:
+            if node.nivel not in roadmap.niveles:
+                raise RoadmapError(
+                    f"'{node.slug}' usa el nivel {node.nivel}, que no está en niveles"
                 )
 
     herramientas = {t.slug for t in catalog.tools}

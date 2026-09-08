@@ -297,3 +297,21 @@ def test_derivar_ruta_pone_prerequisitos_antes_y_resta_lo_sabido():
     )
     assert [n.slug for n in ruta] == ["e", "f", "c"]
     assert [n.slug for n in sabidos] == ["a", "b"]
+
+
+def test_rechaza_nivel_de_nodo_no_declarado(tmp_path):
+    path = _escribir(
+        tmp_path, [_nodo("a", nivel=3)],
+        niveles={0: "Base"},
+    )
+    with pytest.raises(RoadmapError, match="nivel"):
+        load_roadmap(path, CATALOGO)
+
+
+def test_niveles_vacio_no_bloquea_nodos_sin_declarar(tmp_path):
+    """Los tests unitarios existentes construyen grafos sin `niveles:`; eso
+    tiene que seguir cargando — solo la producción, que sí lo declara, exige
+    la consistencia."""
+    path = _escribir(tmp_path, [_nodo("a", nivel=99)])
+    roadmap = load_roadmap(path, CATALOGO)
+    assert roadmap.niveles == {}

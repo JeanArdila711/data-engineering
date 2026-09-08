@@ -7,6 +7,26 @@
 # lo_vi_romperse SOLO si pasó de verdad. Si no, se omite y la UI muestra
 # el marcador de "todavía no lo practiqué".
 
+# Nombres de nivel: única fuente de verdad. Antes vivían triplicados byte
+# por byte en RoadmapGraphView.tsx, RoadmapCardsView.tsx y RoadmapIdeView.tsx
+# — eso ya causó un bug real (el nivel 9 se salteaba el mapa en uno de los
+# tres). Todo nivel usado por un nodo o por un término del glosario tiene
+# que existir acá, y todo nivel declarado tiene que ser usado por al menos
+# uno de los dos (ver pipeline/glosario.py::_validar).
+niveles:
+  0: Base
+  1: Modelo mental
+  2: Ingesta
+  3: Almacenamiento
+  4: Almacenamiento analítico
+  5: Transformación y modelado
+  6: Orquestación
+  7: Streaming
+  8: Garantías de entrega
+  9: Procesamiento distribuido
+  10: Nube
+  11: Transversales
+
 nodes:
   # ---------- Nivel 0: base ----------
   - slug: sql
