@@ -7,6 +7,7 @@ from pathlib import Path
 import psycopg
 
 from pipeline.config import Catalog
+from pipeline.glosario import Glosario
 from pipeline.roadmap import Roadmap
 from pipeline.sources.github import ReleaseRecord
 
@@ -113,6 +114,15 @@ def sync_roadmap(conn: psycopg.Connection, roadmap: Roadmap) -> None:
     slugs = [node.slug for node in roadmap.nodes]
 
     with conn.cursor() as cur:
+        vigentes = list(roadmap.niveles.keys())
+        cur.execute("DELETE FROM roadmap_level WHERE NOT (nivel = ANY(%s::int[]))", (vigentes,))
+        for nivel, nombre in roadmap.niveles.items():
+            cur.execute(
+                "INSERT INTO roadmap_level (nivel, nombre) VALUES (%s, %s) "
+                "ON CONFLICT (nivel) DO UPDATE SET nombre = EXCLUDED.nombre",
+                (nivel, nombre),
+            )
+
         cur.execute("DELETE FROM roadmap_node WHERE NOT (slug = ANY(%s))", (slugs,))
 
         for node in roadmap.nodes:
@@ -438,3 +448,32 @@ def degraded_sources_needing_alert(conn: psycopg.Connection) -> list[tuple[int, 
 def mark_source_alerted(conn: psycopg.Connection, source_id: int, now: datetime) -> None:
     with conn.cursor() as cur:
         cur.execute("UPDATE sources SET alerted_at = %s WHERE id = %s", (now, source_id))
+
+
+def sync_glosario(conn: psycopg.Connection, glosario: Glosario) -> None:
+    """Sincroniza el glosario granular. Mismo patrón borrar-y-reinsertar que
+    sync_roadmap: git ya guarda el historial de ediciones al YAML."""
+    slugs = [t.slug for t in glosario.terminos]
+
+    with conn.cursor() as cur:
+        cur.execute("DELETE FROM glossary_term WHERE NOT (slug = ANY(%s::text[]))", (slugs,))
+
+        for term in glosario.terminos:
+            cur.execute(
+                "INSERT INTO glossary_term "
+                "(slug, termino, definicion, nivel, nodo_relacionado, uso_texto, uso_link) "
+                "VALUES (%s, %s, %s, %s, %s, %s, %s) "
+                "ON CONFLICT (slug) DO UPDATE SET "
+                "termino = EXCLUDED.termino, definicion = EXCLUDED.definicion, "
+                "nivel = EXCLUDED.nivel, nodo_relacionado = EXCLUDED.nodo_relacionado, "
+                "uso_texto = EXCLUDED.uso_texto, uso_link = EXCLUDED.uso_link",
+                (term.slug, term.termino, term.definicion, term.nivel,
+                 term.nodo_relacionado, term.uso_texto, term.uso_link),
+            )
+
+            cur.execute("DELETE FROM glossary_source WHERE term_slug = %s", (term.slug,))
+            for fuente in term.fuentes:
+                cur.execute(
+                    "INSERT INTO glossary_source (term_slug, url, por_que) VALUES (%s, %s, %s)",
+                    (term.slug, fuente.url, fuente.por_que),
+                )
