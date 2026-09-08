@@ -114,8 +114,8 @@ def sync_roadmap(conn: psycopg.Connection, roadmap: Roadmap) -> None:
     slugs = [node.slug for node in roadmap.nodes]
 
     with conn.cursor() as cur:
-        vigentes = list(roadmap.niveles.keys())
-        cur.execute("DELETE FROM roadmap_level WHERE NOT (nivel = ANY(%s::int[]))", (vigentes,))
+        niveles_vigentes = list(roadmap.niveles.keys())
+        cur.execute("DELETE FROM roadmap_level WHERE NOT (nivel = ANY(%s::int[]))", (niveles_vigentes,))
         for nivel, nombre in roadmap.niveles.items():
             cur.execute(
                 "INSERT INTO roadmap_level (nivel, nombre) VALUES (%s, %s) "
