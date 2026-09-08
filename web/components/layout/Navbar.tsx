@@ -30,9 +30,12 @@ const LINKS = [
   { label: 'Digest', id: 'digest', href: '/#digest' },
 ];
 
-// Rumbo es una ruta real, no una sección de esta página: va separado
-// visualmente para que la diferencia se lea sin explicarla.
-const ROUTE_LINK = { label: 'Rumbo', id: 'rumbo', href: '/ruta' };
+// Rumbo y Glosario son rutas reales, no secciones de esta página: van
+// separadas visualmente para que la diferencia se lea sin explicarla.
+const LEARN_LINKS = [
+  { label: 'Rumbo', id: 'rumbo', href: '/ruta' },
+  { label: 'Glosario', id: 'glosario', href: '/glosario' },
+];
 
 // Dark engineering theme RGB tokens for dynamic scroll alpha interpolation
 const CARD_RGB = '10, 10, 10';
@@ -458,12 +461,15 @@ export default function Navbar() {
 
           <span className="h-4 w-px bg-neutral-800" aria-hidden />
 
-          <Link
-            href={ROUTE_LINK.href}
-            className="relative z-10 block rounded-full px-2.5 lg:px-3 py-1.5 text-xs font-mono tracking-wider uppercase whitespace-nowrap text-neutral-400 hover:text-neutral-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2 focus-visible:ring-offset-black transition-colors duration-150 cursor-pointer"
-          >
-            {ROUTE_LINK.label}
-          </Link>
+          {LEARN_LINKS.map(link => (
+            <Link
+              key={link.id}
+              href={link.href}
+              className="relative z-10 block rounded-full px-2.5 lg:px-3 py-1.5 text-xs font-mono tracking-wider uppercase whitespace-nowrap text-neutral-400 hover:text-neutral-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2 focus-visible:ring-offset-black transition-colors duration-150 cursor-pointer"
+            >
+              {link.label}
+            </Link>
+          ))}
           </div>
 
           {/* Right Actions: Quick Search ⌘K + Smart Morphing Action Button */}
@@ -714,22 +720,23 @@ export default function Navbar() {
                     {/* Divisor: Rumbo es una ruta real, no una ancla de esta página */}
                     <div className="w-full border-b border-neutral-900/70" aria-hidden />
 
-                    <motion.div variants={MOBILE_MENU_VARIANTS} className="w-full">
-                      <Link
-                        href={ROUTE_LINK.href}
-                        onClick={closeMenu}
-                        className="group flex items-center justify-between py-3.5 w-full active:bg-neutral-900/30 px-2 rounded-xl transition-all cursor-pointer"
-                      >
-                        <span className="font-heading text-2xl sm:text-3xl font-bold tracking-tight text-neutral-200 group-hover:text-white group-hover:translate-x-1.5 transition-all duration-200 uppercase">
-                          {ROUTE_LINK.label}
-                        </span>
-
-                        <span className="font-mono text-[10px] uppercase tracking-wider text-neutral-600 group-hover:text-emerald-400 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                          <span>Ir</span>
-                          <ArrowRight size={12} />
-                        </span>
-                      </Link>
-                    </motion.div>
+                    {LEARN_LINKS.map(link => (
+                      <motion.div key={link.id} variants={MOBILE_MENU_VARIANTS} className="w-full">
+                        <Link
+                          href={link.href}
+                          onClick={closeMenu}
+                          className="group flex items-center justify-between py-3.5 w-full active:bg-neutral-900/30 px-2 rounded-xl transition-all cursor-pointer"
+                        >
+                          <span className="font-heading text-2xl sm:text-3xl font-bold tracking-tight text-neutral-200 group-hover:text-white group-hover:translate-x-1.5 transition-all duration-200 uppercase">
+                            {link.label}
+                          </span>
+                          <span className="font-mono text-[10px] uppercase tracking-wider text-neutral-600 group-hover:text-emerald-400 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                            <span>Ir</span>
+                            <ArrowRight size={12} />
+                          </span>
+                        </Link>
+                      </motion.div>
+                    ))}
 
                     {/* Quick Engine Direct Filter Pills */}
                     <div className="w-full flex flex-col gap-2 my-2 py-3 border-y border-neutral-900/60">
