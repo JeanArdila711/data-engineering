@@ -20,6 +20,7 @@ import {
 
 export default function RoadmapSection({
   grupos,
+  niveles,
   notas = {},
   encabezado = true,
   sabidos = [],
@@ -28,6 +29,7 @@ export default function RoadmapSection({
   onToggleSabido,
 }: {
   grupos: { nivel: number; nodes: RoadmapNode[] }[];
+  niveles: Record<number, string>;
   notas?: Record<string, string>;
   encabezado?: boolean;
   /** Nodos de la ruta dados por sabidos (vía wizard o ?ya=). Sirven para resolver nombres de prerequisitos. */
@@ -277,6 +279,7 @@ export default function RoadmapSection({
       ) : viewMode === 'ide' ? (
         <RoadmapIdeView
           grupos={filteredGrupos}
+          niveles={niveles}
           activeSlug={activeSlug}
           onSelectNode={setActiveSlug}
           dependentsMap={dependentsMap}
@@ -294,10 +297,12 @@ export default function RoadmapSection({
           onSelectNode={setActiveSlug}
           onOpenIde={handleOpenIdeWithNode}
           dependentsMap={dependentsMap}
+          niveles={niveles}
         />
       ) : (
         <RoadmapCardsView
           grupos={filteredGrupos}
+          niveles={niveles}
           notas={notas}
           onOpenIde={handleOpenIdeWithNode}
           nodeMap={nodeMap}

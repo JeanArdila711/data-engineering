@@ -22,13 +22,6 @@ import {
 } from 'lucide-react';
 import BotonSabido from '@/components/roadmap/BotonSabido';
 
-const NIVELES: Record<number, string> = {
-  0: 'Base', 1: 'Modelo mental', 2: 'Ingesta', 3: 'Almacenamiento',
-  4: 'Almacenamiento analítico', 5: 'Transformación y modelado',
-  6: 'Orquestación', 7: 'Streaming', 8: 'Garantías de entrega',
-  9: 'Procesamiento distribuido', 10: 'Nube', 11: 'Transversales',
-};
-
 // Helper for realistic IDE extensions
 export function getNodeFileName(node: RoadmapNode): { name: string; ext: string; color: string } {
   const slug = node.slug;
@@ -58,6 +51,7 @@ export function getNodeFileName(node: RoadmapNode): { name: string; ext: string;
 
 interface RoadmapIdeViewProps {
   grupos: { nivel: number; nodes: RoadmapNode[] }[];
+  niveles: Record<number, string>;
   activeSlug: string;
   onSelectNode: (slug: string) => void;
   dependentsMap: Map<string, string[]>;
@@ -71,6 +65,7 @@ interface RoadmapIdeViewProps {
 
 export default function RoadmapIdeView({
   grupos,
+  niveles,
   activeSlug,
   onSelectNode,
   dependentsMap,
@@ -141,7 +136,7 @@ export default function RoadmapIdeView({
                       {isOpen ? <FolderOpen size={14} /> : <Folder size={14} />}
                     </span>
                     <span className="font-mono text-xs truncate">
-                      {String(nivel).padStart(2, '0')}_{NIVELES[nivel]?.toLowerCase().replace(/\s+/g, '_') || `nivel_${nivel}`}
+                      {String(nivel).padStart(2, '0')}_{niveles[nivel]?.toLowerCase().replace(/\s+/g, '_') || `nivel_${nivel}`}
                     </span>
                     <span className="ml-auto text-[10px] text-neutral-600 font-mono">
                       {nodes.length}
@@ -205,7 +200,7 @@ export default function RoadmapIdeView({
               <span className="font-semibold">{fileInfo.name}</span>
             </div>
             <span className="text-neutral-600 text-xs hidden sm:inline">
-              rumbo &gt; {String(activeNode?.nivel || 0).padStart(2, '0')}_{NIVELES[activeNode?.nivel || 0]} &gt; {fileInfo.name}
+              rumbo &gt; {String(activeNode?.nivel || 0).padStart(2, '0')}_{niveles[activeNode?.nivel || 0]} &gt; {fileInfo.name}
             </span>
           </div>
 
@@ -228,7 +223,7 @@ export default function RoadmapIdeView({
             <div className="flex items-center gap-2 text-xs font-mono text-emerald-400 mb-1.5">
               <span>// NODO [0{activeNode?.nivel}.{activeNode?.orden_sugerido || 1}]</span>
               <span>·</span>
-              <span className="uppercase text-neutral-400">{NIVELES[activeNode?.nivel || 0]}</span>
+              <span className="uppercase text-neutral-400">{niveles[activeNode?.nivel || 0]}</span>
             </div>
             <h3 className="text-2xl sm:text-3xl font-bold tracking-tight text-white uppercase font-sans">
               {activeNode?.nombre}

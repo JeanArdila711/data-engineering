@@ -15,13 +15,6 @@ import {
   Sliders
 } from 'lucide-react';
 
-const NIVELES: Record<number, string> = {
-  0: 'Base', 1: 'Modelo mental', 2: 'Ingesta', 3: 'Almacenamiento',
-  4: 'Almacenamiento analítico', 5: 'Transformación y modelado',
-  6: 'Orquestación', 7: 'Streaming', 8: 'Garantías de entrega',
-  9: 'Procesamiento distribuido', 10: 'Nube', 11: 'Transversales',
-};
-
 // Cluster color mapping inspired by Obsidian Graph View screenshot
 function getNodeColor(node: RoadmapNode): { color: string; glow: string } {
   // Key Root Hubs
@@ -78,6 +71,7 @@ interface RoadmapGraphViewProps {
   onSelectNode: (slug: string) => void;
   onOpenIde: (slug: string) => void;
   dependentsMap: Map<string, string[]>;
+  niveles: Record<number, string>;
 }
 
 export default function RoadmapGraphView({
@@ -86,6 +80,7 @@ export default function RoadmapGraphView({
   onSelectNode,
   onOpenIde,
   dependentsMap,
+  niveles,
 }: RoadmapGraphViewProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -568,7 +563,7 @@ export default function RoadmapGraphView({
                 <span className="size-2 rounded-full bg-emerald-400 animate-ping" />
                 <span className="font-bold text-white text-xs">{hoveredNode.nombre}</span>
                 <span className="text-[10px] text-neutral-500 uppercase">
-                  L{hoveredNode.nivel} · {NIVELES[hoveredNode.nivel]}
+                  L{hoveredNode.nivel} · {niveles[hoveredNode.nivel]}
                 </span>
               </div>
               <button

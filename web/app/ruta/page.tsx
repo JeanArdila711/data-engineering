@@ -1,5 +1,5 @@
 import { Suspense } from 'react'
-import { getRoadmap, getRoadmapWizard } from '@/lib/db'
+import { getRoadmap, getRoadmapLevels, getRoadmapWizard } from '@/lib/db'
 import { agruparPorNivel, ordenarTopologico } from '@/lib/roadmap'
 import RoadmapHero from '@/components/roadmap/RoadmapHero'
 import RoadmapWizard from '@/components/roadmap/RoadmapWizard'
@@ -15,7 +15,7 @@ export const metadata = {
 }
 
 export default async function RutaPage() {
-  const [nodes, opciones] = await Promise.all([getRoadmap(), getRoadmapWizard()])
+  const [nodes, opciones, niveles] = await Promise.all([getRoadmap(), getRoadmapWizard(), getRoadmapLevels()])
   const ruta = ordenarTopologico(nodes)
   return (
     <>
@@ -23,8 +23,8 @@ export default async function RutaPage() {
       <main className="min-h-screen bg-black text-white relative">
         <RoadmapHero />
         <RoadmapWizard opciones={opciones} />
-        <Suspense fallback={<RoadmapSection grupos={agruparPorNivel(ruta)} encabezado={true} />}>
-          <RutaInteractiva ruta={ruta} encabezado={true} />
+        <Suspense fallback={<RoadmapSection grupos={agruparPorNivel(ruta)} niveles={niveles} encabezado={true} />}>
+          <RutaInteractiva ruta={ruta} niveles={niveles} encabezado={true} />
         </Suspense>
         <Footer />
       </main>

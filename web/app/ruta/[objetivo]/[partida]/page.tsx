@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import { Suspense } from 'react'
 import { notFound } from 'next/navigation'
-import { getRoadmap, getRoadmapWizard, getRoadmapBlurb } from '@/lib/db'
+import { getRoadmap, getRoadmapBlurb, getRoadmapLevels, getRoadmapWizard } from '@/lib/db'
 import { agruparPorNivel, metasAlcanzadas, subgrafo } from '@/lib/roadmap'
 import RoadmapSection from '@/components/RoadmapSection'
 import RoadmapRouteHeader from '@/components/roadmap/RoadmapRouteHeader'
@@ -42,7 +42,9 @@ export default async function RutaPersonalPage({ params }: { params: Params }) {
   const r = await resolver(params)
   if (!r) notFound()
 
-  const [nodes, parrafo] = await Promise.all([getRoadmap(), getRoadmapBlurb(r.o.slug, r.p.slug)])
+  const [nodes, parrafo, niveles] = await Promise.all([
+    getRoadmap(), getRoadmapBlurb(r.o.slug, r.p.slug), getRoadmapLevels(),
+  ])
   const { ruta, sabidos } = subgrafo(nodes, r.o.nodos, r.p.nodos)
   const porQue = metasAlcanzadas(nodes, r.o.nodos)
   const notas = Object.fromEntries(
@@ -59,8 +61,10 @@ export default async function RutaPersonalPage({ params }: { params: Params }) {
             Con lo que ya sabés, esta ruta no tiene nodos pendientes. Probá un objetivo más amplio.
           </p>
         ) : (
-          <Suspense fallback={<RoadmapSection grupos={agruparPorNivel(ruta)} notas={notas} encabezado={false} sabidos={sabidos} />}>
-            <RutaInteractiva ruta={ruta} sabidosBase={sabidos} notas={notas} encabezado={false} />
+          <Suspense fallback={
+            <RoadmapSection grupos={agruparPorNivel(ruta)} niveles={niveles} notas={notas} encabezado={false} sabidos={sabidos} />
+          }>
+            <RutaInteractiva ruta={ruta} niveles={niveles} sabidosBase={sabidos} notas={notas} encabezado={false} />
           </Suspense>
         )}
         <Footer />

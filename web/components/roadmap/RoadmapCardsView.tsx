@@ -25,15 +25,9 @@ import {
 import { getNodeFileName } from '@/components/roadmap/RoadmapIdeView';
 import BotonSabido from '@/components/roadmap/BotonSabido';
 
-const NIVELES: Record<number, string> = {
-  0: 'Base', 1: 'Modelo mental', 2: 'Ingesta', 3: 'Almacenamiento',
-  4: 'Almacenamiento analítico', 5: 'Transformación y modelado',
-  6: 'Orquestación', 7: 'Streaming', 8: 'Garantías de entrega',
-  9: 'Procesamiento distribuido', 10: 'Nube', 11: 'Transversales',
-};
-
 interface RoadmapCardsViewProps {
   grupos: { nivel: number; nodes: RoadmapNode[] }[];
+  niveles: Record<number, string>;
   notas?: Record<string, string>;
   onOpenIde: (slug: string) => void;
   nodeMap: Map<string, RoadmapNode>;
@@ -46,6 +40,7 @@ interface RoadmapCardsViewProps {
 
 export default function RoadmapCardsView({
   grupos,
+  niveles,
   notas = {},
   onOpenIde,
   nodeMap,
@@ -92,7 +87,7 @@ export default function RoadmapCardsView({
   const availableLevels = useMemo(() => {
     return grupos.map(g => ({
       nivel: g.nivel,
-      nombre: NIVELES[g.nivel] || `Nivel ${g.nivel}`,
+      nombre: niveles[g.nivel] || `Nivel ${g.nivel}`,
       count: g.nodes.length,
     }));
   }, [grupos]);
@@ -210,7 +205,7 @@ export default function RoadmapCardsView({
                   Nivel {nivel}
                 </span>
                 <h3 className="text-sm font-semibold tracking-wide text-white uppercase font-sans">
-                  {NIVELES[nivel]}
+                  {niveles[nivel]}
                 </h3>
               </div>
               <span className="text-[11px] font-mono text-neutral-500">
@@ -383,7 +378,7 @@ export default function RoadmapCardsView({
 
                     <div className="flex items-center gap-2 mt-0.5">
                       <span className="text-xs font-mono text-neutral-400">
-                        Nivel {inspectedNode.nivel} · {NIVELES[inspectedNode.nivel]}
+                        Nivel {inspectedNode.nivel} · {niveles[inspectedNode.nivel]}
                       </span>
                       <span className="text-neutral-600">·</span>
                       <span className={`text-[10px] font-mono uppercase px-2 py-0.5 rounded-full border ${

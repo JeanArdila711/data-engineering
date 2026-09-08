@@ -14,6 +14,7 @@ import ProveedorSelector from './ProveedorSelector'
 type Props = {
   /** En orden topológico, tal como sale de subgrafo() o de ordenarTopologico(). */
   ruta: RoadmapNode[]
+  niveles: Record<number, string>
   /** Sabidos base del wizard (fuera de `ruta`), solo para resolver nombres de prerequisitos. */
   sabidosBase?: RoadmapNode[]
   notas?: Record<string, string>
@@ -26,7 +27,7 @@ type Props = {
  * Se monta dentro de <Suspense> porque useSearchParams lo exige en páginas
  * estáticas (Next 16); el fallback es la ruta completa, idéntica a la Fase 2.
  */
-export default function RutaInteractiva({ ruta, sabidosBase = [], notas = {}, encabezado = false }: Props) {
+export default function RutaInteractiva({ ruta, niveles, sabidosBase = [], notas = {}, encabezado = false }: Props) {
   const params = useSearchParams()
   const router = useRouter()
   const pathname = usePathname()
@@ -134,6 +135,7 @@ export default function RutaInteractiva({ ruta, sabidosBase = [], notas = {}, en
       ) : (
         <RoadmapSection
           grupos={grupos}
+          niveles={niveles}
           notas={notas}
           encabezado={encabezado}
           sabidos={[...sabidosBase, ...sabidos]}
