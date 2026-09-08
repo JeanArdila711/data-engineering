@@ -234,3 +234,52 @@ export async function getRoadmapBlurb(objetivo: string, partida: string): Promis
     return null
   }
 }
+
+export type GlossaryEntry = {
+  slug: string
+  termino: string
+  definicion: string
+  nivel: number
+  nivel_nombre: string
+  nodo_relacionado: string | null
+  uso_texto: string | null
+  uso_link: string | null
+  fuentes: { url: string; por_que: string }[]
+  origen: 'nodo' | 'termino'
+}
+
+export async function getGlossary(): Promise<GlossaryEntry[]> {
+  try {
+    const client = getSqlClient()
+    if (!client) return []
+    const rows = await client<any[]>`
+      select slug, termino, definicion, nivel, nivel_nombre, nodo_relacionado,
+             uso_texto, uso_link, fuentes, origen
+      from mart_glosario
+      order by nivel, termino
+    `
+    return rows.map(r => ({
+      ...r,
+      fuentes: Array.isArray(r.fuentes)
+        ? r.fuentes
+        : (typeof r.fuentes === 'string' ? JSON.parse(r.fuentes) : []),
+    }))
+  } catch (error) {
+    console.warn('Postgres connection unavailable for glossary:', error)
+    return []
+  }
+}
+
+export async function getRoadmapLevels(): Promise<Record<number, string>> {
+  try {
+    const client = getSqlClient()
+    if (!client) return {}
+    const rows = await client<{ nivel: number; nombre: string }[]>`
+      select nivel, nombre from roadmap_level order by nivel
+    `
+    return Object.fromEntries(rows.map(r => [r.nivel, r.nombre]))
+  } catch (error) {
+    console.warn('Postgres connection unavailable for roadmap levels:', error)
+    return {}
+  }
+}
