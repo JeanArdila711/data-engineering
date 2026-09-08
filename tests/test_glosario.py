@@ -120,3 +120,17 @@ def test_rechaza_nivel_declarado_sin_ningun_nodo_ni_termino(tmp_path):
     path = _escribir(tmp_path, [_termino("xcom", nivel=0)])
     with pytest.raises(GlosarioError, match="niveles declarados sin"):
         load_glosario(path, _roadmap(niveles={0: "Base", 9: "Huérfano"}))
+
+
+def test_rechaza_termino_vacio_tras_strip(tmp_path):
+    path = _escribir(tmp_path, [_termino("xcom", termino="   ")])
+    with pytest.raises(GlosarioError, match="glosario inválido"):
+        load_glosario(path, _roadmap())
+
+
+def test_rechaza_url_vacia_tras_strip(tmp_path):
+    path = _escribir(tmp_path, [_termino(
+        "xcom", fuentes=[{"url": "   ", "por_que": "oficial"}],
+    )])
+    with pytest.raises(GlosarioError, match="glosario inválido"):
+        load_glosario(path, _roadmap())

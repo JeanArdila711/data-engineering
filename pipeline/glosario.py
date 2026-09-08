@@ -23,11 +23,11 @@ class GlossarySource(BaseModel):
     url: str
     por_que: str
 
-    @field_validator("por_que")
+    @field_validator("url", "por_que")
     @classmethod
-    def _por_que_no_vacio(cls, v: str) -> str:
+    def _no_vacio(cls, v: str) -> str:
         if not v.strip():
-            raise ValueError("por_que no puede estar vacío")
+            raise ValueError("no puede estar vacío")
         return v
 
 
