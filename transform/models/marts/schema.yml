@@ -108,3 +108,29 @@ models:
         tests: [not_null]
       - name: generated_at
         tests: [not_null]
+
+  - name: mart_glosario
+    description: Unión de los 34 nodos de Rumbo y el glosario granular curado. Grano - una fila por entrada de glosario.
+    columns:
+      - name: slug
+        tests: [unique, not_null]
+      - name: termino
+        tests: [not_null]
+      - name: definicion
+        tests: [not_null]
+      - name: nivel
+        tests: [not_null]
+      - name: nivel_nombre
+        tests: [not_null]
+      - name: origen
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['nodo', 'termino']
+      - name: nodo_relacionado
+        tests:
+          - relationships:
+              arguments:
+                to: ref('stg_roadmap_nodes')
+                field: slug

@@ -18,6 +18,9 @@ sources:
       - name: roadmap_wizard_option
       - name: roadmap_wizard_option_node
       - name: roadmap_route_blurb
+      - name: roadmap_level
+      - name: glossary_term
+      - name: glossary_source
 
 models:
   - name: stg_tools
@@ -77,4 +80,18 @@ models:
       - name: from_slug
         tests: [not_null]
       - name: to_slug
+        tests: [not_null]
+
+  - name: stg_roadmap_levels
+    columns:
+      - name: nivel
+        tests: [unique, not_null]
+      - name: nombre
+        tests: [not_null]
+
+  - name: stg_glossary_terms
+    columns:
+      - name: slug
+        tests: [unique, not_null]
+      - name: nivel
         tests: [not_null]
