@@ -1,3 +1,4 @@
+from pipeline.glosario import Glosario
 from pipeline.roadmap import Roadmap, RoadmapNode
 from pipeline.run_roadmap import run
 
@@ -10,13 +11,13 @@ def _nodo(slug: str) -> RoadmapNode:
 
 
 def test_run_devuelve_la_cantidad_de_nodos(db_conn):
-    assert run(db_conn, Roadmap(nodes=[_nodo("a"), _nodo("b")])) == 2
+    assert run(db_conn, Roadmap(nodes=[_nodo("a"), _nodo("b")]), Glosario(terminos=[])) == 2
 
 
 def test_run_es_idempotente(db_conn):
     roadmap = Roadmap(nodes=[_nodo("a")])
-    run(db_conn, roadmap)
-    run(db_conn, roadmap)
+    run(db_conn, roadmap, Glosario(terminos=[]))
+    run(db_conn, roadmap, Glosario(terminos=[]))
     with db_conn.cursor() as cur:
         cur.execute("SELECT count(*) FROM roadmap_node")
         assert cur.fetchone()[0] == 1
@@ -35,14 +36,14 @@ class _ConnQueRevientaEnBlurbs:
 
     def cursor(self):
         self.cursores += 1
-        if self.cursores > 1:  # el primero es sync_roadmap
+        if self.cursores > 2:  # el primero es sync_roadmap, el segundo es sync_glosario
             raise RuntimeError("base caída")
         return self._real.cursor()
 
 
 def test_run_sin_llm_sincroniza_y_no_genera_parrafos(db_conn):
     roadmap = Roadmap(nodes=[_nodo("a")])
-    assert run(db_conn, roadmap) == 1
+    assert run(db_conn, roadmap, Glosario(terminos=[])) == 1
     with db_conn.cursor() as cur:
         cur.execute("SELECT count(*) FROM roadmap_route_blurb")
         assert cur.fetchone()[0] == 0
@@ -55,9 +56,23 @@ def test_un_llm_roto_no_tumba_la_corrida(db_conn):
         objetivos=[Objetivo(slug="o", nombre="o", descripcion="", metas=["a"])],
         puntos_de_partida=[PuntoDePartida(slug="p", nombre="p", descripcion="")],
     )
-    assert run(db_conn, roadmap, llm=_LLMRoto()) == 1
+    assert run(db_conn, roadmap, Glosario(terminos=[]), llm=_LLMRoto()) == 1
 
 
 def test_un_error_de_base_en_blurbs_no_tumba_la_corrida(db_conn):
     roadmap = Roadmap(nodes=[_nodo("a")])
-    assert run(_ConnQueRevientaEnBlurbs(db_conn), roadmap, llm=_LLMRoto()) == 1
+    assert run(_ConnQueRevientaEnBlurbs(db_conn), roadmap, Glosario(terminos=[]), llm=_LLMRoto()) == 1
+
+
+def test_run_sincroniza_el_glosario(db_conn):
+    from pipeline.glosario import GlossarySource, GlossaryTerm
+
+    roadmap = Roadmap(nodes=[_nodo("a")], niveles={0: "Base"})
+    glosario = Glosario(terminos=[GlossaryTerm(
+        slug="xcom", termino="XCom", definicion="algo", nivel=0,
+        fuentes=[GlossarySource(url="https://x.dev", por_que="oficial")],
+    )])
+    run(db_conn, roadmap, glosario)
+    with db_conn.cursor() as cur:
+        cur.execute("SELECT slug FROM glossary_term")
+        assert cur.fetchall() == [("xcom",)]

@@ -1,8 +1,10 @@
-"""Sincroniza el grafo de la ruta al Postgres y genera los párrafos de cada ruta.
+"""Sincroniza el grafo de la ruta y el glosario al Postgres, y genera los
+párrafos de cada ruta.
 
-Lee un archivo del repo y escribe a la base. Si el grafo no valida, la corrida
-falla sin escribir nada. Los párrafos (Fase 4) son lo único que toca la red:
-su fallo se loguea y la corrida sigue en verde — la ruta queda sincronizada
+Lee dos archivos del repo (roadmap.yaml, glosario.yaml) y escribe a la base.
+Si cualquiera de los dos no valida, la corrida falla sin escribir nada. Los
+párrafos (Fase 4 de Rumbo) son lo único que toca la red: su fallo se loguea
+y la corrida sigue en verde — la ruta y el glosario quedan sincronizados
 igual, y mañana se reintenta.
 """
 
@@ -16,17 +18,20 @@ from dotenv import load_dotenv
 
 from pipeline import blurbs
 from pipeline.config import load_catalog
-from pipeline.db import apply_migrations, connect, sync_roadmap
+from pipeline.db import apply_migrations, connect, sync_glosario, sync_roadmap
+from pipeline.glosario import Glosario, GlosarioError, load_glosario
 from pipeline.llm import GeminiClient
 from pipeline.roadmap import Roadmap, RoadmapError, load_roadmap
 
 logger = logging.getLogger("de_radar.roadmap")
 
 
-def run(conn: psycopg.Connection, roadmap: Roadmap, llm=None) -> int:
-    """Sincroniza el grafo y devuelve cuántos nodos quedaron. Con `llm`, además
-    genera los párrafos; sin él, los omite (corrida local sin GEMINI_API_KEY)."""
+def run(conn: psycopg.Connection, roadmap: Roadmap, glosario: Glosario, llm=None) -> int:
+    """Sincroniza el grafo y el glosario, y devuelve cuántos nodos quedaron.
+    Con `llm`, además genera los párrafos; sin él, los omite (corrida local
+    sin GEMINI_API_KEY)."""
     sync_roadmap(conn, roadmap)
+    sync_glosario(conn, glosario)
     if llm is None:
         logger.info("parrafos | omitidos: sin GEMINI_API_KEY")
         return len(roadmap.nodes)
@@ -65,19 +70,23 @@ def main() -> int:
 
     try:
         roadmap = load_roadmap(Path("catalog/roadmap.yaml"), catalog)
-    except RoadmapError:
-        logger.exception("el grafo de la ruta no es válido, no se escribió nada")
+        glosario = load_glosario(Path("catalog/glosario.yaml"), roadmap)
+    except (RoadmapError, GlosarioError):
+        logger.exception("el grafo o el glosario no son válidos, no se escribió nada")
         return 1
 
     conn = connect(dsn)
     try:
         apply_migrations(conn)
-        nodos = run(conn, roadmap, llm=_llm_desde_env())
+        nodos = run(conn, roadmap, glosario, llm=_llm_desde_env())
     finally:
         conn.close()
 
     sin_experiencia = sum(1 for n in roadmap.nodes if n.lo_vi_romperse is None)
-    logger.info("grafo sincronizado | nodos=%d sin_experiencia=%d", nodos, sin_experiencia)
+    logger.info(
+        "grafo sincronizado | nodos=%d sin_experiencia=%d terminos=%d",
+        nodos, sin_experiencia, len(glosario.terminos),
+    )
     return 0
 
 
