@@ -90,7 +90,7 @@ export default function RoadmapCardsView({
       nombre: niveles[g.nivel] || `Nivel ${g.nivel}`,
       count: g.nodes.length,
     }));
-  }, [grupos]);
+  }, [grupos, niveles]);
 
   // Previous & Next node navigation
   const goToPrev = () => {
