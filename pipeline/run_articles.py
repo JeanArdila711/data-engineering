@@ -28,13 +28,16 @@ from pipeline.db import (
     sync_feed_sources,
     upsert_article,
     upsert_candidate,
+    upsert_glossary_candidate,
     upsert_mentions,
 )
 from pipeline.dedup import content_fingerprint, normalize_url
-from pipeline.discovery import extract_candidate_names
+from pipeline.discovery import extract_candidate_names, extract_glossary_term_candidates
 from pipeline.entailment import compute_error_rate, sampling_rate_for, select_sample
+from pipeline.glosario import Glosario, GlosarioError, load_glosario
 from pipeline.llm import GeminiClient
 from pipeline.mentions import detect_mentions
+from pipeline.roadmap import Roadmap, RoadmapError, load_roadmap
 from pipeline.scoring import score_article
 from pipeline.sources.rss import fetch_articles
 from pipeline.summarize import summarize_article
@@ -81,6 +84,8 @@ def _recent_entailment_error_rate(conn: psycopg.Connection, now: datetime) -> fl
 def run(
     conn: psycopg.Connection,
     catalog: Catalog,
+    roadmap: Roadmap,
+    glosario: Glosario,
     llm_client,
     ds: date,
     now: datetime,
@@ -93,6 +98,7 @@ def run(
 
     scored_today: list[tuple[float, int]] = []
     known_names = [n for t in catalog.tools for n in (t.name, *t.aliases)]
+    known_glossary_terms = [n.nombre for n in roadmap.nodes] + [t.termino for t in glosario.terminos]
 
     for tool_slug, source_id, url in feed_refs:
         summary.feeds_processed += 1
@@ -139,6 +145,19 @@ def run(
 
     scored_today.sort(reverse=True)
     top_articles = scored_today[:TOP_N_FOR_SUMMARY]
+
+    if llm_client is not None:
+        for _, article_id in top_articles:
+            try:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        "SELECT url_normalized, summary_text FROM articles WHERE id = %s", (article_id,)
+                    )
+                    url_normalized, text = cur.fetchone()
+                for term in extract_glossary_term_candidates(text, known_glossary_terms, llm_client):
+                    upsert_glossary_candidate(conn, term, url_normalized, now)
+            except Exception:
+                logger.error("extracción de términos de glosario falló | article_id=%s", article_id, exc_info=True)
 
     new_claim_ids: list[int] = []
     for _, article_id in top_articles:
@@ -210,6 +229,17 @@ def main() -> int:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s", stream=sys.stdout)
 
     now = datetime.now(timezone.utc)
+    catalog = load_catalog(Path("catalog/tools.yaml"))
+
+    try:
+        roadmap = load_roadmap(Path("catalog/roadmap.yaml"), catalog)
+        glosario = load_glosario(Path("catalog/glosario.yaml"), roadmap)
+    except (RoadmapError, GlosarioError):
+        logger.exception(
+            "el grafo o el glosario no son válidos; minería de términos de glosario omitida esta corrida"
+        )
+        roadmap, glosario = Roadmap(nodes=[]), Glosario(terminos=[])
+
     conn = connect(os.environ["DATABASE_URL"])
     llm_client = GeminiClient(
         api_key=os.environ["GEMINI_API_KEY"],
@@ -218,7 +248,7 @@ def main() -> int:
     )
     try:
         apply_migrations(conn)
-        summary = run(conn, load_catalog(Path("catalog/tools.yaml")), llm_client, now.date(), now)
+        summary = run(conn, catalog, roadmap, glosario, llm_client, now.date(), now)
     finally:
         conn.close()
 
