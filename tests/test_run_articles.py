@@ -1,7 +1,9 @@
 from datetime import date, datetime, timezone
 
+import yaml
+
 from pipeline.config import Catalog, Tool
-from pipeline.glosario import Glosario
+from pipeline.glosario import Glosario, GlossarySource, GlossaryTerm
 from pipeline.llm import SummaryDraft
 from pipeline.roadmap import Roadmap
 from pipeline.run_articles import RunArticlesSummary, run
@@ -301,3 +303,67 @@ def test_run_does_not_remine_glossary_terms_on_second_run(db_conn):
             "WHERE gc.normalized_term = 'circuit breaker'"
         )
         assert cur.fetchone()[0] == 1  # el artículo ya existía en la segunda corrida, no se re-minó
+
+
+def test_run_does_not_mine_glossary_when_minar_glosario_is_false(db_conn):
+    class _FakeGlossaryLLM(_FakeLLM):
+        def extract_glossary_terms(self, document, known_terms):
+            return ["circuit breaker"]
+
+    run(db_conn, _catalog(), ROADMAP_VACIO, GLOSARIO_VACIO, _FakeGlossaryLLM(), DS, NOW,
+        fetcher=_fake_fetcher([_record()]), minar_glosario=False)
+
+    with db_conn.cursor() as cur:
+        cur.execute("SELECT count(*) FROM glossary_candidates")
+        assert cur.fetchone()[0] == 0  # minar_glosario=False desactiva la minería, no solo el filtro
+
+
+def test_run_glossary_mining_filters_bare_form_of_parenthetical_term(db_conn):
+    glosario_con_parentetico = Glosario(terminos=[GlossaryTerm(
+        slug="backpressure", termino="Backpressure (contrapresión)", definicion="x", nivel=0,
+        fuentes=[GlossarySource(url="https://x", por_que="y")],
+    )])
+
+    class _FakeGlossaryLLM(_FakeLLM):
+        def extract_glossary_terms(self, document, known_terms):
+            return ["backpressure"]
+
+    run(db_conn, _catalog(), ROADMAP_VACIO, glosario_con_parentetico, _FakeGlossaryLLM(), DS, NOW,
+        fetcher=_fake_fetcher([_record()]))
+
+    with db_conn.cursor() as cur:
+        cur.execute("SELECT count(*) FROM glossary_candidates WHERE normalized_term = 'backpressure'")
+        assert cur.fetchone()[0] == 0  # "backpressure" (forma pelada) ya está cubierto por el término curado
+
+
+def test_main_survives_invalid_roadmap_yaml_and_disables_mining(monkeypatch):
+    import pipeline.run_articles as mod
+
+    monkeypatch.setenv("DATABASE_URL", "postgresql://fake")
+    monkeypatch.setenv("GEMINI_API_KEY", "fake")
+    monkeypatch.setenv("GEMINI_MODEL_SUMMARY", "fake")
+    monkeypatch.setenv("GEMINI_MODEL_JUDGE", "fake")
+
+    def _raise_yaml_error(*args, **kwargs):
+        raise yaml.YAMLError("bad indent")
+
+    class _FakeConn:
+        def close(self):
+            pass
+
+    captured = {}
+
+    def _fake_run(conn, catalog, roadmap, glosario, llm_client, ds, now, minar_glosario=True):
+        captured["minar_glosario"] = minar_glosario
+        return RunArticlesSummary()
+
+    monkeypatch.setattr(mod, "load_roadmap", _raise_yaml_error)
+    monkeypatch.setattr(mod, "connect", lambda url: _FakeConn())
+    monkeypatch.setattr(mod, "apply_migrations", lambda conn: None)
+    monkeypatch.setattr(mod, "GeminiClient", lambda **kwargs: object())
+    monkeypatch.setattr(mod, "run", _fake_run)
+
+    exit_code = mod.main()  # antes del fix: yaml.YAMLError no capturado, esto explotaba
+
+    assert exit_code == 0
+    assert captured["minar_glosario"] is False

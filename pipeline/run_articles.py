@@ -14,6 +14,7 @@ from functools import partial
 from pathlib import Path
 
 import psycopg
+import yaml
 from dotenv import load_dotenv
 
 from pipeline.config import Catalog, load_catalog
@@ -90,6 +91,7 @@ def run(
     ds: date,
     now: datetime,
     fetcher=fetch_articles,
+    minar_glosario: bool = True,
 ) -> RunArticlesSummary:
     summary = RunArticlesSummary()
     feed_refs = sync_feed_sources(conn, catalog)
@@ -98,7 +100,12 @@ def run(
 
     scored_today: list[tuple[float, int]] = []
     known_names = [n for t in catalog.tools for n in (t.name, *t.aliases)]
-    known_glossary_terms = [n.nombre for n in roadmap.nodes] + [t.termino for t in glosario.terminos]
+    known_glossary_terms = [n.nombre for n in roadmap.nodes]
+    for t in glosario.terminos:
+        known_glossary_terms.append(t.termino)
+        base, _, resto = t.termino.partition(" (")
+        if resto:
+            known_glossary_terms.append(base)
 
     for tool_slug, source_id, url in feed_refs:
         summary.feeds_processed += 1
@@ -146,7 +153,7 @@ def run(
     scored_today.sort(reverse=True)
     top_articles = scored_today[:TOP_N_FOR_SUMMARY]
 
-    if llm_client is not None:
+    if llm_client is not None and minar_glosario:
         for _, article_id in top_articles:
             try:
                 with conn.cursor() as cur:
@@ -231,14 +238,16 @@ def main() -> int:
     now = datetime.now(timezone.utc)
     catalog = load_catalog(Path("catalog/tools.yaml"))
 
+    minar_glosario = True
     try:
         roadmap = load_roadmap(Path("catalog/roadmap.yaml"), catalog)
         glosario = load_glosario(Path("catalog/glosario.yaml"), roadmap)
-    except (RoadmapError, GlosarioError):
+    except (RoadmapError, GlosarioError, yaml.YAMLError, OSError):
         logger.exception(
-            "el grafo o el glosario no son válidos; minería de términos de glosario omitida esta corrida"
+            "el grafo o el glosario no son válidos; minería de términos de glosario deshabilitada esta corrida"
         )
         roadmap, glosario = Roadmap(nodes=[]), Glosario(terminos=[])
+        minar_glosario = False
 
     conn = connect(os.environ["DATABASE_URL"])
     llm_client = GeminiClient(
@@ -248,7 +257,7 @@ def main() -> int:
     )
     try:
         apply_migrations(conn)
-        summary = run(conn, catalog, roadmap, glosario, llm_client, now.date(), now)
+        summary = run(conn, catalog, roadmap, glosario, llm_client, now.date(), now, minar_glosario=minar_glosario)
     finally:
         conn.close()
 
