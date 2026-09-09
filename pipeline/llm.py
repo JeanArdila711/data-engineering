@@ -44,6 +44,20 @@ Devolvé JSON: {{"candidates": ["nombre1", "nombre2"]}}
 Artículo:
 {document}"""
 
+_GLOSSARY_TERM_PROMPT = """Leé este artículo de ingeniería de datos. Identificá términos técnicos \
+específicos —patrones, mecanismos o jerga concreta de una herramienta— que NO estén en esta lista ya \
+definida: {known}.
+
+Buscá términos "chimbas": patrones reales y específicos (ej: "predicate pushdown", "consumer group", \
+"DAG Factory"), nunca vocabulario genérico ("base de datos", "API", "pipeline"). Ignorá cualquier \
+variante de los términos ya definidos (mayúsculas, plural, con o sin guiones). Si no encontrás ninguno, \
+devolvé una lista vacía.
+
+Devolvé JSON: {{"terminos": ["termino1", "termino2"]}}
+
+Artículo:
+{document}"""
+
 _BLURB_PROMPT = """Sos el autor de una ruta de aprendizaje de ingeniería de datos. Explicale a la persona, \
 en segunda persona y en español rioplatense neutro (voseo), por qué esta ruta tiene este orden \
 para este objetivo desde este punto de partida.
@@ -112,6 +126,15 @@ class GeminiClient:
         )
         payload = json.loads(response.text)
         return payload.get("candidates", [])
+
+    def extract_glossary_terms(self, document: str, known_terms: list[str]) -> list[str]:
+        response = self._client.models.generate_content(
+            model=self._summary_model,
+            contents=_GLOSSARY_TERM_PROMPT.format(known=", ".join(known_terms), document=document),
+            config=types.GenerateContentConfig(response_mime_type="application/json"),
+        )
+        payload = json.loads(response.text)
+        return payload.get("terminos", [])
 
     def draft_route_blurb(
         self, objetivo: str, descripcion: str, partida: str,
