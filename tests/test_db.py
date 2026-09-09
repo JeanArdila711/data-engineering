@@ -560,3 +560,90 @@ def test_degraded_sources_needing_alert_and_mark_alerted(db_conn):
 
     mark_source_alerted(db_conn, source_id, datetime(2026, 8, 26, tzinfo=timezone.utc))
     assert degraded_sources_needing_alert(db_conn) == []
+
+
+def test_migration_009_creates_glossary_candidate_tables(db_conn):
+    with db_conn.cursor() as cur:
+        cur.execute(
+            "SELECT column_name FROM information_schema.columns "
+            "WHERE table_name = 'glossary_candidates' "
+            "ORDER BY column_name"
+        )
+        columns = {row[0] for row in cur.fetchall()}
+        assert columns == {"display_term", "first_seen_at", "id", "last_seen_at", "normalized_term", "status"}
+
+        cur.execute(
+            "SELECT column_name FROM information_schema.columns "
+            "WHERE table_name = 'glossary_candidate_mentions' "
+            "ORDER BY column_name"
+        )
+        columns = {row[0] for row in cur.fetchall()}
+        assert columns == {"article_url", "candidate_id", "id"}
+
+
+def test_upsert_glossary_candidate_is_idempotent_per_article(db_conn):
+    from datetime import datetime, timezone
+    from pipeline.db import upsert_glossary_candidate
+
+    now = datetime(2026, 9, 8, tzinfo=timezone.utc)
+    upsert_glossary_candidate(db_conn, "Circuit Breaker", "https://a.example/1", now)
+    upsert_glossary_candidate(db_conn, "circuit breaker", "https://a.example/1", now)  # mismo artículo, reintento
+
+    with db_conn.cursor() as cur:
+        cur.execute(
+            "SELECT count(*) FROM glossary_candidate_mentions gcm "
+            "JOIN glossary_candidates gc ON gc.id = gcm.candidate_id "
+            "WHERE gc.normalized_term = 'circuit breaker'"
+        )
+        assert cur.fetchone()[0] == 1  # no se duplica la mención del mismo artículo
+
+    upsert_glossary_candidate(db_conn, "Circuit Breaker", "https://a.example/2", now)  # artículo distinto, sí cuenta
+    with db_conn.cursor() as cur:
+        cur.execute(
+            "SELECT count(*) FROM glossary_candidate_mentions gcm "
+            "JOIN glossary_candidates gc ON gc.id = gcm.candidate_id "
+            "WHERE gc.normalized_term = 'circuit breaker'"
+        )
+        assert cur.fetchone()[0] == 2
+
+
+def test_pending_glossary_candidates_over_threshold_respects_status(db_conn):
+    from datetime import datetime, timezone
+    from pipeline.db import pending_glossary_candidates_over_threshold, upsert_glossary_candidate
+
+    now = datetime(2026, 9, 8, tzinfo=timezone.utc)
+    upsert_glossary_candidate(db_conn, "belowbar term", "https://a.example/1", now)
+    upsert_glossary_candidate(db_conn, "overbar term", "https://a.example/1", now)
+    upsert_glossary_candidate(db_conn, "overbar term", "https://a.example/2", now)
+
+    results = pending_glossary_candidates_over_threshold(db_conn, threshold=2)
+    terms = {row[1] for row in results}
+    assert terms == {"overbar term"}
+
+    overbar_row = next(row for row in results if row[1] == "overbar term")
+    assert overbar_row[2] == 2  # mention_count
+    assert overbar_row[3] == "https://a.example/2"  # example_article_url: la mención más reciente
+
+
+def test_mark_glossary_candidate_proposed_stops_it_from_reappearing(db_conn):
+    from datetime import datetime, timezone
+    from pipeline.db import (
+        mark_glossary_candidate_proposed,
+        pending_glossary_candidates_over_threshold,
+        upsert_glossary_candidate,
+    )
+
+    now = datetime(2026, 9, 8, tzinfo=timezone.utc)
+    upsert_glossary_candidate(db_conn, "bazstore term", "https://a.example/1", now)
+    upsert_glossary_candidate(db_conn, "bazstore term", "https://a.example/2", now)
+    with db_conn.cursor() as cur:
+        cur.execute("SELECT id FROM glossary_candidates WHERE normalized_term = 'bazstore term'")
+        candidate_id = cur.fetchone()[0]
+
+    mark_glossary_candidate_proposed(db_conn, candidate_id)
+    upsert_glossary_candidate(db_conn, "bazstore term", "https://a.example/3", now)  # ya no debe sumar
+
+    assert pending_glossary_candidates_over_threshold(db_conn, threshold=1) == []
+    with db_conn.cursor() as cur:
+        cur.execute("SELECT count(*) FROM glossary_candidate_mentions WHERE candidate_id = %s", (candidate_id,))
+        assert cur.fetchone()[0] == 2  # la tercera mención no se insertó, status ya no es 'pending'

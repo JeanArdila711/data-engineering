@@ -12,7 +12,7 @@ def test_glossary_tables_exist(db_conn):
             "OR table_name LIKE 'glossary_%'"
         )
         tables = {row[0] for row in cur.fetchall()}
-    assert tables == {"roadmap_level", "glossary_term", "glossary_source"}
+    assert tables == {"roadmap_level", "glossary_term", "glossary_source", "glossary_candidates", "glossary_candidate_mentions"}
 
 
 def test_glossary_term_slug_must_be_url_safe(db_conn):

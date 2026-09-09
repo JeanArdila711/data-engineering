@@ -438,6 +438,61 @@ def mark_candidate_proposed(conn: psycopg.Connection, candidate_id: int) -> None
         cur.execute("UPDATE tool_candidates SET status = 'proposed' WHERE id = %s", (candidate_id,))
 
 
+def upsert_glossary_candidate(conn: psycopg.Connection, term: str, article_url: str, now: datetime) -> None:
+    """Registra la mención de un término candidato al glosario. Idempotente:
+    el mismo (candidato, artículo) nunca cuenta dos veces, sin importar
+    cuántas veces se reprocese el artículo. Congelado si el candidato ya fue
+    propuesto o descartado.
+    """
+    normalized = term.strip().casefold()
+    with conn.cursor() as cur:
+        cur.execute(
+            "INSERT INTO glossary_candidates (normalized_term, display_term, first_seen_at, last_seen_at) "
+            "VALUES (%s, %s, %s, %s) "
+            "ON CONFLICT (normalized_term) DO UPDATE SET last_seen_at = EXCLUDED.last_seen_at "
+            "WHERE glossary_candidates.status = 'pending' "
+            "RETURNING id",
+            (normalized, term.strip(), now, now),
+        )
+        row = cur.fetchone()
+        if row is None:
+            # Ya existe y no está en 'pending' (proposed/dismissed): no se registra la mención.
+            return
+        candidate_id = row[0]
+
+        cur.execute(
+            "INSERT INTO glossary_candidate_mentions (candidate_id, article_url) VALUES (%s, %s) "
+            "ON CONFLICT (candidate_id, article_url) DO NOTHING",
+            (candidate_id, article_url),
+        )
+
+
+def pending_glossary_candidates_over_threshold(
+    conn: psycopg.Connection, threshold: int = CANDIDATE_THRESHOLD
+) -> list[tuple[int, str, int, str]]:
+    """Devuelve (id, display_term, mention_count, example_article_url) listos para alertar.
+    mention_count y example_article_url se calculan por join, nunca se guardan como
+    columna propia — evita que un contador desincronizado mienta sobre el conteo real.
+    """
+    with conn.cursor() as cur:
+        cur.execute(
+            "SELECT gc.id, gc.display_term, count(gcm.id), "
+            "(array_agg(gcm.article_url ORDER BY gcm.id DESC))[1] "
+            "FROM glossary_candidates gc "
+            "JOIN glossary_candidate_mentions gcm ON gcm.candidate_id = gc.id "
+            "WHERE gc.status = 'pending' "
+            "GROUP BY gc.id, gc.display_term "
+            "HAVING count(gcm.id) >= %s",
+            (threshold,),
+        )
+        return cur.fetchall()
+
+
+def mark_glossary_candidate_proposed(conn: psycopg.Connection, candidate_id: int) -> None:
+    with conn.cursor() as cur:
+        cur.execute("UPDATE glossary_candidates SET status = 'proposed' WHERE id = %s", (candidate_id,))
+
+
 def degraded_sources_needing_alert(conn: psycopg.Connection) -> list[tuple[int, str, str]]:
     """Devuelve (id, tool_slug, kind) de fuentes degradadas sin alertar todavía."""
     with conn.cursor() as cur:
