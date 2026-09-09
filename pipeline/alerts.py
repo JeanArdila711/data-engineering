@@ -20,8 +20,10 @@ from pipeline.db import (
     connect,
     degraded_sources_needing_alert,
     mark_candidate_proposed,
+    mark_glossary_candidate_proposed,
     mark_source_alerted,
     pending_candidates_over_threshold,
+    pending_glossary_candidates_over_threshold,
 )
 
 logger = logging.getLogger("de_radar.alerts")
@@ -81,6 +83,25 @@ def send_candidate_alerts(conn, repo: str, token: str, opener=_open_issue) -> in
     return sent
 
 
+def send_glossary_candidate_alerts(conn, repo: str, token: str, opener=_open_issue) -> int:
+    """Abre un issue por término candidato al glosario que cruzó el umbral. Devuelve cuántos abrió."""
+    sent = 0
+    for candidate_id, term, mentions, url in pending_glossary_candidates_over_threshold(conn):
+        opener(
+            repo, token,
+            title=f"Candidato de glosario: {term}",
+            body=(
+                f"`{term}` apareció mencionado en {mentions} artículos y todavía no está en el glosario.\n\n"
+                f"Ejemplo: {url}\n\nSi pasa la regla de curación (evidencia de uso real + fuente primaria), "
+                f"agregalo a `catalog/glosario.yaml`."
+            ),
+            labels=["glossary-candidate"],
+        )
+        mark_glossary_candidate_proposed(conn, candidate_id)
+        sent += 1
+    return sent
+
+
 def main() -> int:
     load_dotenv()
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s", stream=sys.stdout)
@@ -92,10 +113,14 @@ def main() -> int:
     try:
         sources_alerted = send_source_alerts(conn, repo, token, now)
         candidates_alerted = send_candidate_alerts(conn, repo, token)
+        glossary_candidates_alerted = send_glossary_candidate_alerts(conn, repo, token)
     finally:
         conn.close()
 
-    logger.info("alertas enviadas | fuentes=%d candidatos=%d", sources_alerted, candidates_alerted)
+    logger.info(
+        "alertas enviadas | fuentes=%d candidatos=%d candidatos_glosario=%d",
+        sources_alerted, candidates_alerted, glossary_candidates_alerted,
+    )
     return 0
 
 

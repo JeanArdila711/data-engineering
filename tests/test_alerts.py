@@ -46,3 +46,22 @@ def test_send_candidate_alerts_opens_one_issue_per_candidate_over_threshold(db_c
     assert sent == 1
     assert calls == [("Candidato de catálogo: Fooflow", ["catalog-candidate"])]
     assert send_candidate_alerts(db_conn, "owner/repo", "tok", opener=fake_opener) == 0
+
+
+def test_send_glossary_candidate_alerts_opens_one_issue_per_candidate_over_threshold(db_conn):
+    from pipeline.alerts import send_glossary_candidate_alerts
+    from pipeline.db import upsert_glossary_candidate
+
+    upsert_glossary_candidate(db_conn, "circuit breaker", "https://a.example/1", NOW)
+    upsert_glossary_candidate(db_conn, "circuit breaker", "https://a.example/2", NOW)
+
+    calls = []
+
+    def fake_opener(repo, token, title, body, labels):
+        calls.append((title, labels))
+
+    sent = send_glossary_candidate_alerts(db_conn, "owner/repo", "tok", opener=fake_opener)
+
+    assert sent == 1
+    assert calls == [("Candidato de glosario: circuit breaker", ["glossary-candidate"])]
+    assert send_glossary_candidate_alerts(db_conn, "owner/repo", "tok", opener=fake_opener) == 0
