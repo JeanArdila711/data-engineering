@@ -84,7 +84,7 @@ def test_quitar_la_experiencia_la_borra(db_conn):
 def test_sincroniza_opciones_del_wizard(db_conn):
     grafo = Roadmap(
         nodes=[_nodo("sql"), _nodo("dbt", nivel=1, prerequisitos=["sql"])],
-        objetivos=[Objetivo(slug="modelado", nombre="M", descripcion="d", metas=["dbt"])],
+        objetivos=[Objetivo(slug="modelado", nombre="M", descripcion="d", metas=["dbt"], reto_ausente="sin reto")],
         puntos_de_partida=[
             PuntoDePartida(slug="cero", nombre="C", descripcion="d"),
             PuntoDePartida(slug="ya-sql", nombre="S", descripcion="d", conocidos=["sql"]),
@@ -104,12 +104,12 @@ def test_borra_opciones_que_salieron_del_yaml(db_conn):
     nodes = [_nodo("sql")]
     sync_roadmap(db_conn, Roadmap(
         nodes=nodes,
-        objetivos=[Objetivo(slug="a", nombre="A", descripcion="d", metas=["sql"]),
-                   Objetivo(slug="b", nombre="B", descripcion="d", metas=["sql"])],
+        objetivos=[Objetivo(slug="a", nombre="A", descripcion="d", metas=["sql"], reto_ausente="sin reto"),
+                   Objetivo(slug="b", nombre="B", descripcion="d", metas=["sql"], reto_ausente="sin reto")],
     ))
     sync_roadmap(db_conn, Roadmap(
         nodes=nodes,
-        objetivos=[Objetivo(slug="a", nombre="A", descripcion="d", metas=["sql"])],
+        objetivos=[Objetivo(slug="a", nombre="A", descripcion="d", metas=["sql"], reto_ausente="sin reto")],
     ))
     with db_conn.cursor() as cur:
         cur.execute("SELECT slug FROM roadmap_wizard_option")
@@ -121,7 +121,7 @@ def test_borra_opciones_que_salieron_del_yaml(db_conn):
 def test_opciones_son_idempotentes(db_conn):
     grafo = Roadmap(
         nodes=[_nodo("sql")],
-        objetivos=[Objetivo(slug="a", nombre="A", descripcion="d", metas=["sql"])],
+        objetivos=[Objetivo(slug="a", nombre="A", descripcion="d", metas=["sql"], reto_ausente="sin reto")],
         puntos_de_partida=[PuntoDePartida(slug="cero", nombre="C", descripcion="d")],
     )
     sync_roadmap(db_conn, grafo)

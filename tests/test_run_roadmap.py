@@ -53,7 +53,7 @@ def test_un_llm_roto_no_tumba_la_corrida(db_conn):
     from pipeline.roadmap import Objetivo, PuntoDePartida
     roadmap = Roadmap(
         nodes=[_nodo("a")],
-        objetivos=[Objetivo(slug="o", nombre="o", descripcion="", metas=["a"])],
+        objetivos=[Objetivo(slug="o", nombre="o", descripcion="", metas=["a"], reto_ausente="sin reto")],
         puntos_de_partida=[PuntoDePartida(slug="p", nombre="p", descripcion="")],
     )
     assert run(db_conn, roadmap, Glosario(terminos=[]), llm=_LLMRoto()) == 1

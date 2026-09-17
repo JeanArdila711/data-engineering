@@ -172,6 +172,14 @@ def sync_roadmap(conn: psycopg.Connection, roadmap: Roadmap) -> None:
                      impl.proveedor, impl.equivalencia, impl.nota),
                 )
 
+            cur.execute("DELETE FROM roadmap_practice_resource WHERE node_slug = %s", (node.slug,))
+            for recurso in node.practica_externa:
+                cur.execute(
+                    "INSERT INTO roadmap_practice_resource (node_slug, nombre, url, por_que) "
+                    "VALUES (%s, %s, %s, %s)",
+                    (node.slug, recurso.nombre, recurso.url, recurso.por_que),
+                )
+
         # Las opciones del wizard. El orden del YAML es el orden de la UI:
         # no hace falta otro campo para expresarlo.
         opciones = [
@@ -207,6 +215,32 @@ def sync_roadmap(conn: psycopg.Connection, roadmap: Roadmap) -> None:
                     "INSERT INTO roadmap_wizard_option_node (kind, slug, node_slug) VALUES (%s, %s, %s)",
                     (kind, slug, node_slug),
                 )
+
+        # Reto por objetivo (Fase 1 de Guía de Práctica). Va después del
+        # bloque de arriba porque roadmap_challenge tiene una FK compuesta
+        # contra roadmap_wizard_option, que recién existe una vez sincronizada.
+        objetivos_vigentes = [o.slug for o in roadmap.objetivos]
+        cur.execute(
+            "DELETE FROM roadmap_challenge WHERE NOT (objetivo_slug = ANY(%s::text[]))",
+            (objetivos_vigentes,),
+        )
+        for objetivo in roadmap.objetivos:
+            escenario = objetivo.reto.escenario if objetivo.reto else None
+            cur.execute(
+                "INSERT INTO roadmap_challenge (objetivo_slug, escenario, motivo_ausencia) "
+                "VALUES (%s, %s, %s) "
+                "ON CONFLICT (objetivo_slug) DO UPDATE SET "
+                "escenario = EXCLUDED.escenario, motivo_ausencia = EXCLUDED.motivo_ausencia",
+                (objetivo.slug, escenario, objetivo.reto_ausente),
+            )
+            cur.execute("DELETE FROM roadmap_challenge_check WHERE objetivo_slug = %s", (objetivo.slug,))
+            if objetivo.reto:
+                for orden, node_slug in enumerate(objetivo.reto.checklist):
+                    cur.execute(
+                        "INSERT INTO roadmap_challenge_check (objetivo_slug, node_slug, orden) "
+                        "VALUES (%s, %s, %s)",
+                        (objetivo.slug, node_slug, orden),
+                    )
 
 
 def save_raw_fetch(conn: psycopg.Connection, source_id: int, ds: date, payload: str) -> None:

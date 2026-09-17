@@ -26,6 +26,9 @@ def test_roadmap_tables_exist(db_conn):
         "roadmap_wizard_option_node",
         "roadmap_route_blurb",
         "roadmap_level",
+        "roadmap_practice_resource",
+        "roadmap_challenge",
+        "roadmap_challenge_check",
     }
 
 
