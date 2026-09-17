@@ -218,15 +218,21 @@ def run(
         sample = select_sample(new_claim_ids, rate=rate)
         with conn.cursor() as cur:
             for claim_id in sample:
-                cur.execute("SELECT quoted_text FROM claims WHERE id = %s", (claim_id,))
-                quote = cur.fetchone()[0]
-                cur.execute("SELECT text FROM summaries WHERE id = (SELECT summary_id FROM claims WHERE id = %s)", (claim_id,))
-                summary_text = cur.fetchone()[0]
-                is_entailed = llm_client.judge_entailment(quote, summary_text)
-                cur.execute(
-                    "INSERT INTO entailment_checks (claim_id, is_entailed) VALUES (%s, %s)",
-                    (claim_id, is_entailed),
-                )
+                try:
+                    cur.execute("SELECT quoted_text FROM claims WHERE id = %s", (claim_id,))
+                    quote = cur.fetchone()[0]
+                    cur.execute("SELECT text FROM summaries WHERE id = (SELECT summary_id FROM claims WHERE id = %s)", (claim_id,))
+                    summary_text = cur.fetchone()[0]
+                    is_entailed = llm_client.judge_entailment(quote, summary_text)
+                    cur.execute(
+                        "INSERT INTO entailment_checks (claim_id, is_entailed) VALUES (%s, %s)",
+                        (claim_id, is_entailed),
+                    )
+                except Exception:
+                    # Mismo criterio que el fetch por feed y el resumen por artículo:
+                    # una falla del juez (p.ej. 429 de cuota) no debe tumbar la corrida,
+                    # solo esa verificación queda sin registrar.
+                    logger.error("verificación de entailment falló | claim_id=%s", claim_id, exc_info=True)
 
     return summary
 

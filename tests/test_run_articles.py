@@ -66,6 +66,20 @@ class _FakeLLMCrashes:
         return True
 
 
+class _FakeLLMEntailmentQuotaExceeded:
+    """Reproduce el bug real de producción: judge_entailment pega contra la
+    cuota gratuita de Gemini (429) y no había try/except alrededor del loop."""
+
+    def draft_summary(self, document, tool_names):
+        return SummaryDraft(text="resumen", quotes=[document[:10]])
+
+    def translate(self, text):
+        return f"[ES] {text}"
+
+    def judge_entailment(self, quote, summary_text):
+        raise RuntimeError("429 RESOURCE_EXHAUSTED")
+
+
 def _record(url="https://duckdb.org/a", text="DuckDB 1.5 salió hoy con mejoras") -> ArticleRecord:
     return ArticleRecord(url=url, title="T", author=None, published_at=NOW, summary_text=text)
 
@@ -124,6 +138,18 @@ def test_run_survives_llm_exception_during_summarize(db_conn):
     with db_conn.cursor() as cur:
         cur.execute("SELECT source_ref, stage FROM quarantine")
         assert cur.fetchone() == ("article:1", "summarize")
+
+
+def test_run_survives_llm_exception_during_entailment(db_conn):
+    summary = run(
+        db_conn, _catalog(), ROADMAP_VACIO, GLOSARIO_VACIO,
+        _FakeLLMEntailmentQuotaExceeded(), DS, NOW, fetcher=_fake_fetcher([_record()]),
+    )
+
+    assert summary.summaries_accepted == 1
+    with db_conn.cursor() as cur:
+        cur.execute("SELECT count(*) FROM entailment_checks")
+        assert cur.fetchone() == (0,)
 
 
 def test_run_records_source_failure_on_feed_error(db_conn):
