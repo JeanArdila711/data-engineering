@@ -1008,6 +1008,7 @@ objetivos:
       - calidad-y-tests-de-datos
       - observabilidad
       - git
+    reto_ausente: en construcción
 
   - slug: modelado-analitico
     nombre: Modelar datos para analítica
@@ -1020,6 +1021,7 @@ objetivos:
       - lake-vs-warehouse-vs-lakehouse
       - warehouse-gestionado
       - git
+    reto_ausente: en construcción
 
   - slug: streaming
     nombre: Trabajar con datos en tiempo real
@@ -1031,6 +1033,7 @@ objetivos:
       - procesamiento-distribuido
       - observabilidad
       - git
+    reto_ausente: en construcción
 
   - slug: plataforma-cloud
     nombre: Operar una plataforma de datos en la nube
@@ -1047,6 +1050,7 @@ objetivos:
       - gobernanza-y-datos-personales
       - git
       - linea-de-comandos
+    reto_ausente: en construcción
 
   - slug: ruta-completa
     nombre: Todo el rumbo
@@ -1068,6 +1072,7 @@ objetivos:
       - costo
       - gobernanza-y-datos-personales
       - git
+    reto_ausente: en construcción
 
 puntos_de_partida:
   - slug: desde-cero

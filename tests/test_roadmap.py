@@ -21,7 +21,16 @@ def _escribir(tmp_path: Path, nodes: list[dict], **extra) -> Path:
 
 
 def _objetivo(slug="batch", metas=("b",), **extra) -> dict:
-    return {"slug": slug, "nombre": slug, "descripcion": "d", "metas": list(metas), **extra}
+    base = {
+        "slug": slug, "nombre": slug, "descripcion": "d", "metas": list(metas),
+        "reto_ausente": "sin reto en este fixture de test",
+    }
+    base.update(extra)
+    return base
+
+
+def _reto(checklist=("a",), **extra) -> dict:
+    return {"escenario": "Hacé algo real con esto y comprobalo.", "checklist": list(checklist), **extra}
 
 
 def _partida(slug="cero", conocidos=(), **extra) -> dict:
@@ -315,3 +324,107 @@ def test_niveles_vacio_no_bloquea_nodos_sin_declarar(tmp_path):
     path = _escribir(tmp_path, [_nodo("a", nivel=99)])
     roadmap = load_roadmap(path, CATALOGO)
     assert roadmap.niveles == {}
+
+
+def test_carga_objetivo_con_reto(tmp_path):
+    path = _escribir(
+        tmp_path, [_nodo("a"), _nodo("b", nivel=1, prerequisitos=["a"])],
+        objetivos=[_objetivo(metas=["b"], reto=_reto(checklist=["a", "b"]), reto_ausente=None)],
+    )
+    roadmap = load_roadmap(path, CATALOGO)
+    assert roadmap.objetivos[0].reto.checklist == ["a", "b"]
+    assert roadmap.objetivos[0].reto_ausente is None
+
+
+def test_rechaza_objetivo_sin_reto_ni_motivo(tmp_path):
+    path = _escribir(tmp_path, [_nodo("a")], objetivos=[_objetivo(metas=["a"], reto_ausente=None)])
+    with pytest.raises(RoadmapError, match="exactamente uno"):
+        load_roadmap(path, CATALOGO)
+
+
+def test_rechaza_objetivo_con_reto_y_motivo_a_la_vez(tmp_path):
+    path = _escribir(
+        tmp_path, [_nodo("a")],
+        objetivos=[_objetivo(metas=["a"], reto=_reto(checklist=["a"]))],
+    )
+    with pytest.raises(RoadmapError, match="exactamente uno"):
+        load_roadmap(path, CATALOGO)
+
+
+def test_rechaza_checklist_vacio(tmp_path):
+    path = _escribir(
+        tmp_path, [_nodo("a")],
+        objetivos=[_objetivo(metas=["a"], reto=_reto(checklist=[]), reto_ausente=None)],
+    )
+    with pytest.raises(RoadmapError, match="checklist"):
+        load_roadmap(path, CATALOGO)
+
+
+def test_rechaza_checklist_con_nodo_repetido(tmp_path):
+    path = _escribir(
+        tmp_path, [_nodo("a")],
+        objetivos=[_objetivo(metas=["a"], reto=_reto(checklist=["a", "a"]), reto_ausente=None)],
+    )
+    with pytest.raises(RoadmapError, match="repite"):
+        load_roadmap(path, CATALOGO)
+
+
+def test_rechaza_checklist_con_nodo_inexistente(tmp_path):
+    path = _escribir(
+        tmp_path, [_nodo("a")],
+        objetivos=[_objetivo(metas=["a"], reto=_reto(checklist=["zzz"]), reto_ausente=None)],
+    )
+    with pytest.raises(RoadmapError, match="zzz"):
+        load_roadmap(path, CATALOGO)
+
+
+def test_rechaza_checklist_fuera_de_la_clausura_del_objetivo(tmp_path):
+    """b es un nodo real del grafo, pero no es prerequisito de la meta 'a' del
+    objetivo — pedirlo en el checklist sería exigir algo que la propia ruta
+    del objetivo nunca enseña."""
+    path = _escribir(
+        tmp_path, [_nodo("a"), _nodo("b")],
+        objetivos=[_objetivo(metas=["a"], reto=_reto(checklist=["b"]), reto_ausente=None)],
+    )
+    with pytest.raises(RoadmapError, match="fuera de su propia ruta"):
+        load_roadmap(path, CATALOGO)
+
+
+def test_rechaza_escenario_vacio_tras_strip(tmp_path):
+    path = _escribir(
+        tmp_path, [_nodo("a")],
+        objetivos=[_objetivo(metas=["a"], reto=_reto(escenario="   "), reto_ausente=None)],
+    )
+    with pytest.raises(RoadmapError, match="escenario"):
+        load_roadmap(path, CATALOGO)
+
+
+def test_rechaza_motivo_ausencia_vacio_tras_strip(tmp_path):
+    path = _escribir(tmp_path, [_nodo("a")], objetivos=[_objetivo(metas=["a"], reto_ausente="   ")])
+    with pytest.raises(RoadmapError, match="reto_ausente"):
+        load_roadmap(path, CATALOGO)
+
+
+def test_carga_recurso_de_practica_externa(tmp_path):
+    path = _escribir(tmp_path, [_nodo("a", practica_externa=[
+        {"nombre": "PgExercises", "url": "https://pgexercises.com/", "por_que": "ejercicios sobre un esquema real"},
+    ])])
+    roadmap = load_roadmap(path, CATALOGO)
+    assert roadmap.nodes[0].practica_externa[0].nombre == "PgExercises"
+
+
+def test_rechaza_recurso_de_practica_con_url_mal_formada(tmp_path):
+    path = _escribir(tmp_path, [_nodo("a", practica_externa=[
+        {"nombre": "X", "url": "no-es-una-url", "por_que": "porque sí"},
+    ])])
+    with pytest.raises(RoadmapError, match="grafo inválido"):
+        load_roadmap(path, CATALOGO)
+
+
+def test_rechaza_recurso_de_practica_duplicado_en_el_mismo_nodo(tmp_path):
+    path = _escribir(tmp_path, [_nodo("a", practica_externa=[
+        {"nombre": "X", "url": "https://x.dev", "por_que": "a"},
+        {"nombre": "Y", "url": "https://x.dev", "por_que": "b"},
+    ])])
+    with pytest.raises(RoadmapError, match="repite"):
+        load_roadmap(path, CATALOGO)

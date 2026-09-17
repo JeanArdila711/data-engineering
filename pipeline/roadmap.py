@@ -15,7 +15,7 @@ from pathlib import Path
 from typing import Iterable, Literal
 
 import yaml
-from pydantic import BaseModel, Field, ValidationError
+from pydantic import BaseModel, Field, ValidationError, field_validator
 
 from pipeline.config import Catalog, load_catalog
 
@@ -48,6 +48,31 @@ class Implementation(BaseModel):
     nota: str | None = None
 
 
+_URL_HTTP = re.compile(r"^https?://")
+
+
+class RecursoPractica(BaseModel):
+    """Un recurso externo curado para practicar un nodo — calcada de Source,
+    más `nombre` porque acá el nombre de la plataforma se muestra."""
+    nombre: str
+    url: str
+    por_que: str
+
+    @field_validator("nombre", "por_que")
+    @classmethod
+    def _no_vacio(cls, v: str) -> str:
+        if not v.strip():
+            raise ValueError("no puede estar vacío")
+        return v
+
+    @field_validator("url")
+    @classmethod
+    def _url_bien_formada(cls, v: str) -> str:
+        if not _URL_HTTP.match(v):
+            raise ValueError(f"url mal formada: '{v}'")
+        return v
+
+
 class RoadmapNode(BaseModel):
     slug: str
     tipo: Tipo
@@ -60,6 +85,21 @@ class RoadmapNode(BaseModel):
     lo_vi_romperse: Experience | None = None
     fuentes: list[Source] = Field(default_factory=list)
     implementaciones: list[Implementation] = Field(default_factory=list)
+    practica_externa: list[RecursoPractica] = Field(default_factory=list)
+
+
+class Reto(BaseModel):
+    """Un reto de punta a punta. El checklist es curado, no derivado de las
+    metas del objetivo — son preguntas distintas (ver spec)."""
+    escenario: str
+    checklist: list[str]
+
+    @field_validator("escenario")
+    @classmethod
+    def _no_vacio(cls, v: str) -> str:
+        if not v.strip():
+            raise ValueError("no puede estar vacío")
+        return v
 
 
 class Objetivo(BaseModel):
@@ -69,6 +109,8 @@ class Objetivo(BaseModel):
     nombre: str
     descripcion: str
     metas: list[str]
+    reto: Reto | None = None
+    reto_ausente: str | None = None
 
 
 class PuntoDePartida(BaseModel):
@@ -154,6 +196,47 @@ def _validar_opciones(kind: str, opciones: list, campo: str, conocidos: set[str]
             )
 
 
+def _validar_retos(roadmap: Roadmap) -> None:
+    """Reglas 1, 2, 3, 4 y la mitad de la 6 del spec (vacíos de escenario/
+    motivo_ausencia). La regla 5 (url bien formada, por_que/nombre no vacíos)
+    vive en RecursoPractica/Reto como field_validator de Pydantic — acá solo
+    lo que necesita ver el grafo completo."""
+    conocidos = {n.slug for n in roadmap.nodes}
+    for objetivo in roadmap.objetivos:
+        if (objetivo.reto is None) == (objetivo.reto_ausente is None):
+            raise RoadmapError(
+                f"el objetivo '{objetivo.slug}' debe declarar exactamente uno de "
+                "reto o reto_ausente"
+            )
+        if objetivo.reto_ausente is not None and not objetivo.reto_ausente.strip():
+            raise RoadmapError(f"el objetivo '{objetivo.slug}' tiene reto_ausente vacío")
+        if objetivo.reto is None:
+            continue
+
+        checklist = objetivo.reto.checklist
+        if not checklist:
+            raise RoadmapError(f"el reto de '{objetivo.slug}' tiene un checklist vacío")
+
+        duplicados = sorted(s for s, c in Counter(checklist).items() if c > 1)
+        if duplicados:
+            raise RoadmapError(
+                f"el reto de '{objetivo.slug}' repite nodos en el checklist: {', '.join(duplicados)}"
+            )
+
+        faltantes = sorted(set(checklist) - conocidos)
+        if faltantes:
+            raise RoadmapError(
+                f"el reto de '{objetivo.slug}' referencia nodos que no existen: {', '.join(faltantes)}"
+            )
+
+        clausura = clausura_prerequisitos(roadmap.nodes, objetivo.metas)
+        fuera = sorted(set(checklist) - clausura)
+        if fuera:
+            raise RoadmapError(
+                f"el reto de '{objetivo.slug}' pide nodos fuera de su propia ruta: {', '.join(fuera)}"
+            )
+
+
 def _validar(roadmap: Roadmap, catalog: Catalog) -> None:
     # Un YAML truncado o mal indentado puede parsear como lista vacía: sin este
     # chequeo, sync_roadmap borraría la tabla entera (su DELETE mantiene solo
@@ -190,6 +273,14 @@ def _validar(roadmap: Roadmap, catalog: Catalog) -> None:
         if implementaciones_dup:
             raise RoadmapError(
                 f"'{node.slug}' repite la misma implementación: {', '.join(implementaciones_dup)}"
+            )
+
+        practica_dup = sorted(
+            u for u, c in Counter(r.url for r in node.practica_externa).items() if c > 1
+        )
+        if practica_dup:
+            raise RoadmapError(
+                f"'{node.slug}' repite el mismo recurso de práctica: {', '.join(practica_dup)}"
             )
 
     conocidos = set(slugs)
@@ -249,6 +340,7 @@ def _validar(roadmap: Roadmap, catalog: Catalog) -> None:
             raise RoadmapError(f"el objetivo '{objetivo.slug}' no declara metas")
     _validar_opciones("objetivo", roadmap.objetivos, "metas", conocidos)
     _validar_opciones("punto de partida", roadmap.puntos_de_partida, "conocidos", conocidos)
+    _validar_retos(roadmap)
 
 
 def load_roadmap(path: Path, catalog: Catalog) -> Roadmap:
