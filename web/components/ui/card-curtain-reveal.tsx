@@ -5,26 +5,21 @@ import { HTMLMotionProps, Variants, motion } from "motion/react"
 
 import { cn } from "@/lib/utils"
 
-const springTransition = {
-  type: "spring",
-  stiffness: 220,
-  damping: 25,
-  mass: 1,
-} as any;
-
 const curtainVriants: Variants = {
   visible: {
     clipPath: "polygon(0 0,100% 0,100% 100%,0 100%)",
-    transition: springTransition,
+    transition: {
+      duration: 0.4,
+      ease: ["easeOut", [0.25, 1.5, 0.5, 1]],
+    },
   },
+
   hidden: {
     clipPath: "polygon(50% 0,50% 0,50% 100%,50% 100%)",
     transition: {
-      type: "spring",
-      stiffness: 250,
-      damping: 30,
-      mass: 1,
-    } as any,
+      duration: 0.3,
+      ease: ["easeOut", [0.25, 1.5, 0.5, 1]],
+    },
   },
 }
 
@@ -45,7 +40,8 @@ function useCardCurtainRevealContext() {
 }
 
 interface CardCurtainRevealProps extends React.HTMLAttributes<HTMLDivElement> {
-  forceOpen?: boolean;
+  /** Fuerza el estado abierto/cerrado independientemente del hover (p.ej. para mobile, donde no hay hover). */
+  forceOpen?: boolean
 }
 
 const CardCurtainReveal = React.forwardRef<
@@ -55,8 +51,7 @@ const CardCurtainReveal = React.forwardRef<
   const [isMouseIn, setIsMouseIn] = React.useState(false)
   const handleMouseEnter = React.useCallback(() => setIsMouseIn(true), [])
   const handleMouseLeave = React.useCallback(() => setIsMouseIn(false), [])
-
-  const contextValue = forceOpen !== undefined ? forceOpen : isMouseIn;
+  const contextValue = forceOpen !== undefined ? forceOpen : isMouseIn
 
   return (
     <CardCurtainRevealContext.Provider value={{ isMouseIn: contextValue }}>
@@ -114,7 +109,7 @@ const CardCurtainRevealTitle = React.forwardRef<
       ref={ref}
       className={className}
       animate={isMouseIn ? { y: 0 } : { y: 170 }}
-      transition={isMouseIn ? (springTransition as any) : ({ type: "spring", stiffness: 250, damping: 30, mass: 1 } as any)}
+      transition={{ duration: 0.3, ease: "easeOut" }}
       {...props}
     />
   )
