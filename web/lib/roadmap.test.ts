@@ -6,7 +6,7 @@ import { ordenarTopologico, agruparPorNivel, clausuraPrerequisitos, subgrafo, me
 const nodo = (slug: string, prerequisitos: string[] = [], nivel = 0): RoadmapNode => ({
   slug, tipo: 'concepto', nombre: slug, resuelve: '', dominado_cuando: '',
   nivel, orden_sugerido: 0, experiencia_texto: null, experiencia_link: null,
-  prerequisitos, implementaciones: [], fuentes: [],
+  prerequisitos, implementaciones: [], fuentes: [], practica_externa: [],
 })
 
 test('pone los prerequisitos antes que sus dependientes', () => {

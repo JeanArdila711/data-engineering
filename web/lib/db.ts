@@ -194,7 +194,8 @@ export async function getRoadmap(): Promise<RoadmapNode[]> {
     }
     return await client<RoadmapNode[]>`
       select slug, tipo, nombre, resuelve, dominado_cuando, nivel, orden_sugerido,
-             experiencia_texto, experiencia_link, prerequisitos, implementaciones, fuentes
+             experiencia_texto, experiencia_link, prerequisitos, implementaciones, fuentes,
+             practica_externa
       from mart_roadmap
       order by nivel, orden_sugerido, slug
     `
@@ -281,5 +282,34 @@ export async function getRoadmapLevels(): Promise<Record<number, string>> {
   } catch (error) {
     console.warn('Postgres connection unavailable for roadmap levels:', error)
     return {}
+  }
+}
+
+export type RetoChecklistItem = {
+  slug: string
+  nombre: string
+  dominado_cuando: string
+  experiencia_texto: string | null
+  experiencia_link: string | null
+}
+
+export type RetoEntry = {
+  objetivo_slug: string
+  escenario: string | null
+  motivo_ausencia: string | null
+  checklist: RetoChecklistItem[]
+}
+
+export async function getRetos(): Promise<RetoEntry[]> {
+  try {
+    const client = getSqlClient()
+    if (!client) return []
+    return await client<RetoEntry[]>`
+      select objetivo_slug, escenario, motivo_ausencia, checklist
+      from mart_reto
+    `
+  } catch (error) {
+    console.warn('Postgres connection unavailable for retos:', error)
+    return []
   }
 }

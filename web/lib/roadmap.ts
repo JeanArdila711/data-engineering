@@ -12,6 +12,8 @@ export type RoadmapImplementation = {
 
 export type RoadmapSource = { url: string; por_que: string }
 
+export type RoadmapPracticeResource = { nombre: string; url: string; por_que: string }
+
 export type RoadmapNode = {
   slug: string
   tipo: 'concepto' | 'herramienta' | 'capacidad-cloud'
@@ -25,6 +27,7 @@ export type RoadmapNode = {
   prerequisitos: string[]
   implementaciones: RoadmapImplementation[]
   fuentes: RoadmapSource[]
+  practica_externa: RoadmapPracticeResource[]
 }
 
 /**
