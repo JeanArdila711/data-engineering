@@ -17,6 +17,16 @@ sources:
       - name: roadmap_implementation
       - name: roadmap_wizard_option
       - name: roadmap_wizard_option_node
+      - name: roadmap_practice_resource
+      - name: roadmap_challenge
+      - name: roadmap_challenge_check
+        columns:
+          - name: node_slug
+            tests:
+              - relationships:
+                  arguments:
+                    to: ref('stg_roadmap_nodes')
+                    field: slug
       - name: roadmap_route_blurb
       - name: roadmap_level
       - name: glossary_term

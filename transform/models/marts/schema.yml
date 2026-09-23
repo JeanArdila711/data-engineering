@@ -109,6 +109,14 @@ models:
       - name: generated_at
         tests: [not_null]
 
+  - name: mart_reto
+    description: Una fila por objetivo del wizard de Rumbo, con su reto de punta a punta o el motivo de su ausencia.
+    columns:
+      - name: objetivo_slug
+        tests: [unique, not_null]
+      - name: checklist
+        tests: [not_null]
+
   - name: mart_glosario
     description: Unión de los 34 nodos de Rumbo y el glosario granular curado. Grano - una fila por entrada de glosario.
     columns:

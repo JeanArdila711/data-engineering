@@ -38,6 +38,17 @@ fuentes as (
         jsonb_agg(jsonb_build_object('url', url, 'por_que', por_que) order by url) as fuentes
     from {{ source('de_radar', 'roadmap_source') }}
     group by node_slug
+),
+
+practica_externa as (
+    select
+        node_slug as slug,
+        jsonb_agg(
+            jsonb_build_object('nombre', nombre, 'url', url, 'por_que', por_que)
+            order by nombre
+        ) as practica_externa
+    from {{ source('de_radar', 'roadmap_practice_resource') }}
+    group by node_slug
 )
 
 select
@@ -52,9 +63,11 @@ select
     x.link as experiencia_link,
     coalesce(p.prerequisitos, '[]'::jsonb) as prerequisitos,
     coalesce(i.implementaciones, '[]'::jsonb) as implementaciones,
-    coalesce(f.fuentes, '[]'::jsonb) as fuentes
+    coalesce(f.fuentes, '[]'::jsonb) as fuentes,
+    coalesce(pe.practica_externa, '[]'::jsonb) as practica_externa
 from {{ ref('stg_roadmap_nodes') }} as n
 left join {{ source('de_radar', 'roadmap_experience') }} as x on x.node_slug = n.slug
 left join prerequisitos as p on p.slug = n.slug
 left join implementaciones as i on i.slug = n.slug
 left join fuentes as f on f.slug = n.slug
+left join practica_externa as pe on pe.slug = n.slug
