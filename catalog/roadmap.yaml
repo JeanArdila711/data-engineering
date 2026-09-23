@@ -57,6 +57,13 @@ nodes:
       - nombre: PostgreSQL
       - nombre: DuckDB
         tool_slug: duckdb
+    practica_externa:
+      - nombre: PgExercises
+        url: https://pgexercises.com/
+        por_que: ejercicios sobre un único esquema realista (torneo de squash), de select básico a window functions y recursivas, con la solución explicada; sin registro, licencia CC BY-SA
+      - nombre: DataLemur
+        url: https://www.datalemur.com/
+        por_que: preguntas de SQL reales etiquetadas por empresa (LinkedIn, Meta, Amazon), estilo entrevista en vez de esquema único — ángulo distinto al de PgExercises
 
   - slug: python-para-datos
     tipo: herramienta
@@ -118,6 +125,10 @@ nodes:
         por_que: Pro Git es el libro oficial y explica rebase desde el modelo de datos, no como receta
     implementaciones:
       - nombre: Git
+    practica_externa:
+      - nombre: Learn Git Branching
+        url: https://learngitbranching.js.org/
+        por_que: simulador visual de un repositorio real en el navegador — ramas, rebase, cherry-pick — sin necesitar terminal propia; proyecto open source, gratis
 
   - slug: linea-de-comandos
     tipo: herramienta
@@ -138,6 +149,10 @@ nodes:
         por_que: el manual de Bash es la referencia de los detalles que muerden, como el estado de salida de una tubería
     implementaciones:
       - nombre: Bash
+    practica_externa:
+      - nombre: "OverTheWire: Bandit"
+        url: https://overthewire.org/wargames/bandit/
+        por_que: wargame vía SSH pensado para principiantes absolutos — cada nivel exige un comando real de shell para conseguir la contraseña del siguiente; gratis, sin registro
 
   - slug: contenedores
     tipo: herramienta
@@ -1008,7 +1023,18 @@ objetivos:
       - calidad-y-tests-de-datos
       - observabilidad
       - git
-    reto_ausente: en construcción
+    reto:
+      escenario: >
+        Elegí una fuente pública que cambie con el tiempo y armá la ingesta:
+        guardá la respuesta cruda antes de parsearla, escribí el resultado a
+        donde quieras (una tabla, archivos, lo que tengas), y corré el proceso
+        dos veces seguidas sin borrar nada en el medio.
+      checklist:
+        - salud-de-fuentes
+        - idempotencia
+        - carga-incremental
+        - backfill-y-reprocesamiento
+        - calidad-y-tests-de-datos
 
   - slug: modelado-analitico
     nombre: Modelar datos para analítica
@@ -1021,7 +1047,20 @@ objetivos:
       - lake-vs-warehouse-vs-lakehouse
       - warehouse-gestionado
       - git
-    reto_ausente: en construcción
+    reto:
+      escenario: >
+        Elegí una fuente que tenga al menos un atributo que cambie con el
+        tiempo (puede ser catalog/tools.yaml de este mismo repo, que es
+        público) y modelala como SCD Tipo 2: una tabla de hechos con grano
+        explícito y una dimensión que guarde el historial de esos cambios, no
+        solo el valor actual. Corré una transformación por capas y verificá
+        con una consulta que el histórico sigue disponible después de que la
+        fuente cambió.
+      checklist:
+        - modelado-dimensional
+        - historizacion-scd
+        - elt-y-capas-de-transformacion
+        - calidad-y-tests-de-datos
 
   - slug: streaming
     nombre: Trabajar con datos en tiempo real
@@ -1033,7 +1072,10 @@ objetivos:
       - procesamiento-distribuido
       - observabilidad
       - git
-    reto_ausente: en construcción
+    reto_ausente: >
+      Todavía no construí un pipeline de streaming en producción. Escribir un
+      reto sobre algo que no practiqué sería inventarlo, así que este objetivo
+      todavía no tiene uno.
 
   - slug: plataforma-cloud
     nombre: Operar una plataforma de datos en la nube
@@ -1050,7 +1092,11 @@ objetivos:
       - gobernanza-y-datos-personales
       - git
       - linea-de-comandos
-    reto_ausente: en construcción
+    reto_ausente: >
+      Todavía no operé una plataforma cloud completa en producción — lo poco
+      que viví ahí (costo, control de versiones) es periférico, no las piezas
+      centrales de storage y cómputo gestionado. Escribir un reto sobre eso
+      sería inventarlo.
 
   - slug: ruta-completa
     nombre: Todo el rumbo
@@ -1072,7 +1118,9 @@ objetivos:
       - costo
       - gobernanza-y-datos-personales
       - git
-    reto_ausente: en construcción
+    reto_ausente: >
+      No aplica: "Todo el rumbo" es la unión de los otros objetivos, y el
+      reto vive en cada uno de ellos, no en la ruta completa como bloque.
 
 puntos_de_partida:
   - slug: desde-cero
