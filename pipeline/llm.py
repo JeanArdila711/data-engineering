@@ -79,9 +79,20 @@ Reglas:
 Devolvé JSON: {{"texto": "..."}}"""
 
 
+# Sin retry_options el SDK hace un solo intento, y el free tier corta por
+# requests/minuto: una corrida normal lo supera y cada llamada siguiente
+# fallaba al instante con 429. El backoff (5, 10, 20, 40, 60 s) cruza la
+# ventana de un minuto.
+# ponytail: un 429 por cuota diaria también reintenta ~2 min por llamada;
+# si eso pasa, cortar las llamadas al LLM por el resto de la corrida.
+_RETRY = types.HttpRetryOptions(attempts=6, initial_delay=5, max_delay=60, exp_base=2)
+
+
 class GeminiClient:
     def __init__(self, api_key: str, summary_model: str, judge_model: str):
-        self._client = genai.Client(api_key=api_key)
+        self._client = genai.Client(
+            api_key=api_key, http_options=types.HttpOptions(retry_options=_RETRY)
+        )
         self._summary_model = summary_model
         self._judge_model = judge_model
 
