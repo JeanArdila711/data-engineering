@@ -415,6 +415,51 @@ def record_source_success(conn: psycopg.Connection, source_id: int, now: datetim
         )
 
 
+# Tasa de rechazo por anclaje: el 2026-09-30 había 12 resúmenes rechazados contra
+# 19 aceptados (39%) y nadie lo notó, porque la cuarentena no avisaba. Los 12 eran
+# falsos rechazos (markup HTML en el documento); una tasa real de citas inventadas
+# es bastante menor. El volumen real es de ~12 intentos cada 14 días, así que una
+# ventana de 7 días con piso de 10 nunca habría disparado: 14 días y piso de 8.
+# Calibrar si el volumen cambia.
+ANCHOR_REJECTION_ALERT_RATE = 0.20
+ANCHOR_REJECTION_MIN_ATTEMPTS = 8
+ANCHOR_REJECTION_WINDOW_DAYS = 14
+
+
+def anchor_rejection_stats(conn: psycopg.Connection, now: datetime) -> tuple[int, int]:
+    """(rechazados, aceptados) por anclaje dentro de la ventana. Cada intento que
+    llega a la validación termina en una fila de cuarentena o en un resumen EN."""
+    with conn.cursor() as cur:
+        cur.execute(
+            "SELECT "
+            "(SELECT count(*) FROM quarantine WHERE stage = 'anchor' "
+            "  AND occurred_at > %(now)s - make_interval(days => %(days)s)), "
+            "(SELECT count(*) FROM summaries WHERE idioma = 'en' "
+            "  AND generated_at > %(now)s - make_interval(days => %(days)s))",
+            {"now": now, "days": ANCHOR_REJECTION_WINDOW_DAYS},
+        )
+        rejected, accepted = cur.fetchone()
+        return rejected, accepted
+
+
+def alert_sent_within(conn: psycopg.Connection, key: str, now: datetime, days: int) -> bool:
+    with conn.cursor() as cur:
+        cur.execute(
+            "SELECT 1 FROM alert_state WHERE alert_key = %s AND alerted_at > %s - make_interval(days => %s)",
+            (key, now, days),
+        )
+        return cur.fetchone() is not None
+
+
+def mark_alert_sent(conn: psycopg.Connection, key: str, now: datetime) -> None:
+    with conn.cursor() as cur:
+        cur.execute(
+            "INSERT INTO alert_state (alert_key, alerted_at) VALUES (%s, %s) "
+            "ON CONFLICT (alert_key) DO UPDATE SET alerted_at = EXCLUDED.alerted_at",
+            (key, now),
+        )
+
+
 CANDIDATE_THRESHOLD = 2
 
 

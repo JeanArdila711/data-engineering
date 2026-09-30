@@ -16,8 +16,14 @@ import httpx
 from dotenv import load_dotenv
 
 from pipeline.db import (
+    ANCHOR_REJECTION_ALERT_RATE,
+    ANCHOR_REJECTION_MIN_ATTEMPTS,
+    ANCHOR_REJECTION_WINDOW_DAYS,
     DEGRADED_AFTER_FAILURES,
+    alert_sent_within,
+    anchor_rejection_stats,
     connect,
+    mark_alert_sent,
     degraded_sources_needing_alert,
     mark_candidate_proposed,
     mark_glossary_candidate_proposed,
@@ -102,6 +108,36 @@ def send_glossary_candidate_alerts(conn, repo: str, token: str, opener=_open_iss
     return sent
 
 
+ANCHOR_ALERT_KEY = "anchor-rejection-rate"
+
+
+def send_anchor_rejection_alert(conn, repo: str, token: str, now: datetime, opener=_open_issue) -> int:
+    """Abre un issue si la tasa de rechazo por anclaje de la ventana es anormal.
+    Como mucho uno por ventana mientras la tasa siga alta. Devuelve 1 si abrió."""
+    rejected, accepted = anchor_rejection_stats(conn, now)
+    attempts = rejected + accepted
+    if attempts < ANCHOR_REJECTION_MIN_ATTEMPTS:
+        return 0
+    rate = rejected / attempts
+    if rate <= ANCHOR_REJECTION_ALERT_RATE:
+        return 0
+    if alert_sent_within(conn, ANCHOR_ALERT_KEY, now, ANCHOR_REJECTION_WINDOW_DAYS):
+        return 0
+    opener(
+        repo, token,
+        title=f"Anclaje: {rate:.0%} de los resúmenes rechazados (últimos {ANCHOR_REJECTION_WINDOW_DAYS} días)",
+        body=(
+            f"{rejected} de {attempts} intentos de resumen fueron rechazados por el validador de anclaje "
+            f"(umbral {ANCHOR_REJECTION_ALERT_RATE:.0%}). Suele ser el documento y no el LLM: markup, "
+            "entidades o un feed que cambió de formato.\n\n"
+            "Ver `quarantine` con `stage = 'anchor'`: `error` trae la cita y `payload` el resumen descartado."
+        ),
+        labels=["anchor-rejection"],
+    )
+    mark_alert_sent(conn, ANCHOR_ALERT_KEY, now)
+    return 1
+
+
 def main() -> int:
     load_dotenv()
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s", stream=sys.stdout)
@@ -114,12 +150,13 @@ def main() -> int:
         sources_alerted = send_source_alerts(conn, repo, token, now)
         candidates_alerted = send_candidate_alerts(conn, repo, token)
         glossary_candidates_alerted = send_glossary_candidate_alerts(conn, repo, token)
+        anchor_alerted = send_anchor_rejection_alert(conn, repo, token, now)
     finally:
         conn.close()
 
     logger.info(
-        "alertas enviadas | fuentes=%d candidatos=%d candidatos_glosario=%d",
-        sources_alerted, candidates_alerted, glossary_candidates_alerted,
+        "alertas enviadas | fuentes=%d candidatos=%d candidatos_glosario=%d anclaje=%d",
+        sources_alerted, candidates_alerted, glossary_candidates_alerted, anchor_alerted,
     )
     return 0
 
