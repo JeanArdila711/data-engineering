@@ -483,3 +483,55 @@ def test_retry_is_capped_by_top_n_and_prefers_higher_score(db_conn, monkeypatch)
     with db_conn.cursor() as cur:
         cur.execute("SELECT a.url FROM summaries s JOIN articles a ON a.id = s.article_id WHERE s.idioma = 'es'")
         assert cur.fetchall() == [("https://duckdb.org/b",)]
+
+
+_TEXTOS_DISTINTOS = [
+    "DuckDB añade soporte de extensiones para lectura remota de parquet",
+    "Nueva versión de DuckDB mejora el planificador de joins con estadísticas",
+    "DuckDB publica guía de migración del formato de almacenamiento interno",
+    "Cómo DuckDB ejecuta ventanas sobre millones de filas sin salir de memoria",
+    "DuckDB integra un cliente WebAssembly para analítica en el navegador",
+    "Benchmark: DuckDB frente a SQLite en agregaciones columnares grandes",
+]
+
+
+def _seis_articulos():
+    return [_record(url=f"https://duckdb.org/{i}", text=t) for i, t in enumerate(_TEXTOS_DISTINTOS)]
+
+
+class _FlakyJudge(_FakeLLM):
+    def __init__(self, fails):
+        self.fails = fails  # cantidad de llamadas iniciales que revientan
+        self.calls = 0
+
+    def judge_entailment(self, quote, summary_text):
+        self.calls += 1
+        if self.calls <= self.fails:
+            raise RuntimeError("429 RESOURCE_EXHAUSTED")
+        return True
+
+
+def _checks(conn):
+    with conn.cursor() as cur:
+        cur.execute("SELECT count(*) FROM entailment_checks")
+        return cur.fetchone()[0]
+
+
+def test_judge_sampling_stops_after_two_consecutive_failures(db_conn):
+    llm = _FlakyJudge(fails=99)
+    summary = _run(db_conn, llm, _seis_articulos())
+
+    # Los resúmenes ya se publicaron: el juez es un control de calidad por
+    # muestreo, no un requisito para publicar.
+    assert summary.summaries_accepted == 6
+    assert summary.failures == 0
+    assert llm.calls == 2, "tenía que dejar de insistir al segundo fallo seguido"
+    assert _checks(db_conn) == 0
+
+
+def test_an_isolated_judge_failure_does_not_stop_the_sampling(db_conn):
+    llm = _FlakyJudge(fails=1)
+    _run(db_conn, llm, _seis_articulos())
+
+    assert llm.calls >= 5
+    assert _checks(db_conn) == llm.calls - 1

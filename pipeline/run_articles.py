@@ -47,6 +47,7 @@ from pipeline.translate import translate_summary
 TOP_N_FOR_SUMMARY = 15
 CANDIDATE_MINING_MAX_AGE_DAYS = 3
 SUMMARY_RETRY_WINDOW_DAYS = 3
+MAX_CONSECUTIVE_JUDGE_FAILURES = 2
 
 logger = logging.getLogger("de_radar.articles")
 
@@ -247,6 +248,7 @@ def run(
     if new_claim_ids:
         rate = sampling_rate_for(_recent_entailment_error_rate(conn, now))
         sample = select_sample(new_claim_ids, rate=rate)
+        consecutive_failures = 0
         with conn.cursor() as cur:
             for claim_id in sample:
                 try:
@@ -259,11 +261,20 @@ def run(
                         "INSERT INTO entailment_checks (claim_id, is_entailed) VALUES (%s, %s)",
                         (claim_id, is_entailed),
                     )
+                    consecutive_failures = 0
                 except Exception:
                     # Mismo criterio que el fetch por feed y el resumen por artículo:
                     # una falla del juez (p.ej. 429 de cuota) no debe tumbar la corrida,
                     # solo esa verificación queda sin registrar.
                     logger.error("verificación de entailment falló | claim_id=%s", claim_id, exc_info=True)
+                    consecutive_failures += 1
+                    if consecutive_failures >= MAX_CONSECUTIVE_JUDGE_FAILURES:
+                        # Dos seguidas = el juez no está disponible (cuota, caída), no una
+                        # respuesta rara. Con los reintentos, cada claim restante costaría
+                        # minutos antes de fallar igual; el muestreo es un control de
+                        # calidad, no un requisito para publicar.
+                        logger.warning("juez de entailment no disponible; se corta el muestreo de esta corrida")
+                        break
 
     return summary
 

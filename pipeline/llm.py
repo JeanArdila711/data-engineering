@@ -6,6 +6,7 @@ confirmados en Task 0 contra el pricing vigente al momento de implementar.
 """
 
 import json
+import unicodedata
 from dataclasses import dataclass, field
 
 from google import genai
@@ -114,7 +115,11 @@ class GeminiClient:
             f'Respondé solo "si" o "no".\n\nCita: {claim_quote}\nAfirmación: {summary_text}'
         )
         response = self._client.models.generate_content(model=self._judge_model, contents=prompt)
-        return response.text.strip().lower().startswith("si")
+        # El modelo contesta "Sí." con tilde: sin quitarla, un sí cuenta como no.
+        answer = "".join(
+            ch for ch in unicodedata.normalize("NFD", response.text) if not unicodedata.combining(ch)
+        )
+        return answer.strip().lower().startswith("si")
 
     def translate(self, text: str) -> str:
         # Sin response_mime_type, el modelo a veces respondía con meta-comentario
