@@ -9,9 +9,11 @@ import {
   ScrollText,
   Activity,
   Compass,
+  Dumbbell,
   BookOpen
 } from 'lucide-react';
 import { Dock, DockIcon, DockItem, DockLabel } from '@/components/ui/dock';
+import NavHeader from '@/components/nav-header';
 
 function GithubIcon({ className }: { className?: string }) {
   return (
@@ -36,6 +38,7 @@ const NAV_ITEMS: NavItem[] = [
   { id: 'articulos', title: 'Deep-Dives', href: '/#articulos', icon: ScrollText },
   { id: 'digest', title: 'Digest Semanal', href: '/#digest', icon: Activity },
   { id: 'rumbo', title: 'Rumbo (Grafo)', href: '/ruta', icon: Compass },
+  { id: 'practica', title: 'Práctica', href: '/practica', icon: Dumbbell },
   { id: 'glosario', title: 'Glosario DE', href: '/glosario', icon: BookOpen },
   {
     id: 'github',
@@ -48,27 +51,33 @@ const NAV_ITEMS: NavItem[] = [
 
 export default function Navbar() {
   return (
-    <div className='fixed bottom-2 left-1/2 max-w-full -translate-x-1/2 z-50'>
-      <Dock className='items-end pb-3'>
-        {NAV_ITEMS.map((item) => {
-          const Icon = item.icon;
-          return (
-            <Link
-              key={item.id}
-              href={item.href}
-              target={item.isExternal ? '_blank' : undefined}
-              rel={item.isExternal ? 'noopener noreferrer' : undefined}
-            >
-              <DockItem className='aspect-square rounded-full bg-gray-200 dark:bg-neutral-800'>
-                <DockLabel>{item.title}</DockLabel>
-                <DockIcon>
-                  <Icon className='h-full w-full text-neutral-600 dark:text-neutral-300' />
-                </DockIcon>
-              </DockItem>
-            </Link>
-          );
-        })}
-      </Dock>
-    </div>
+    <>
+      {/* Mobile Top Navbar (oculta en pantallas md o superiores) */}
+      <NavHeader />
+
+      {/* Desktop macOS-style Dock Navigation (oculta en mobile, visible en md+) */}
+      <div className='hidden md:block fixed bottom-2 left-1/2 max-w-full -translate-x-1/2 z-50'>
+        <Dock className='items-end pb-3'>
+          {NAV_ITEMS.map((item) => {
+            const Icon = item.icon;
+            return (
+              <Link
+                key={item.id}
+                href={item.href}
+                target={item.isExternal ? '_blank' : undefined}
+                rel={item.isExternal ? 'noopener noreferrer' : undefined}
+              >
+                <DockItem className='aspect-square rounded-full bg-gray-200 dark:bg-neutral-800'>
+                  <DockLabel>{item.title}</DockLabel>
+                  <DockIcon>
+                    <Icon className='h-full w-full text-neutral-600 dark:text-neutral-300' />
+                  </DockIcon>
+                </DockItem>
+              </Link>
+            );
+          })}
+        </Dock>
+      </div>
+    </>
   );
 }
