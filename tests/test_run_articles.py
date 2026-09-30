@@ -1,4 +1,4 @@
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 
 import yaml
 
@@ -78,6 +78,23 @@ class _FakeLLMEntailmentQuotaExceeded:
 
     def judge_entailment(self, quote, summary_text):
         raise RuntimeError("429 RESOURCE_EXHAUSTED")
+
+
+class _FakeLLMTranslateCrashes(_FakeLLM):
+    """El resumen en inglés sale bien y la traducción revienta: es el 429 que el
+    2026-09-30 dejó 2 artículos con resumen EN y sin ES."""
+
+    def translate(self, text):
+        raise RuntimeError("429 RESOURCE_EXHAUSTED")
+
+
+class _CountingLLM(_FakeLLM):
+    def __init__(self):
+        self.drafts = 0
+
+    def draft_summary(self, document, tool_names):
+        self.drafts += 1
+        return super().draft_summary(document, tool_names)
 
 
 def _record(url="https://duckdb.org/a", text="DuckDB 1.5 salió hoy con mejoras") -> ArticleRecord:
@@ -393,3 +410,76 @@ def test_main_survives_invalid_roadmap_yaml_and_disables_mining(monkeypatch):
 
     assert exit_code == 0
     assert captured["minar_glosario"] is False
+
+
+def _run(conn, llm, records=None):
+    fetcher = _fake_fetcher(records if records is not None else [_record()])
+    return run(conn, _catalog(), ROADMAP_VACIO, GLOSARIO_VACIO, llm, DS, NOW, fetcher=fetcher)
+
+
+def _idiomas(conn):
+    with conn.cursor() as cur:
+        cur.execute("SELECT idioma FROM summaries ORDER BY idioma")
+        return [r[0] for r in cur.fetchall()]
+
+
+def test_failed_translation_leaves_no_partial_summary(db_conn):
+    summary = _run(db_conn, _FakeLLMTranslateCrashes())
+
+    assert summary.failures == 1
+    assert _idiomas(db_conn) == []
+    with db_conn.cursor() as cur:
+        cur.execute("SELECT count(*) FROM claims")
+        assert cur.fetchone()[0] == 0
+        cur.execute("SELECT source_ref, stage FROM quarantine")
+        assert cur.fetchall() == [("article:1", "summarize")]
+
+
+def test_article_without_summary_is_retried_on_the_next_run(db_conn):
+    _run(db_conn, _FakeLLMTranslateCrashes())
+    second = _run(db_conn, _FakeLLM())
+
+    assert second.articles_inserted == 0
+    assert second.summaries_accepted == 1
+    assert _idiomas(db_conn) == ["en", "es"]
+
+
+def test_rejected_summary_gets_another_chance_inside_the_window(db_conn):
+    _run(db_conn, _FakeLLMRejects())
+    second = _run(db_conn, _FakeLLM())
+
+    assert second.summaries_accepted == 1
+    assert _idiomas(db_conn) == ["en", "es"]
+
+
+def test_article_outside_the_retry_window_is_not_retried(db_conn):
+    _run(db_conn, _FakeLLMTranslateCrashes())
+    with db_conn.cursor() as cur:
+        cur.execute("UPDATE articles SET ingested_at = %s", (NOW - timedelta(days=10),))
+    second = _run(db_conn, _FakeLLM())
+
+    assert second.summaries_accepted == 0
+    assert _idiomas(db_conn) == []
+
+
+def test_article_that_already_has_a_summary_is_not_resummarized(db_conn):
+    llm = _CountingLLM()
+    _run(db_conn, llm)
+    _run(db_conn, llm)
+
+    assert llm.drafts == 1
+
+
+def test_retry_is_capped_by_top_n_and_prefers_higher_score(db_conn, monkeypatch):
+    import pipeline.run_articles as mod
+
+    monkeypatch.setattr(mod, "TOP_N_FOR_SUMMARY", 1)
+    records = [_record(url="https://duckdb.org/a"), _record(url="https://duckdb.org/b", text="DuckDB 2.0 y DuckDB de nuevo")]
+    _run(db_conn, _FakeLLMTranslateCrashes(), records)
+    with db_conn.cursor() as cur:
+        cur.execute("UPDATE articles SET relevance_score = CASE WHEN url = 'https://duckdb.org/b' THEN 9 ELSE 1 END")
+    _run(db_conn, _FakeLLM(), records)
+
+    with db_conn.cursor() as cur:
+        cur.execute("SELECT a.url FROM summaries s JOIN articles a ON a.id = s.article_id WHERE s.idioma = 'es'")
+        assert cur.fetchall() == [("https://duckdb.org/b",)]
