@@ -12,5 +12,7 @@ export async function POST(request: NextRequest) {
   revalidatePath('/ruta')
   revalidatePath('/ruta/[objetivo]/[partida]', 'page')
   revalidatePath('/glosario')
+  revalidatePath('/practica')
+  revalidatePath('/practica/[objetivo]', 'page')
   return NextResponse.json({ revalidated: true })
 }
