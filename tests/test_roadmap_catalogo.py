@@ -33,6 +33,17 @@ def test_solo_los_nodos_con_evidencia_tienen_experiencia():
     )
 
 
+def test_todo_nodo_de_un_checklist_tiene_falla_real_registrada():
+    """RetoCard publica "cada uno con una falla real detrás": lo respalda esto."""
+    con_experiencia = {n.slug for n in ROADMAP.nodes if n.lo_vi_romperse is not None}
+    sin_falla = {
+        o.slug: sorted(set(o.reto.checklist) - con_experiencia)
+        for o in ROADMAP.objetivos
+        if o.reto is not None and set(o.reto.checklist) - con_experiencia
+    }
+    assert not sin_falla, f"checklist con nodos sin lo_vi_romperse: {sin_falla}"
+
+
 def test_todo_nodo_tiene_al_menos_una_fuente():
     sin_fuentes = [n.slug for n in ROADMAP.nodes if not n.fuentes]
     assert not sin_fuentes, f"nodos sin fuentes: {sin_fuentes}"

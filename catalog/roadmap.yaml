@@ -60,10 +60,10 @@ nodes:
     practica_externa:
       - nombre: PgExercises
         url: https://pgexercises.com/
-        por_que: ejercicios sobre un único esquema realista (torneo de squash), de select básico a window functions y recursivas, con la solución explicada; sin registro, licencia CC BY-SA
+        por_que: preguntas y explicaciones sobre un único dataset de un club (socios, instalaciones, reservas), de select y where a agregaciones, window functions y consultas recursivas; el propio sitio avisa que el esquema es imperfecto a propósito; contenido bajo licencia CC BY-SA 3.0
       - nombre: DataLemur
         url: https://www.datalemur.com/
-        por_que: preguntas de SQL reales etiquetadas por empresa (LinkedIn, Meta, Amazon), estilo entrevista en vez de esquema único — ángulo distinto al de PgExercises
+        por_que: preguntas de SQL estilo entrevista, etiquetadas por empresa y dificultad
 
   - slug: python-para-datos
     tipo: herramienta
@@ -128,7 +128,7 @@ nodes:
     practica_externa:
       - nombre: Learn Git Branching
         url: https://learngitbranching.js.org/
-        por_que: simulador visual de un repositorio real en el navegador — ramas, rebase, cherry-pick — sin necesitar terminal propia; proyecto open source, gratis
+        por_que: tutorial interactivo de git con visualización — practicás comandos sobre un repositorio dibujado en el navegador; código público en GitHub
 
   - slug: linea-de-comandos
     tipo: herramienta
@@ -152,7 +152,7 @@ nodes:
     practica_externa:
       - nombre: "OverTheWire: Bandit"
         url: https://overthewire.org/wargames/bandit/
-        por_que: wargame vía SSH pensado para principiantes absolutos — cada nivel exige un comando real de shell para conseguir la contraseña del siguiente; gratis, sin registro
+        por_que: wargame al que se juega por SSH, pensado para principiantes absolutos; cada nivel explica cómo pasar al siguiente
 
   - slug: contenedores
     tipo: herramienta

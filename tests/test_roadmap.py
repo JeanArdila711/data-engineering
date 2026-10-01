@@ -413,6 +413,14 @@ def test_carga_recurso_de_practica_externa(tmp_path):
     assert roadmap.nodes[0].practica_externa[0].nombre == "PgExercises"
 
 
+@pytest.mark.parametrize("campo", ["nombre", "por_que"])
+def test_rechaza_recurso_de_practica_con_campo_vacio(tmp_path, campo):
+    recurso = {"nombre": "X", "url": "https://x.dev", "por_que": "porque sí", campo: "   "}
+    path = _escribir(tmp_path, [_nodo("a", practica_externa=[recurso])])
+    with pytest.raises(RoadmapError, match="grafo inválido"):
+        load_roadmap(path, CATALOGO)
+
+
 def test_rechaza_recurso_de_practica_con_url_mal_formada(tmp_path):
     path = _escribir(tmp_path, [_nodo("a", practica_externa=[
         {"nombre": "X", "url": "no-es-una-url", "por_que": "porque sí"},
