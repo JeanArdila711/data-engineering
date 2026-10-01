@@ -1050,8 +1050,9 @@ objetivos:
     reto:
       escenario: >
         Elegí una fuente que tenga al menos un atributo que cambie con el
-        tiempo (puede ser catalog/tools.yaml de este mismo repo, que es
-        público) y modelala como SCD Tipo 2: una tabla de hechos con grano
+        tiempo (puede ser catalog/tools.yaml del repo de DE Radar, en
+        github.com/JeanArdila711/data-engineering, que es público) y modelala
+        como SCD Tipo 2: una tabla de hechos con grano
         explícito y una dimensión que guarde el historial de esos cambios, no
         solo el valor actual. Corré una transformación por capas y verificá
         con una consulta que el histórico sigue disponible después de que la

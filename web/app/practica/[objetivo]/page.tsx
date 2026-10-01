@@ -71,7 +71,7 @@ export default async function RetoPage({ params }: { params: Params }) {
                       rel="noopener noreferrer"
                       className="text-sm text-emerald-400 hover:underline"
                     >
-                      Ver el commit
+                      {item.experiencia_link.includes('/commit/') ? 'Ver el commit' : 'Ver la evidencia'}
                     </a>
                   )}
                 </li>
