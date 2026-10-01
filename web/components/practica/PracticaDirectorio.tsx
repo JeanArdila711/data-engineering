@@ -33,7 +33,7 @@ export default function PracticaDirectorio({
                         >
                           {r.nombre}
                         </a>
-                        <p className="text-xs text-neutral-500">{r.por_que}</p>
+                        <p className="text-xs text-neutral-400">{r.por_que}</p>
                       </li>
                     ))}
                   </ul>

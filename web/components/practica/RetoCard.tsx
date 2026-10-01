@@ -7,9 +7,9 @@ export default function RetoCard({ objetivo, reto }: { objetivo: WizardOption; r
 
   if (!tieneReto) {
     return (
-      <div className="rounded-lg border border-neutral-800 bg-neutral-950/50 p-6 opacity-60">
-        <h3 className="text-lg font-semibold text-neutral-300">{objetivo.nombre}</h3>
-        <p className="mt-2 text-sm text-neutral-500">{reto?.motivo_ausencia ?? 'Sin reto todavía.'}</p>
+      <div className="rounded-lg border border-neutral-900 bg-neutral-950 p-6">
+        <h3 className="text-lg font-semibold text-neutral-400">{objetivo.nombre}</h3>
+        <p className="mt-2 text-sm text-neutral-400">{reto?.motivo_ausencia ?? 'Sin reto todavía.'}</p>
       </div>
     )
   }

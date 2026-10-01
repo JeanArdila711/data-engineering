@@ -30,10 +30,13 @@ export default async function PracticaPage() {
             etapas del ciclo de vida del dato, con checklist y fallas reales.
           </p>
         </section>
-        <section className="mx-auto grid max-w-5xl gap-4 px-6 pb-16 sm:grid-cols-2">
-          {objetivos.map(o => (
-            <RetoCard key={o.slug} objetivo={o} reto={retos.find(r => r.objetivo_slug === o.slug) ?? null} />
-          ))}
+        <section className="mx-auto max-w-5xl px-6 pb-16">
+          <h2 className="mb-6 text-2xl font-bold text-white">Retos</h2>
+          <div className="grid gap-4 sm:grid-cols-2">
+            {objetivos.map(o => (
+              <RetoCard key={o.slug} objetivo={o} reto={retos.find(r => r.objetivo_slug === o.slug) ?? null} />
+            ))}
+          </div>
         </section>
         <PracticaDirectorio grupos={grupos} niveles={niveles} />
         <Footer />
