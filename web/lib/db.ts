@@ -40,6 +40,8 @@ export type EcosystemStat = {
   vendor: string | null
   repo: string | null
   homepage: string | null
+  /** false si el repo publica tags y no GitHub Releases (Spark, Kafka, Flink). */
+  publishes_releases: boolean
   tracked_since: Date
   release_count: number
   breaking_release_count: number
@@ -132,7 +134,7 @@ export async function getEcosystemStats(): Promise<EcosystemStat[]> {
     }
     const rows = await client<any[]>`
       select tool_slug, tool_name, category, vendor, repo, homepage,
-             tracked_since, release_count, breaking_release_count,
+             publishes_releases, tracked_since, release_count, breaking_release_count,
              last_version, last_published_at, last_has_breaking,
              release_history, article_count
       from mart_ecosystem
