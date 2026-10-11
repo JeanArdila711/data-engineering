@@ -23,6 +23,8 @@ class Tool(BaseModel):
     category: str
     vendor: str | None = None
     repo: str | None = None
+    # False si el repo publica tags y no GitHub Releases (Spark, Kafka, Flink).
+    github_releases: bool = True
     homepage: str | None = None
     aliases: list[str] = Field(default_factory=list)
     feeds: list[FeedConfig] = Field(default_factory=list)

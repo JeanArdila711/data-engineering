@@ -40,6 +40,8 @@ models:
                 field: tool_slug
       - name: tool_name
         tests: [not_null]
+      - name: publishes_releases
+        tests: [not_null]
       - name: release_count
         tests: [not_null]
       - name: article_count

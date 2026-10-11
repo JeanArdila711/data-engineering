@@ -6,6 +6,7 @@ select
     vendor,
     repo,
     homepage,
+    github_releases,
     effective_from,
     effective_to,
     is_current

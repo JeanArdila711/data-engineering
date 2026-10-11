@@ -36,6 +36,7 @@ tools:
     category: processing
     vendor: Apache Software Foundation
     repo: apache/spark
+    github_releases: false  # publica tags, no GitHub Releases (verificado 2026-10-10)
     homepage: https://spark.apache.org
     aliases: [apache spark, pyspark]
 
@@ -76,6 +77,7 @@ tools:
     category: streaming
     vendor: Apache Software Foundation
     repo: apache/kafka
+    github_releases: false  # publica tags, no GitHub Releases (verificado 2026-10-10)
     homepage: https://kafka.apache.org
     aliases: [apache kafka]
     feeds:
@@ -87,6 +89,7 @@ tools:
     category: streaming
     vendor: Apache Software Foundation
     repo: apache/flink
+    github_releases: false  # publica tags, no GitHub Releases (verificado 2026-10-10)
     homepage: https://flink.apache.org
     aliases: [apache flink]
     feeds:

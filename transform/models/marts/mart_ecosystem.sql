@@ -54,6 +54,7 @@ select
     t.vendor,
     t.repo,
     t.homepage,
+    t.github_releases as publishes_releases,
     t.effective_from as tracked_since,
     coalesce(rs.release_count, 0) as release_count,
     coalesce(rs.breaking_release_count, 0) as breaking_release_count,

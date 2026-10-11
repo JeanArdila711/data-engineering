@@ -82,13 +82,21 @@ def sync_catalog(conn: psycopg.Connection, catalog: Catalog, now: datetime) -> N
             (now, [tool.slug for tool in catalog.tools]),
         )
 
+        # Atributo de operación, fuera de _TRACKED_ATTRIBUTES: se actualiza en la
+        # fila vigente sin abrir una versión nueva (ver migración 012).
+        for tool in catalog.tools:
+            cur.execute(
+                "UPDATE dim_tool SET github_releases = %s WHERE slug = %s AND is_current",
+                (tool.github_releases, tool.slug),
+            )
+
 
 def sync_sources(conn: psycopg.Connection, catalog: Catalog) -> dict[str, int]:
     """Registra una fuente github_releases por herramienta y devuelve sus ids."""
     ids: dict[str, int] = {}
     with conn.cursor() as cur:
         for tool in catalog.tools:
-            if not tool.repo:
+            if not tool.repo or not tool.github_releases:
                 continue
             cur.execute(
                 "INSERT INTO sources (tool_slug, kind, url) VALUES (%s, 'github_releases', %s) "
