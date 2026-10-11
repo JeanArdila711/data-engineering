@@ -106,6 +106,73 @@ def _articles_to_summarize(conn: psycopg.Connection, now: datetime) -> list[int]
         return [row[0] for row in cur.fetchall()]
 
 
+def _summarize_batch(
+    conn: psycopg.Connection,
+    article_ids: list[int],
+    tool_names_by_slug: dict[str, str],
+    llm_client,
+    quarantine_fn,
+    summary: RunArticlesSummary,
+) -> list[int]:
+    """Resume y traduce cada artículo de `article_ids`. Devuelve los ids de los
+    claims nuevos. Un fallo en un artículo no corta el resto."""
+    new_claim_ids: list[int] = []
+    for article_id in article_ids:
+        try:
+            with conn.cursor() as cur:
+                cur.execute("SELECT id, summary_text FROM articles WHERE id = %s", (article_id,))
+                row = cur.fetchone()
+                cur.execute(
+                    "SELECT tool_slug FROM fct_article_mention WHERE article_id = %s", (article_id,)
+                )
+                slugs = [r[0] for r in cur.fetchall()]
+
+            class _Article:
+                id = row[0]
+                summary_text = row[1]
+
+            tool_names = [tool_names_by_slug[s] for s in slugs]
+            claim_ids: list[int] = []
+            # Resumen EN, claims y traducción ES son todo o nada: si la traducción
+            # falla, el EN no puede quedar solo, porque UNIQUE (article_id, idioma)
+            # impediría reintentarlo. El rechazo por anclaje no levanta excepción:
+            # su fila de cuarentena se confirma junto con la transacción.
+            with conn.transaction():
+                summary_id = summarize_article(_Article(), tool_names, llm_client, quarantine_fn, conn=conn)
+
+                if summary_id is None:
+                    summary.summaries_rejected += 1
+                    continue
+
+                with conn.cursor() as cur:
+                    cur.execute("SELECT text FROM summaries WHERE id = %s", (summary_id,))
+                    english_text = cur.fetchone()[0]
+                    spanish_text = translate_summary(english_text, llm_client)
+                    cur.execute(
+                        "INSERT INTO summaries (article_id, idioma, text) VALUES (%s, 'es', %s)",
+                        (article_id, spanish_text),
+                    )
+                    cur.execute("SELECT id FROM claims WHERE summary_id = %s", (summary_id,))
+                    claim_ids = [r[0] for r in cur.fetchall()]
+            new_claim_ids.extend(claim_ids)
+        except Exception as error:
+            # Un artículo con una respuesta rara del LLM (JSON mal formado, corte
+            # de red, bloqueo de seguridad) no debe tumbar el resto de la corrida
+            # — mismo criterio que el fetch por feed. La cuarentena se escribe
+            # acá, ya fuera de la transacción revertida.
+            logger.error("resumen de artículo falló | article_id=%s", article_id, exc_info=True)
+            quarantine_fn(
+                source_ref=f"article:{article_id}",
+                stage="summarize",
+                error=f"{type(error).__name__}: {error}\n{traceback.format_exc()}",
+            )
+            summary.failures += 1
+            continue
+
+        summary.summaries_accepted += 1
+    return new_claim_ids
+
+
 def run(
     conn: psycopg.Connection,
     catalog: Catalog,
@@ -124,7 +191,11 @@ def run(
 
     scored_today: list[tuple[float, int]] = []
     known_names = [n for t in catalog.tools for n in (t.name, *t.aliases)]
+    # Las herramientas del catálogo no son jerga de glosario: "Dagster" y "DuckDB"
+    # abrieron issues de candidato. El slug cuenta ("Iceberg" es el slug de
+    # "Apache Iceberg", cuyo alias es "apache iceberg").
     known_glossary_terms = [n.nombre for n in roadmap.nodes]
+    known_glossary_terms += [n for t in catalog.tools for n in (t.name, t.slug, *t.aliases)]
     for t in glosario.terminos:
         known_glossary_terms.append(t.termino)
         base, _, resto = t.termino.partition(" (")
@@ -190,60 +261,9 @@ def run(
             except Exception:
                 logger.error("extracción de términos de glosario falló | article_id=%s", article_id, exc_info=True)
 
-    new_claim_ids: list[int] = []
-    for article_id in _articles_to_summarize(conn, now):
-        try:
-            with conn.cursor() as cur:
-                cur.execute("SELECT id, summary_text FROM articles WHERE id = %s", (article_id,))
-                row = cur.fetchone()
-                cur.execute(
-                    "SELECT tool_slug FROM fct_article_mention WHERE article_id = %s", (article_id,)
-                )
-                slugs = [r[0] for r in cur.fetchall()]
-
-            class _Article:
-                id = row[0]
-                summary_text = row[1]
-
-            tool_names = [tool_names_by_slug[s] for s in slugs]
-            claim_ids: list[int] = []
-            # Resumen EN, claims y traducción ES son todo o nada: si la traducción
-            # falla, el EN no puede quedar solo, porque UNIQUE (article_id, idioma)
-            # impediría reintentarlo. El rechazo por anclaje no levanta excepción:
-            # su fila de cuarentena se confirma junto con la transacción.
-            with conn.transaction():
-                summary_id = summarize_article(_Article(), tool_names, llm_client, quarantine_fn, conn=conn)
-
-                if summary_id is None:
-                    summary.summaries_rejected += 1
-                    continue
-
-                with conn.cursor() as cur:
-                    cur.execute("SELECT text FROM summaries WHERE id = %s", (summary_id,))
-                    english_text = cur.fetchone()[0]
-                    spanish_text = translate_summary(english_text, llm_client)
-                    cur.execute(
-                        "INSERT INTO summaries (article_id, idioma, text) VALUES (%s, 'es', %s)",
-                        (article_id, spanish_text),
-                    )
-                    cur.execute("SELECT id FROM claims WHERE summary_id = %s", (summary_id,))
-                    claim_ids = [r[0] for r in cur.fetchall()]
-            new_claim_ids.extend(claim_ids)
-        except Exception as error:
-            # Un artículo con una respuesta rara del LLM (JSON mal formado, corte
-            # de red, bloqueo de seguridad) no debe tumbar el resto de la corrida
-            # — mismo criterio que el fetch por feed más arriba. La cuarentena se
-            # escribe acá, ya fuera de la transacción revertida.
-            logger.error("resumen de artículo falló | article_id=%s", article_id, exc_info=True)
-            quarantine_fn(
-                source_ref=f"article:{article_id}",
-                stage="summarize",
-                error=f"{type(error).__name__}: {error}\n{traceback.format_exc()}",
-            )
-            summary.failures += 1
-            continue
-
-        summary.summaries_accepted += 1
+    new_claim_ids = _summarize_batch(
+        conn, _articles_to_summarize(conn, now), tool_names_by_slug, llm_client, quarantine_fn, summary,
+    )
 
     if new_claim_ids:
         rate = sampling_rate_for(_recent_entailment_error_rate(conn, now))

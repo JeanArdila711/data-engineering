@@ -535,3 +535,25 @@ def test_an_isolated_judge_failure_does_not_stop_the_sampling(db_conn):
 
     assert llm.calls >= 5
     assert _checks(db_conn) == llm.calls - 1
+
+
+def test_glossary_mining_skips_names_of_catalog_tools(db_conn):
+    """El 2026-10-01 la minería abrió issues de glosario para "Dagster" y "DuckDB":
+    el filtro excluía nodos y términos curados, pero no las herramientas del
+    catálogo. El slug cuenta: "Iceberg" es el slug de "Apache Iceberg"."""
+    catalogo = Catalog(tools=[
+        Tool(slug="duckdb", name="DuckDB", category="query-engine", aliases=["duck db"],
+             feeds=[{"kind": "rss", "url": "https://duckdb.org/feed.xml"}]),
+        Tool(slug="iceberg", name="Apache Iceberg", category="table-format", aliases=["apache iceberg"]),
+    ])
+
+    class _FakeGlossaryLLM(_FakeLLM):
+        def extract_glossary_terms(self, document, known_terms):
+            return ["DuckDB", "duck db", "Iceberg", "Apache Iceberg", "Circuit Breaker"]
+
+    run(db_conn, catalogo, ROADMAP_VACIO, GLOSARIO_VACIO, _FakeGlossaryLLM(), DS, NOW,
+        fetcher=_fake_fetcher([_record()]))
+
+    with db_conn.cursor() as cur:
+        cur.execute("SELECT normalized_term FROM glossary_candidates")
+        assert {row[0] for row in cur.fetchall()} == {"circuit breaker"}
