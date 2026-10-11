@@ -436,3 +436,26 @@ def test_rechaza_recurso_de_practica_duplicado_en_el_mismo_nodo(tmp_path):
     ])])
     with pytest.raises(RoadmapError, match="repite"):
         load_roadmap(path, CATALOGO)
+
+
+@pytest.mark.parametrize("url", ["https://", "http://", "https:///sin-host", "ftp://x.dev", "javascript:alert(1)"])
+def test_rechaza_url_de_recurso_sin_host_o_con_esquema_no_http(tmp_path, url):
+    path = _escribir(tmp_path, [_nodo("a", practica_externa=[{"nombre": "X", "url": url, "por_que": "porque sí"}])])
+    with pytest.raises(RoadmapError, match="grafo inválido"):
+        load_roadmap(path, CATALOGO)
+
+
+@pytest.mark.parametrize("link", ["javascript:alert(1)", "https://", "ftp://x.dev/c"])
+def test_rechaza_link_de_experiencia_con_esquema_no_http(tmp_path, link):
+    path = _escribir(tmp_path, [_nodo("a", lo_vi_romperse={"texto": "se rompió", "link": link})])
+    with pytest.raises(RoadmapError, match="grafo inválido"):
+        load_roadmap(path, CATALOGO)
+
+
+def test_acepta_link_de_experiencia_https_y_ausente(tmp_path):
+    path = _escribir(tmp_path, [
+        _nodo("a", lo_vi_romperse={"texto": "x", "link": "https://github.com/o/r/commit/abc1234"}),
+        _nodo("b", lo_vi_romperse={"texto": "y", "link": None}),
+    ])
+    roadmap = load_roadmap(path, CATALOGO)
+    assert [n.lo_vi_romperse.link for n in roadmap.nodes] == ["https://github.com/o/r/commit/abc1234", None]

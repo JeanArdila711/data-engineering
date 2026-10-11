@@ -30,9 +30,22 @@ class RoadmapError(ValueError):
     """El grafo no es válido. Nunca se escribe nada a la base con este error."""
 
 
+# Un href que sale del YAML al sitio: solo http(s), y con host ("https://" pelado
+# y "javascript:" no son enlaces). Lo usan los recursos de práctica y la
+# evidencia de lo_vi_romperse.
+_URL_HTTP = re.compile(r"^https?://[^\s/?#]+")
+
+
 class Experience(BaseModel):
     texto: str
     link: str | None = None
+
+    @field_validator("link")
+    @classmethod
+    def _link_http(cls, v: str | None) -> str | None:
+        if v is not None and not _URL_HTTP.match(v):
+            raise ValueError(f"link mal formado: '{v}'")
+        return v
 
 
 class Source(BaseModel):
@@ -46,9 +59,6 @@ class Implementation(BaseModel):
     proveedor: Proveedor | None = None
     equivalencia: Equivalencia | None = None
     nota: str | None = None
-
-
-_URL_HTTP = re.compile(r"^https?://")
 
 
 class RecursoPractica(BaseModel):
