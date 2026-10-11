@@ -21,7 +21,7 @@ export default async function PracticaPage() {
   return (
     <>
       <Navbar />
-      <main className="min-h-screen bg-black text-white relative">
+      <main className="min-h-screen bg-black text-white">
         <section className="mx-auto max-w-5xl px-6 pb-12 pt-32">
           <h1 className="text-4xl font-bold">Práctica</h1>
           <p className="mt-4 max-w-2xl text-neutral-400">

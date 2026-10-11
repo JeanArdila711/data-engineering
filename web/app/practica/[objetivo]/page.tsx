@@ -15,7 +15,9 @@ async function resolver(params: Params) {
 }
 
 // Solo los objetivos que tienen reto se prerenderizan. Un objetivo sin reto
-// da 404, no una página vacía (spec, sección Frontend).
+// da 404, no una página vacía (spec, sección Frontend). Si en un build la base
+// no responde, esto devuelve [] y las páginas se generan a demanda
+// (dynamicParams por defecto) — por eso NO se pone dynamicParams = false.
 export async function generateStaticParams() {
   const retos = await getRetos()
   return retos.filter(r => r.escenario !== null).map(r => ({ objetivo: r.objetivo_slug }))
@@ -39,9 +41,9 @@ export default async function RetoPage({ params }: { params: Params }) {
   return (
     <>
       <Navbar />
-      <main className="min-h-screen bg-black text-white relative">
+      <main className="min-h-screen bg-black text-white">
         <section className="mx-auto max-w-3xl px-6 pb-8 pt-32">
-          <p className="text-sm uppercase tracking-wide text-neutral-500">Reto de punta a punta</p>
+          <p className="text-sm uppercase tracking-wide text-neutral-400">Reto de punta a punta</p>
           <h1 className="mt-2 text-3xl font-bold">{o.nombre}</h1>
           <p className="mt-4 whitespace-pre-line text-neutral-300">{r.escenario}</p>
         </section>
