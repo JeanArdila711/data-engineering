@@ -1077,6 +1077,14 @@ export default function EcosystemSection({ entries = [], ecosystemStats = [], ar
     return Array.from(toolMap.values());
   }, [entries, ecosystemStats]);
 
+  // Herramientas del catálogo que no publican GitHub Releases (solo tags): no
+  // tienen tarjeta porque las tarjetas salen de los releases, y sin esta nota
+  // parecerían ausentes del radar en vez de explicadas.
+  const sinReleases = useMemo(
+    () => ecosystemStats.filter((s) => s.publishes_releases === false).map((s) => s.tool_name),
+    [ecosystemStats],
+  );
+
   // Open tool modal via global Command Palette event
   useEffect(() => {
     const handleOpenTool = (e: Event) => {
@@ -1236,6 +1244,13 @@ export default function EcosystemSection({ entries = [], ecosystemStats = [], ar
             </motion.div>
           )}
         </AnimatePresence>
+
+        {sinReleases.length > 0 && (
+          <p className="mt-6 text-xs font-mono leading-relaxed text-neutral-400">
+            No publican GitHub Releases (solo tags), por eso no tienen historial de versiones acá:{' '}
+            {sinReleases.join(', ')}.
+          </p>
+        )}
       </div>
 
       {/* Morphing Expandable Modal Dialog (Smooth Shared Layout & Navigation) */}
