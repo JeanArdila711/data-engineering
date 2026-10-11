@@ -174,3 +174,57 @@ def test_anchor_alert_is_retried_next_run_if_opening_the_issue_fails(db_conn):
 
     calls, opener = _collect()
     assert send_anchor_rejection_alert(db_conn, "o/r", "tok", NOW, opener=opener) == 1
+
+
+# ---- Frescura: el pipeline corre pero no trae nada ----
+
+def _article_ingested_at(conn, at: datetime) -> None:
+    with conn.cursor() as cur:
+        cur.execute(
+            "INSERT INTO sources (tool_slug, kind, url) VALUES ('duckdb', 'rss', 'https://x') "
+            "ON CONFLICT (tool_slug, kind, url) DO UPDATE SET url = EXCLUDED.url RETURNING id"
+        )
+        source_id = cur.fetchone()[0]
+        cur.execute(
+            "INSERT INTO articles (feed_source_id, url, url_normalized, title, published_at, summary_text, "
+            "content_hash, relevance_score, ingested_at) VALUES (%s, 'https://a/1', 'https://a/1', 't', %s, 's', 'h', 1, %s)",
+            (source_id, at, at),
+        )
+
+
+def test_staleness_alert_opens_when_nothing_new_arrived_for_two_weeks(db_conn):
+    from pipeline.alerts import send_staleness_alert
+
+    _article_ingested_at(db_conn, NOW - timedelta(days=20))
+    calls, opener = _collect()
+
+    assert send_staleness_alert(db_conn, "o/r", "tok", NOW, opener=opener) == 1
+    assert calls[0][1] == ["data-staleness"]
+
+
+def test_staleness_alert_stays_quiet_when_data_is_fresh(db_conn):
+    from pipeline.alerts import send_staleness_alert
+
+    _article_ingested_at(db_conn, NOW - timedelta(days=3))
+    calls, opener = _collect()
+
+    assert send_staleness_alert(db_conn, "o/r", "tok", NOW, opener=opener) == 0
+    assert calls == []
+
+
+def test_staleness_alert_stays_quiet_on_an_empty_database(db_conn):
+    from pipeline.alerts import send_staleness_alert
+
+    calls, opener = _collect()
+    assert send_staleness_alert(db_conn, "o/r", "tok", NOW, opener=opener) == 0
+
+
+def test_staleness_alert_does_not_repeat_inside_the_window(db_conn):
+    from pipeline.alerts import send_staleness_alert
+
+    _article_ingested_at(db_conn, NOW - timedelta(days=20))
+    calls, opener = _collect()
+
+    assert send_staleness_alert(db_conn, "o/r", "tok", NOW, opener=opener) == 1
+    assert send_staleness_alert(db_conn, "o/r", "tok", NOW + timedelta(days=3), opener=opener) == 0
+    assert send_staleness_alert(db_conn, "o/r", "tok", NOW + timedelta(days=15), opener=opener) == 1

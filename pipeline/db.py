@@ -442,6 +442,24 @@ def anchor_rejection_stats(conn: psycopg.Connection, now: datetime) -> tuple[int
         return rejected, accepted
 
 
+# El volumen real es de ~1-2 artículos nuevos por día entre las 10 herramientas;
+# dos semanas sin que entre un release ni un artículo no es una semana tranquila,
+# es un pipeline que corre en verde y no trae nada (fuente cambiada, feed caído
+# sin error, repo que dejó de publicar). Un fallo así no lo ve el orquestador.
+DATA_STALE_AFTER_DAYS = 14
+
+
+def newest_ingest_at(conn: psycopg.Connection) -> datetime | None:
+    """Cuándo entró el último release o artículo. None si la base está vacía."""
+    with conn.cursor() as cur:
+        cur.execute(
+            "SELECT max(t) FROM ("
+            "SELECT max(ingested_at) AS t FROM articles "
+            "UNION ALL SELECT max(ingested_at) FROM fct_release) x"
+        )
+        return cur.fetchone()[0]
+
+
 def alert_sent_within(conn: psycopg.Connection, key: str, now: datetime, days: int) -> bool:
     with conn.cursor() as cur:
         cur.execute(

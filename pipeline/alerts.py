@@ -19,11 +19,13 @@ from pipeline.db import (
     ANCHOR_REJECTION_ALERT_RATE,
     ANCHOR_REJECTION_MIN_ATTEMPTS,
     ANCHOR_REJECTION_WINDOW_DAYS,
+    DATA_STALE_AFTER_DAYS,
     DEGRADED_AFTER_FAILURES,
     alert_sent_within,
     anchor_rejection_stats,
     connect,
     mark_alert_sent,
+    newest_ingest_at,
     degraded_sources_needing_alert,
     mark_candidate_proposed,
     mark_glossary_candidate_proposed,
@@ -138,6 +140,34 @@ def send_anchor_rejection_alert(conn, repo: str, token: str, now: datetime, open
     return 1
 
 
+STALENESS_ALERT_KEY = "data-staleness"
+
+
+def send_staleness_alert(conn, repo: str, token: str, now: datetime, opener=_open_issue) -> int:
+    """Abre un issue si no entró ningún release ni artículo en DATA_STALE_AFTER_DAYS.
+    Como mucho uno por ventana. Una base vacía no alerta. Devuelve 1 si abrió."""
+    newest = newest_ingest_at(conn)
+    if newest is None:
+        return 0
+    age_days = (now - newest).days
+    if age_days < DATA_STALE_AFTER_DAYS:
+        return 0
+    if alert_sent_within(conn, STALENESS_ALERT_KEY, now, DATA_STALE_AFTER_DAYS):
+        return 0
+    opener(
+        repo, token,
+        title=f"Sin datos nuevos hace {age_days} días",
+        body=(
+            f"No entró ningún release ni artículo en {age_days} días (umbral {DATA_STALE_AFTER_DAYS}). "
+            "El pipeline corre en verde, así que no es un fallo ruidoso: revisá si alguna fuente cambió de "
+            "formato o dejó de publicar (`sources.last_success_at` y las filas nuevas de `fct_release` y `articles`)."
+        ),
+        labels=["data-staleness"],
+    )
+    mark_alert_sent(conn, STALENESS_ALERT_KEY, now)
+    return 1
+
+
 def main() -> int:
     load_dotenv()
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s", stream=sys.stdout)
@@ -151,12 +181,13 @@ def main() -> int:
         candidates_alerted = send_candidate_alerts(conn, repo, token)
         glossary_candidates_alerted = send_glossary_candidate_alerts(conn, repo, token)
         anchor_alerted = send_anchor_rejection_alert(conn, repo, token, now)
+        stale_alerted = send_staleness_alert(conn, repo, token, now)
     finally:
         conn.close()
 
     logger.info(
-        "alertas enviadas | fuentes=%d candidatos=%d candidatos_glosario=%d anclaje=%d",
-        sources_alerted, candidates_alerted, glossary_candidates_alerted, anchor_alerted,
+        "alertas enviadas | fuentes=%d candidatos=%d candidatos_glosario=%d anclaje=%d frescura=%d",
+        sources_alerted, candidates_alerted, glossary_candidates_alerted, anchor_alerted, stale_alerted,
     )
     return 0
 
