@@ -9,9 +9,20 @@ permissions:
   contents: read
   issues: write
 
+# Una corrida manual encima de la programada no debe correr en paralelo: las dos
+# escribirían a la misma base. Se encola en vez de cancelar la que está en curso,
+# porque cancelar a mitad de la ingesta deja trabajo a medias.
+concurrency:
+  group: ingest
+  cancel-in-progress: false
+
 jobs:
   ingest:
     runs-on: ubuntu-latest
+    # Sin tope, un paso colgado (el juez reintentando) puede consumir las 6 horas
+    # por defecto de GitHub Actions. Lo normal son ~6 min; la peor corrida medida,
+    # 18 min.
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
 
