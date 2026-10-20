@@ -11,3 +11,7 @@ node_modules/
 .next/
 graphify-out/
 .worktrees/
+
+# Memoria de Claude Code (local)
+.claude/
+/CLAUDE.md
